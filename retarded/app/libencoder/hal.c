@@ -390,15 +390,15 @@ int hal_shutdown()
 
 /*
 功能：
-	读指定大小的数据，如果出错则返回-1。
-	如果读到文件末尾，返回的大小有可能小于指定的大小
+    读指定大小的数据，如果出错则返回-1。
+    如果读到文件末尾，返回的大小有可能小于指定的大小
 参数：
-	@fd : 文件描述符
-	@vptr ：数据缓冲位置
-	@n : 需要读的字节大小
+    @fd : 文件描述符
+    @vptr ：数据缓冲位置
+    @n : 需要读的字节大小
 返回：
-	成功：读到的字节数
-	失败：-1;
+    成功：读到的字节数
+    失败：-1;
  */
 ssize_t hal_readn(int fd, void *vptr, size_t n)
 {
@@ -427,12 +427,12 @@ ssize_t hal_readn(int fd, void *vptr, size_t n)
 /*
 功能：写指定大小的数据，如果出错则返回-1。
 参数：
-	@fd ： 文件描述符
-	@vptr ：源数据缓存区位置
-	@n: 要写入数据的大小
+    @fd ： 文件描述符
+    @vptr ：源数据缓存区位置
+    @n: 要写入数据的大小
 返回：
-	成功 ：写入的字节数
-	失败 ： -1
+    成功 ：写入的字节数
+    失败 ： -1
  */
 ssize_t hal_writen(int fd, const void *vptr, size_t n)
 {
@@ -456,6 +456,7 @@ ssize_t hal_writen(int fd, const void *vptr, size_t n)
     return (n);
 }
 
+/*mediaserver 回调函数--->JPEG 抓拍*/
 HLE_S32 get_one_JPEG_frame(const void*frame_addr,HLE_S32 length)
 {
     frame_addr = encoder_request_jpeg(0, &length, IMAGE_SIZE_1920x1080);
@@ -599,16 +600,16 @@ int app_main(int argc, char *argv[])
     osdAttr.enable = 1;
     osdAttr.x = 100;
     osdAttr.y = 100;
-    osdAttr.width = 8 * 20;
-    osdAttr.height = 16;
+    osdAttr.width = 8 * 20; //使用矢量字体库时无效
+    osdAttr.height = 16;    //使用矢量字体库时无效
     osdAttr.fg_color = 0xffffffff;
     osdAttr.bg_color = 0;
     osdAttr.raster = NULL;
     videoin_set_osd(0, TIME_OSD_INDEX, &osdAttr);
     osdAttr.x = 100;
     osdAttr.y = 600;
-    osdAttr.width = 8 * 20;
-    osdAttr.height = 16;
+    osdAttr.width = 8 * 20; //使用矢量字体库时无效
+    osdAttr.height = 16;    //使用矢量字体库时无效
     videoin_set_osd(0, RATE_OSD_INDEX, &osdAttr);
 
     ENC_JPEG_ATTR jpgAttr;
@@ -616,6 +617,16 @@ int app_main(int argc, char *argv[])
     jpgAttr.level = 0;
     encoder_config_jpeg(0, &jpgAttr);
 
+    //开始JPEG 编码
+    /*
+    ret = start_JPEG_encode();
+    if(ret < 0)
+    {
+
+        ERROR_LOG("start_JPEG_encode failed !\n");
+        return -1;
+    }
+    */
     
     #if 0
     
@@ -627,6 +638,7 @@ int app_main(int argc, char *argv[])
     snap = 0;
     int cycle_num = 0;
     int skip_len = 0;
+    int snap_count = 2;//定义抓拍保存的图片数量
 
     #if 0
     pthread_t threadID_Idle;
@@ -678,7 +690,7 @@ int app_main(int argc, char *argv[])
             //0xF8-视频关键帧
             if (header->type == 0xF8) {
                 skip_len = sizeof (FRAME_HDR) + sizeof (IFRAME_INFO);
-               // write(fd[i], pack->data + skip_len, pack->length - skip_len);
+                //write(fd[i], pack->data + skip_len, pack->length - skip_len);
             }
             //0xF9-视频非关键帧
             else if (header->type == 0xF9) {
@@ -706,22 +718,25 @@ int app_main(int argc, char *argv[])
         }
      
   
-        #if 0
+        #if 1
             ++snap;
-            if ((snap % 30) == 0) 
+            if ((snap % 90) == 0) 
             {
                 int size;
                 char * jpg = encoder_request_jpeg(0, &size, IMAGE_SIZE_1920x1080);
                 if (jpg) 
                 {
-                    #if 0
-                    char buf[50];
-                    snprintf(buf, sizeof(buf), "/jffs0/snap%d.jpg", snap);
-                    int fd = open(buf, O_CREAT | O_WRONLY | O_TRUNC, 0664);
-                    write(fd, jpg, size);
-                    close(fd);
+                    #if 1
+                    if( snap_count > 0)
+                    {
+                        snap_count --;
+                        char buf[50];
+                        snprintf(buf, sizeof(buf), "/jffs0/snap%d.jpg", snap);
+                        int fd = open(buf, O_CREAT | O_WRONLY | O_TRUNC, 0664);
+                        write(fd, jpg, size);
+                        close(fd);
+                    }
                     #endif
-                    
                     encoder_free_jpeg(jpg);
                 }
             }
@@ -854,6 +869,12 @@ int app_main(int argc, char *argv[])
 }
 
 #endif
+
+
+
+
+
+
 
 
 

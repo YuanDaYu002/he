@@ -256,7 +256,7 @@ char * http_dowload_file(int argc, char *argv[])
 
     //设置http请求头信息
     char header[2048] = {0};
-    sprintf(header, \
+    snprintf(header,sizeof(header) ,\
             "GET %s HTTP/1.1\r\n"\
             "Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8\r\n"\
             "User-Agent: Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537(KHTML, like Gecko) Chrome/47.0.2526Safari/537.36\r\n"\
@@ -467,15 +467,18 @@ char* http_post(char *host_url)
     printf("str2 = %s\n",str2);
 
     len = strlen(str2);
-    sprintf(str, "%d", len);
-   
+	#if 1
+		snprintf(str,10 ,"%d", len);
+	#else
+    	sprintf(str, "%d", len);
+    #endif
     
     char tmp_buf[1024] = {0};
     memset(str1, 0, 2048);
     
     //"Content-Type: application/x-www-form-urlencoded\r\n"\
     
-    sprintf(str1, \
+    snprintf(str1,sizeof(str1),\
     "POST %s HTTP/1.1\r\n"\
     "Host: %s\r\n"\
     "Accept-Language: en-us"\
@@ -728,6 +731,7 @@ int dowload_upadte_file(int argc,char**argv)
     return 0;
     
 }
+
 
 
 

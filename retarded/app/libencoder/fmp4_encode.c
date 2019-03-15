@@ -517,7 +517,7 @@ void print_array(unsigned char* box_name,unsigned char*start,unsigned int length
 #include <fcntl.h>
 
 
-#define RECODE_STREAM_ID 0     //进行录像的流id       ： 0或者1
+#define RECODE_STREAM_ID 1     //进行录像的流id       ： 0或者1
 #define VIDEO_RECORD_TIME 15   //录像时长 单位：S    
 #define FIND_IDR_MAX_NUM  200  //为了寻找IDR的的最大循环次数
 //#define FMP4_FILE  "/jffs0/fmp4.mp4"

@@ -835,7 +835,7 @@ int hls_main (int argc, char* argv[])
 	printf("into hls_main!01\n");
 
 	char path[1024];
-	sprintf(path,"%s%s.m3u8",URL_PREFIX,M3U8_FILE_NAME);
+	snprintf(path,50,"%s%s.m3u8",URL_PREFIX,M3U8_FILE_NAME);
 
 	int counterrr=0; //ts分片文件的个数
 
@@ -850,7 +850,7 @@ int hls_main (int argc, char* argv[])
 	{
 		DEBUG_LOG("into position O\n"); 
 		char tmp[1024];
-		sprintf(tmp, "%s%s_%d.ts",get_pure_pathname(URL_PREFIX),get_pure_filename_without_postfix(INPUT_MP4_FILE), i);
+		snprintf(tmp,50, "%s%s_%d.ts",get_pure_pathname(URL_PREFIX),get_pure_filename_without_postfix(INPUT_MP4_FILE), i);
 		
 		if(generate_piece(INPUT_MP4_FILE, tmp, i) < 0)
 		{
@@ -864,6 +864,7 @@ int hls_main (int argc, char* argv[])
 	hls_exit();
 	return 0;
 }
+
 
 
 

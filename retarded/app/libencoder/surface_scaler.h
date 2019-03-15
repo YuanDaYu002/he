@@ -9,6 +9,7 @@ extern "C"
 {
 #endif
 
+/*OSD 面板结构，存储 OSD 的 BMP 数据及宽高信息*/
 typedef struct
 {
     HLE_U32 u32PhyAddr;
@@ -37,5 +38,6 @@ int scaler_init(void);
 #endif
 
 #endif
+
 
 

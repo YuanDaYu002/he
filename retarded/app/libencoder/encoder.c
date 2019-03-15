@@ -65,11 +65,11 @@
 
 
 
-#define GET_ENC_CHN(viPort, index)         ((index) + (viPort)*STREAMS_PER_CHN)
+#define GET_ENC_CHN(viPort, index)     ((viPort)*STREAMS_PER_CHN + (index))
 #define ENC_GET_VI_CHN(encChn)         ((encChn)/STREAMS_PER_CHN)
 #define ENC_GET_STREAN_INDEX(encChn)   ((encChn)%STREAMS_PER_CHN)
-#define GET_OSD_HANDLE(encChn, osd_index)  ((osd_index) + (encChn)*VI_OSD_NUM + VI_COVER_NUM*VI_PORT_NUM)
-
+#define GET_OSD_HANDLE(encChn, osd_index)  ((encChn)*VI_OSD_NUM + VI_COVER_NUM*VI_PORT_NUM + (osd_index))
+/*计算JPEG的编码通道号*/
 #define GET_JPEG_ENC_CHN(chn)    (STREAMS_PER_CHN + (chn)*ENC_NUM_PER_CHN)
 
 typedef enum
@@ -110,6 +110,7 @@ static int h264_profile = H264_PF_MP;
 
 static ENC_CONTEXT enc_ctx;
 
+/*---JPEG 图像的公共编码参数--------*/
 static ENC_JPEG_ATTR jpeg_chn_attr;
 static int jpeg_chn_state;
 static pthread_mutex_t jpeg_enc_lock;
@@ -1134,17 +1135,28 @@ void *enc_get_stream_proc(void *arg)
 
 #endif
 
+
+/*一个字符所占的像素点的 （宽度）*/
 #define CHAR_PIXEL_WIDTH        8
+/*一个字符所占的像素点的 （高度）*/
 #define CHAR_PIXEL_HEIGHT       16
 
+/*time OSD 字符串的长度 (20 个字符,包括"\0")*/
 #define TIME_OSD_STR_LEN        20
+/*time OSD 像素点的（宽度）像素点数(8*19=152 pixel)*/
 #define TIME_OSD_PIXEL_WIDTH    (CHAR_PIXEL_WIDTH*(TIME_OSD_STR_LEN-1))
+/*time OSD 像素点的（高度）像素点数(16 pixel)*/
 #define TIME_OSD_PIXEL_HEIGHT   CHAR_PIXEL_HEIGHT
+/*time OSD 所占像素点的（总数）*/
 #define TIME_OSD_PIXEL_LEN      (TIME_OSD_PIXEL_WIDTH*TIME_OSD_PIXEL_HEIGHT)
 
+/*rate OSD 字符串长度(16 个字符,包括"\0")*/
 #define RATE_OSD_STR_LEN       16
+/*rate OSD 字符串（宽度）像素点数*/
 #define RATE_OSD_PIXEL_WIDTH   (CHAR_PIXEL_WIDTH*(RATE_OSD_STR_LEN-1))
+/*rate OSD 字符串（高度）像素点数*/
 #define RATE_OSD_PIXEL_HEIGHT  CHAR_PIXEL_HEIGHT
+/*rate OSD 所占像素点的（总数）*/
 #define RATE_OSD_PIXEL_LEN     (RATE_OSD_PIXEL_WIDTH*RATE_OSD_PIXEL_HEIGHT)
 
 static pthread_mutex_t osd_lock[VI_PORT_NUM];
@@ -1153,8 +1165,12 @@ static OSD_BITMAP_ATTR osd_attrs[VI_PORT_NUM][VI_OSD_NUM] = {
         {0}
     }
 };
-static HLE_U8 time_osd_matrix[TIME_OSD_PIXEL_LEN / 8];
-static HLE_U8 frame_osd_matrix[RATE_OSD_PIXEL_LEN / 8];
+
+/*本系统使用的BMP位图中：一个bit位代表一个像素点，8个像素点算一个字节*/
+#if !(USE_VECTOR_FONT)
+static HLE_U8 time_osd_matrix[TIME_OSD_PIXEL_LEN / 8]; //缓存time OSD 的 BMP 像素点数据
+static HLE_U8 frame_osd_matrix[RATE_OSD_PIXEL_LEN / 8];//缓存rate OSD 的 BMP 像素点数据
+#endif
 
 static pthread_mutex_t roi_lock[VI_PORT_NUM];
 static ENC_ROI_ATTR roi_attrs[VI_PORT_NUM][ROI_REGION_NUM];
@@ -1473,14 +1489,21 @@ static int need_reverse_osd(OSD_BITMAP_ATTR *osd_attr, VIDEO_FRAME_INFO_S* vfi, 
 
 #define RGB24_TO_RGB15(c) (HLE_U16)((((((c)>>16)&0xFF)>>3)<<10) | (((((c)>>8)&0xff)>>3)<<5) | (((c)&0XFF)>>3))
 
-/*点阵转BMP位图*/
+/*
+将点阵（1个像素 1 bit，单色）数据，映射成BMP位图（1个像素 2 byte RGB555，彩色）数据
+参数：
+    @osd_attr : （入）OSD参数信息（包含点阵数据）
+    @bitmap ： （返）BMP位图数据
+*/
 static void draw_bmp(OSD_BITMAP_ATTR *osd_attr, HLE_U16 *bitmap)
 {
     HLE_U32 i, j;
+    
+    //OSD BMP数据的总字节数
     int matrix_len = (osd_attr->width / 8) * osd_attr->height;
-
+    //OSD 数据
     HLE_U8 *matrix = osd_attr->raster;
-    HLE_U16 fg_color = RGB24_TO_RGB15(osd_attr->fg_color) | 0x8000;
+    HLE_U16 fg_color = RGB24_TO_RGB15(osd_attr->fg_color) | 0x8000;//第15位置1（RGB15，0 ~ 14，第15位空余）
     HLE_U16 bg_color = RGB24_TO_RGB15(osd_attr->bg_color);
 #if 0
     HLE_U16 rv_color = (~RGB24_TO_RGB15(osd_attr->fg_color)) | 0x8000;
@@ -1494,14 +1517,18 @@ static void draw_bmp(OSD_BITMAP_ATTR *osd_attr, HLE_U16 *bitmap)
         //stat_luma(pY, &vfi);
     }
 #endif
-    for (i = 0; i < matrix_len; i++) {
+    /*将点阵（1个像素 1 bit）数据，映射成BMP位图（1个像素 2 byte RGB555）数据*/
+    for (i = 0; i < matrix_len; i++) 
+    {
         //HLE_U16 clr = need_reverse_osd(osd_attr, &vfi, i, pY) ? rv_color : fg_color;
-        for (j = 0; j < 8; j++) {
-            if (*matrix & (0x01 << (7 - j))) {
-                *(bitmap++) = fg_color;
+        for (j = 0; j < 8; j++) //一次处理1字节
+        {
+            if (*matrix & (0x01 << (7 - j))) //从7 ~ 0位依次判断是否为1
+            {
+                *(bitmap++) = fg_color; //为 1 则BMP数据对应该字节使用前景色
             }
             else {
-                *(bitmap++) = bg_color;
+                *(bitmap++) = bg_color; //为 0 则BMP数据对应该字节使用背景色
             }
         }
 
@@ -1527,15 +1554,26 @@ static int get_jpeg_encoder_size(int *width, int *height)
 static int create_osd_region(RGN_HANDLE osd_handle, int width, int height)
 {
     RGN_ATTR_S rgn_attr;
-
-    rgn_attr.enType = OVERLAY_RGN;
+    
+    RGN_HANDLE JPEG_osd_handle = GET_OSD_HANDLE(GET_JPEG_ENC_CHN(0), TIME_OSD_INDEX);
+    if(osd_handle ==  JPEG_osd_handle)
+    {
+       // DEBUG_LOG("JPEG set enType = OVERLAYEX_RGN \n ");
+        rgn_attr.enType = OVERLAY_RGN; //OVERLAYEX_RGN; //扩展视频叠加区域
+    }
+    else
+    {
+        rgn_attr.enType = OVERLAY_RGN;  //VENC 通道视频叠加区域
+    }
     rgn_attr.unAttr.stOverlay.enPixelFmt = PIXEL_FORMAT_RGB_1555;
     rgn_attr.unAttr.stOverlay.stSize.u32Width = width;
     rgn_attr.unAttr.stOverlay.stSize.u32Height = height;
     rgn_attr.unAttr.stOverlay.u32BgColor = 0;
     rgn_attr.unAttr.stOverlay.u32CanvasNum = 2;
     int ret = HI_MPI_RGN_Create(osd_handle, &rgn_attr);
-    if (HI_SUCCESS != ret) {
+    if (HI_SUCCESS != ret) 
+    {
+        DEBUG_LOG("width(%d)  height(%d)\n",width,height);
         ERROR_LOG("HI_MPI_RGN_Create (%d) fail: %#x!\n", osd_handle, ret);
         return HLE_RET_ERROR;
     }
@@ -1562,10 +1600,11 @@ static int set_osd_bitmap(RGN_HANDLE osd_handle, int width, int height, void *bm
     return HLE_RET_OK;
 }
 
+/*将OSD区域叠加到 encChn 通道上*/
 static int osd_region_attach(int encChn, int osd_index, int enc_w, int enc_h,
                              int osd_w, int osd_h, OSD_BITMAP_ATTR *osd_attr)
 {
-    //DEBUG_LOG("osd_region_attach encChn %d, osd_index %d\n", encChn, osd_index);
+//    DEBUG_LOG("osd_region_attach encChn %d, osd_index %d\n", encChn, osd_index);
     int x = osd_attr->x * enc_w / REL_COORD_WIDTH;
     int y = osd_attr->y * enc_h / REL_COORD_HEIGHT;
 
@@ -1587,7 +1626,18 @@ static int osd_region_attach(int encChn, int osd_index, int enc_w, int enc_h,
     st_chn.s32ChnId = encChn;
     RGN_CHN_ATTR_S osd_chn_attr = {0};
     osd_chn_attr.bShow = osd_attr->enable;
-    osd_chn_attr.enType = OVERLAY_RGN;
+    
+    int JPEG_encChn = GET_JPEG_ENC_CHN(0);
+    if(encChn ==  JPEG_encChn)
+    {
+      //  DEBUG_LOG("JPEG set enType = OVERLAYEX_RGN \n ");
+        osd_chn_attr.enType = OVERLAY_RGN;//OVERLAYEX_RGN; //扩展视频叠加区域
+    }
+    else
+    {
+        osd_chn_attr.enType = OVERLAY_RGN;
+    }
+    
     osd_chn_attr.unChnAttr.stOverlayChn.stPoint.s32X = x & (~3);
     osd_chn_attr.unChnAttr.stOverlayChn.stPoint.s32Y = y & (~3);
     osd_chn_attr.unChnAttr.stOverlayChn.u32FgAlpha = osd_attr->fg_color >> 25;
@@ -1655,31 +1705,47 @@ static int change_osd_position(int encChn, RGN_HANDLE osd_handle, int enc_w,
 }
 
 
-//配置单个OSD区域，enc_w和enc_h为所在编码通道编码图像的宽高
-
+/*
+功能：
+    配置单个OSD区域，enc_w和enc_h为所在编码通道编码图像的宽高
+参数：
+*/
 static int config_single_osd(int encChn, int osd_index, int enc_w, int enc_h,
                              OSD_BITMAP_ATTR *osd_attr, HLE_SURFACE *org_sfc)
 {
     RGN_HANDLE osd_handle = GET_OSD_HANDLE(encChn, osd_index);
     RGN_ATTR_S rgn_attr;
 
-    //DEBUG_LOG("encChn %d, osd_index %d, enc_w %d, enc_h %d\n", encChn, osd_index, enc_w, enc_h);
+ // DEBUG_LOG("encChn %d, osd_index %d, enc_w %d, enc_h %d\n", encChn, osd_index, enc_w, enc_h);
 
     int osd_w;
     int osd_h;
-    int stream_idx = ENC_GET_STREAN_INDEX(encChn);
-    if (stream_idx >= 2) {
-        osd_w = osd_attr->width & (~1);
+   
+        osd_w = osd_attr->width & (~1); //(~1)为进行二字节对齐(海思SDK接口要求)。
         osd_h = osd_attr->height & (~1);
-    }
-    else {
-        //汉字字库大小为16X16，适合作为480X270的OSD，其他大小需要缩放
-        //根据编码图像高宽计算出OSD高宽
-        osd_w = (osd_attr->width * enc_w / 480) & (~1);
-        osd_h = (osd_attr->height * enc_h / 270) & (~1);
-    }
-
-    if (HI_MPI_RGN_GetAttr(osd_handle, &rgn_attr) != HI_SUCCESS) {
+		
+  	#if 0 
+        int stream_idx = ENC_GET_STREAN_INDEX(encChn);
+        if (stream_idx >= 2) // <= 2吧？？？
+        {
+            osd_w = osd_attr->width & (~1); //(~1)为进行二字节对齐(海思SDK接口要求)。
+            osd_h = osd_attr->height & (~1);
+        }
+        else 
+        {
+            //汉字字库大小为16X16，适合作为480X270的OSD，其他大小需要缩放
+            //根据编码图像高宽计算出OSD高宽
+            ERROR_LOG("not support hzk !\n");
+            return -1;
+            #if 0
+            osd_w = (osd_attr->width * enc_w / 480) & (~1);
+            osd_h = (osd_attr->height * enc_h / 270) & (~1);
+            #endif
+        }
+    #endif
+    
+    if (HI_MPI_RGN_GetAttr(osd_handle, &rgn_attr) != HI_SUCCESS) 
+    {
         //获取属性失败则创建
         if (create_osd_region(osd_handle, osd_w, osd_h) != HLE_RET_OK)
             return HLE_RET_ERROR;
@@ -1746,6 +1812,19 @@ static int config_single_osd(int encChn, int osd_index, int enc_w, int enc_h,
     return HLE_RET_OK;
 }
 
+/*
+功能：创建JPEG图像的OSD
+参数：
+    @encChn ：JPEG的编码通道
+    @osd_index ：OSD的类型下标
+    @osd_attr：OSD的参数配置描述
+    @org_sfc ：OSD的BMP数据描述
+
+返回：
+    成功：HLE_RET_OK
+    失败：<0 的失败码
+    
+*/
 static int create_single_osd_jpeg(int encChn, int osd_index,
                                   OSD_BITMAP_ATTR *osd_attr, HLE_SURFACE *org_sfc)
 {
@@ -1755,33 +1834,51 @@ static int create_single_osd_jpeg(int encChn, int osd_index,
     get_jpeg_encoder_size(&enc_w, &enc_h);
 
     int osd_w, osd_h;
-    osd_w = (osd_attr->width * enc_w / 480) & (~1);
-    osd_h = (osd_attr->height * enc_h / 270) & (~1);
+    
 
+        osd_w = (osd_attr->width) & (~1);
+        osd_h = (osd_attr->height) & (~1);  
+    #if 0
+        osd_w = (osd_attr->width * enc_w / 480) & (~1);
+        osd_h = (osd_attr->height * enc_h / 270) & (~1);
+    #endif
+    
     if (create_osd_region(osd_handle, osd_w, osd_h) != HLE_RET_OK)
+    {
+        ERROR_LOG("create_osd_region failed !\n");
         return HLE_RET_ERROR;
+    }
+        
 
     HLE_SURFACE new_sfc;
     new_sfc.u32Width = osd_w;
     new_sfc.u32Height = osd_h;
     char *new_bmp = create_surface(&new_sfc);
-    if (new_bmp == NULL) {
+    if (new_bmp == NULL) 
+    {
         ERROR_LOG("malloc new_bmp failed!\n");
         return HLE_RET_ENORESOURCE;
     }
     scale_surface(&new_sfc, org_sfc);
 
-    if (set_osd_bitmap(osd_handle, osd_w, osd_h, new_bmp) != HLE_RET_OK) {
+    if (set_osd_bitmap(osd_handle, osd_w, osd_h, new_bmp) != HLE_RET_OK) 
+    {
         destroy_surface(&new_sfc, new_bmp);
         return HLE_RET_ERROR;
     }
 
-    osd_region_attach(encChn, osd_index, enc_w, enc_h, osd_w, osd_h, osd_attr);
+    if(osd_region_attach(encChn, osd_index, enc_w, enc_h, osd_w, osd_h, osd_attr) < 0)
+    {
+        ERROR_LOG("osd_region_attach failed !\n");
+        destroy_surface(&new_sfc, new_bmp);
+        return HLE_RET_ERROR;
+    }
     destroy_surface(&new_sfc, new_bmp);
 
     return HLE_RET_OK;
 }
 
+//矢量字库版本（矢量字体转换成的点阵字库）
 static void* time_osd_proc(void *arg)
 {
     DEBUG_LOG("pid = %d\n", getpid());
@@ -1789,18 +1886,12 @@ static void* time_osd_proc(void *arg)
 
     char *org_bmp;
     HLE_SURFACE org_sfc;
-
-    org_sfc.u32Width = TIME_OSD_PIXEL_WIDTH;
-    org_sfc.u32Height = TIME_OSD_PIXEL_HEIGHT;
-    org_bmp = create_surface(&org_sfc);
-    if (org_bmp == NULL) {
-        ERROR_LOG("create_surface org_bmp failed!\n");
-        return NULL;
-    }
+        
     sleep(2);
     time_t time_cur = 0;
     time_t time_old = 0;
-    while (enc_ctx.running) {
+    while (enc_ctx.running) 
+    {
         time(&time_cur); /*取得当前时间,判断是否需要更新TIME_OSD*/
         if (time_cur == time_old)
             goto continue_sleep;
@@ -1809,35 +1900,72 @@ static void* time_osd_proc(void *arg)
         //gettimeofday(&tv1, NULL);
         time_old = time_cur;
 
-        if (enc_ctx.running == 0x197521) {
+        if (enc_ctx.running == 0x197521) 
+        {
             continue;
         }
 
         HLE_U8 time_str[TIME_OSD_STR_LEN];
         get_date_string((char *) time_str);
-        str2matrix(time_str, time_osd_matrix);
-
+        
         int i, j;
-        for (i = 0; i < VI_PORT_NUM; i++) {
+        for (i = 0; i < VI_PORT_NUM; i++) 
+        {
             pthread_mutex_lock(osd_lock + i);
             OSD_BITMAP_ATTR *osd_attr = &osd_attrs[i][TIME_OSD_INDEX];
-            if (osd_attr->enable == 0) {
+            if (osd_attr->enable == 0) 
+            {
                 pthread_mutex_unlock(osd_lock + i);
                 continue;
             }
 
-            osd_attr->raster = time_osd_matrix;
-            draw_bmp(osd_attr, (HLE_U16 *) org_bmp);
-            for (j = 0; j < STREAMS_PER_CHN; j++) {
-                int enc_w, enc_h;
+			for (j = 0; j < STREAMS_PER_CHN; j++) 
+	        {
+	        	int enc_w, enc_h;
                 int encChn = GET_ENC_CHN(i, j);
-                if (get_encoder_size(encChn, &enc_w, &enc_h) != HLE_RET_OK)
-                    continue;
+				if (get_encoder_size(encChn, &enc_w, &enc_h) != HLE_RET_OK)
+				{
+					ERROR_LOG("get_encoder_size failed ! i(%d) j(%d)\n",i,j);
+					continue;
+				}
+                    
 
+				OSD_matrix_info_t ret_info = {0};
+				if(str2matrix_vector(time_str, &ret_info,enc_w,enc_h) < 0)
+				{
+					ERROR_LOG("call str2matrix_vector error !\n");
+					continue;
+				}
+				
+	            /*修正宽高度参数，矢量字体宽高度不是固定的值，需要动态获取*/
+	            osd_attr->raster = ret_info.matrix_data;
+	            osd_attr->width = ret_info.width;
+	            osd_attr->height = ret_info.height;
+	           // DEBUG_LOG(" osd_attr->width(%d) osd_attr->height(%d)\n", osd_attr->width,osd_attr->height);
+
+	            /*---创建新的 surface ，即BMP图片数据缓存空间------*/
+	            org_sfc.u32Width = osd_attr->width;
+	            org_sfc.u32Height = osd_attr->height;
+				
+	            org_bmp = create_surface(&org_sfc);
+	            if (org_bmp == NULL) 
+	            {
+	                ERROR_LOG("create_surface org_bmp failed!\n");
+					free(ret_info.matrix_data);
+	                continue;
+	            }
+	            
+	            draw_bmp(osd_attr, (HLE_U16 *) org_bmp);
+				
                 config_single_osd(encChn, 0, enc_w, enc_h, osd_attr, &org_sfc);
-            }
+				
+				free(ret_info.matrix_data);
+        		destroy_surface(&org_sfc, org_bmp);
+	        }
+            
             pthread_mutex_unlock(osd_lock + i);
         }
+        
         //gettimeofday(&tv2, NULL);
         //int used = (tv2.tv_sec - tv1.tv_sec)*1000*1000 + tv2.tv_usec - tv1.tv_usec;
         //DEBUG_LOG("used time %d\n", used);
@@ -1846,10 +1974,13 @@ continue_sleep:
         usleep(100 * 1000);
     }
 
-    destroy_surface(&org_sfc, org_bmp);
+   
     return NULL;
 }
 
+
+
+//矢量字库版本（矢量字体转换成的点阵字库）
 static void* rate_osd_proc(void *arg)
 {
     DEBUG_LOG("pid = %d\n", getpid());
@@ -1858,103 +1989,181 @@ static void* rate_osd_proc(void *arg)
     char *org_bmp;
     HLE_SURFACE org_sfc;
 
-    org_sfc.u32Width = RATE_OSD_PIXEL_WIDTH;
-    org_sfc.u32Height = RATE_OSD_PIXEL_HEIGHT;
-    org_bmp = create_surface(&org_sfc);
-    if (org_bmp == NULL) {
-        ERROR_LOG("create_surface org_bmp failed!\n");
-        return NULL;
-    }
     sleep(2);
 
-    while (enc_ctx.running) {
-        if (enc_ctx.running == 0x197521) {
+    while (enc_ctx.running) 
+    {
+        if (enc_ctx.running == 0x197521) 
+        {
             sleep(1);
             continue;
         }
 
         int i, j;
-
-        for (i = 0; i < VI_PORT_NUM; i++) {
+        for (i = 0; i < VI_PORT_NUM; i++) 
+        {
             pthread_mutex_lock(osd_lock + i);
             OSD_BITMAP_ATTR *osd_attr = &osd_attrs[i][RATE_OSD_INDEX];
-            if (osd_attr->enable == 0) {
+            if (osd_attr->enable == 0) 
+            {
                 pthread_mutex_unlock(osd_lock + i);
                 continue;
             }
 
-            for (j = 0; j < STREAMS_PER_CHN; j++) {
+            for (j = 0; j < STREAMS_PER_CHN; j++) 
+            {
                 int enc_w, enc_h;
                 int encChn = GET_ENC_CHN(i, j);
-
                 if (get_encoder_size(encChn, &enc_w, &enc_h) != HLE_RET_OK)
-                    continue;
+                {
+                	ERROR_LOG("get_encoder_size failed!\n");
+					 continue;
+				}
+                   
 
                 HLE_U8 frame_str[RATE_OSD_STR_LEN];
                 get_frame_str(i, j, (char *) frame_str);
-                str2matrix(frame_str, frame_osd_matrix);
+				
+                OSD_matrix_info_t ret_info = {0};
+                if(str2matrix_vector(frame_str, &ret_info,enc_w,enc_h) < 0)
+                {
+                    ERROR_LOG("call str2matrix_vector error !\n");
+                    continue;
+                } 
+                
+                /*修正宽高度参数，矢量字体宽高度不是固定的值，需要动态获取*/
+                osd_attr->raster = ret_info.matrix_data;
+                osd_attr->width = ret_info.width;
+                osd_attr->height = ret_info.height;
 
-                osd_attr->raster = frame_osd_matrix;
+                /*---创建新的 surface ，即BMP图片数据缓存空间------*/
+                org_sfc.u32Width = osd_attr->width;
+                org_sfc.u32Height = osd_attr->height;
+                org_bmp = create_surface(&org_sfc);
+                if (org_bmp == NULL) 
+                {
+                    ERROR_LOG("create_surface org_bmp failed!\n");
+                    free(ret_info.matrix_data);
+                    continue;
+                }
+                
                 draw_bmp(osd_attr, (HLE_U16 *) org_bmp);
 
                 config_single_osd(encChn, RATE_OSD_INDEX, enc_w, enc_h, osd_attr, &org_sfc);
+                
+                free(ret_info.matrix_data);
+                destroy_surface(&org_sfc, org_bmp);
             }
             pthread_mutex_unlock(osd_lock + i);
         }
 
         usleep(1000 * 1000);
     }
-
-    destroy_surface(&org_sfc, org_bmp);
+    
     return NULL;
 }
 
+
+
+/*
+功能：配置OSD区域
+返回：
+	成功：
+	失败：-1;
+*/
 static int config_osd_region(int channel, int osd_index, OSD_BITMAP_ATTR *osd_attr)
 {
-    char *org_bmp;
-    HLE_SURFACE org_sfc;
-
-    org_sfc.u32Width = osd_attr->width;
-    org_sfc.u32Height = osd_attr->height;
-    org_bmp = create_surface(&org_sfc);
-    if (org_bmp == NULL) {
-        ERROR_LOG("create_surface org_bmp failed!\n");
+    if (osd_index != TIME_OSD_INDEX && osd_index != RATE_OSD_INDEX )
+    {
+        ERROR_LOG("unknown  OSD_INDEX (%d)\n",osd_index);
+        //draw_bmp(osd_attr, (HLE_U16 *) org_bmp);
         return -1;
     }
 
-    if (osd_index == TIME_OSD_INDEX) {
-        HLE_U8 time_str[TIME_OSD_STR_LEN];
-        get_date_string((char *) time_str);
-        str2matrix(time_str, time_osd_matrix);
-        osd_attr->raster = time_osd_matrix;
-        draw_bmp(osd_attr, (HLE_U16 *) org_bmp);
-
-    }
-    else if (osd_index != RATE_OSD_INDEX)
-        draw_bmp(osd_attr, (HLE_U16 *) org_bmp);
-
-    int i;
-    for (i = 0; i < STREAMS_PER_CHN; i++) {
-        int enc_w, enc_h;
+	char *org_bmp;
+    HLE_SURFACE org_sfc;
+    int i , enc_w , enc_h;
+	OSD_matrix_info_t  ret_info = {0};
+	
+    for (i = 0; i < STREAMS_PER_CHN; i++) 
+    {
         int encChn = GET_ENC_CHN(channel, i);
         if (get_encoder_size(encChn, &enc_w, &enc_h) != HLE_RET_OK)
-            continue;
+		{
+			ERROR_LOG("get_encoder_size failed ! encChn(%d)\n",encChn);
+			continue;
+		}
 
-        if (osd_index == RATE_OSD_INDEX) {
+		if (osd_index == TIME_OSD_INDEX) 
+	    {
+	        HLE_U8 time_str[TIME_OSD_STR_LEN];
+	        get_date_string((char *) time_str);
+			
+	        if(str2matrix_vector(time_str, &ret_info,enc_w,enc_h) < 0)
+	        {
+	            ERROR_LOG("call str2matrix_vector failed!\n");
+	            continue;
+	        }
+	        //DEBUG_LOG("time_str:%s  ret_info.width(%d) ret_info.height(%d)\n",time_str,ret_info.width,ret_info.height);
+	        /*---矢量字库需要对宽高进行动态修正--------------*/
+	        org_sfc.u32Width = ret_info.width;
+	        org_sfc.u32Height = ret_info.height;
+	        org_bmp = create_surface(&org_sfc);
+	        if (org_bmp == NULL) 
+	        {
+	            ERROR_LOG("create_surface org_bmp failed!\n");
+				free(ret_info.matrix_data);
+	            continue;
+	        }
+	        osd_attr->raster = ret_info.matrix_data;
+	        osd_attr->width =  org_sfc.u32Width;
+	        osd_attr->height =  org_sfc.u32Height;
+	        
+	        draw_bmp(osd_attr, (HLE_U16 *) org_bmp);
+			
+
+	    }
+		else if (osd_index == RATE_OSD_INDEX) 
+        {
             HLE_U8 frame_str[RATE_OSD_STR_LEN];
             get_frame_str(channel, i, (char *) frame_str);
-            str2matrix(frame_str, frame_osd_matrix);
-            osd_attr->raster = frame_osd_matrix;
+			
+            if(str2matrix_vector(frame_str, &ret_info,enc_w,enc_h) < 0)
+            {
+                ERROR_LOG("call str2matrix_vector failed!\n");
+                continue;
+            }
+            
+            /*---矢量字库需要对宽高进行动态修正--------------*/
+            org_sfc.u32Width = ret_info.width;
+            org_sfc.u32Height = ret_info.height;
+            org_bmp = create_surface(&org_sfc);
+            if (org_bmp == NULL) 
+            {
+                ERROR_LOG("create_surface org_bmp failed!\n");
+				free(ret_info.matrix_data);
+                continue;
+            }
+            osd_attr->raster = ret_info.matrix_data;
+            osd_attr->width =  org_sfc.u32Width;
+            osd_attr->height =  org_sfc.u32Height;
             draw_bmp(osd_attr, (HLE_U16 *) org_bmp);
+			
         }
 
         config_single_osd(encChn, osd_index, enc_w, enc_h, osd_attr, &org_sfc);
+		
+		free(ret_info.matrix_data);
+		destroy_surface(&org_sfc, org_bmp);
     }
-
-    destroy_surface(&org_sfc, org_bmp);
+    
     return HLE_RET_OK;
 }
 
+
+
+
+#if 0  //OSD 暂时屏蔽，后续需要还需修改
 static int venc_update_osd(int channel, int stream_index, int enc_w, int enc_h)
 {
     int i;
@@ -1962,7 +2171,8 @@ static int venc_update_osd(int channel, int stream_index, int enc_w, int enc_h)
     struct timeval tv1, tv2;
     gettimeofday(&tv1, NULL);
 
-    for (i = 0; i < VI_OSD_NUM; i++) {
+    for (i = 0; i < VI_OSD_NUM; i++) 
+    {
         OSD_BITMAP_ATTR *osd_attr = &osd_attrs[channel][i];
         DEBUG_LOG("channel %d, stream_index %d, osd_index %d, osd_attr->enable %d\n",
                   channel, stream_index, i, osd_attr->enable);
@@ -1973,20 +2183,31 @@ static int venc_update_osd(int channel, int stream_index, int enc_w, int enc_h)
         org_sfc.u32Width = osd_attr->width;
         org_sfc.u32Height = osd_attr->height;
         char *org_bmp = create_surface(&org_sfc);
-        if (org_bmp == NULL) {
+        if (org_bmp == NULL) 
+        {
             ERROR_LOG("create_surface org_bmp failed!\n");
             return HLE_RET_ENORESOURCE;
         }
-        if (i == TIME_OSD_INDEX) {
+        
+        if (i == TIME_OSD_INDEX) 
+        {
             HLE_U8 time_str[TIME_OSD_STR_LEN];
             get_date_string((char *) time_str);
-            str2matrix(time_str, time_osd_matrix);
-            osd_attr->raster = time_osd_matrix;
+            #if USE_VECTOR_FONT
+                OSD_matrix_info_t  ret_info = {0};
+                str2matrix_vector(time_str, &ret_info);
+                osd_attr->raster = ret_info.matrix_data;
+            #else
+                str2matrix(time_str, time_osd_matrix);
+                osd_attr->raster = time_osd_matrix;
+            #endif
+            
             draw_bmp(osd_attr, (HLE_U16 *) org_bmp);
         }
         else if (i == RATE_OSD_INDEX) {
             HLE_U8 frame_str[RATE_OSD_STR_LEN];
             get_frame_str(channel, stream_index, (char *) frame_str);
+        
             str2matrix(frame_str, frame_osd_matrix);
             osd_attr->raster = frame_osd_matrix;
             draw_bmp(osd_attr, (HLE_U16 *) org_bmp);
@@ -2005,6 +2226,7 @@ static int venc_update_osd(int channel, int stream_index, int enc_w, int enc_h)
     DEBUG_LOG("success\n");
     return HLE_RET_OK;
 }
+#endif
 
 static int destroy_osd_jpeg(int channel, OSD_BITMAP_ATTR *osd_attrs_jpeg)
 {
@@ -2038,42 +2260,85 @@ static int destroy_osd_jpeg(int channel, OSD_BITMAP_ATTR *osd_attrs_jpeg)
     return HLE_RET_OK;
 }
 
+/*
+功能：配置 JPEG 的 OSD 参数
+参数：
+      @channel ：通道号（物理通道号，0）
+      @osd_attrs_jpeg ： OSD的参数指针
+返回：
+    出错：  <0的错误码
+    成功：HLE_RET_OK （0）
+*/
+ //矢量字库版本（矢量字体转换成的点阵字库）
 static int create_osd_jpeg(int channel, OSD_BITMAP_ATTR *osd_attrs_jpeg)
 {
     int i;
     int encChn = GET_JPEG_ENC_CHN(channel);
+    //DEBUG_LOG("GET_JPEG_ENC_CHN = %d\n",encChn);
 
-    for (i = 0; i < VI_OSD_NUM; i++) {
+	
+    for (i = 0; i < VI_OSD_NUM; i++) 
+    {
         OSD_BITMAP_ATTR *osd_attr = osd_attrs_jpeg + i;
         if (osd_attr->enable == 0)
+        {
+           // DEBUG_LOG("JPEG OSD not have OSD_INDEX(%d)\n",i);   
             continue;
-
-        HLE_SURFACE org_sfc;
-        org_sfc.u32Width = osd_attr->width;
-        org_sfc.u32Height = osd_attr->height;
-        char *org_bmp = create_surface(&org_sfc);
-        if (org_bmp == NULL) {
-            ERROR_LOG("create_surface org_bmp failed!\n");
-            return HLE_RET_ENORESOURCE;
         }
-        if (i == TIME_OSD_INDEX) {
+     
+        if (i == TIME_OSD_INDEX) 
+        {
+        	HLE_SURFACE org_sfc;    
             HLE_U8 time_str[TIME_OSD_STR_LEN];
             get_date_string((char *) time_str);
-            str2matrix(time_str, time_osd_matrix);
-            osd_attr->raster = time_osd_matrix;
+            //DEBUG_LOG("time_str : %s\n",time_str);
+            
+            OSD_matrix_info_t ret_info = {0};
+            if(str2matrix_vector(time_str, &ret_info,1920,1080) < 0)
+            {
+                ERROR_LOG("call str2matrix_vector error !\n");
+                continue;
+            }
+            /*修正宽高度参数，矢量字体宽高度不是固定的值，需要动态获取*/
+            osd_attr->raster = ret_info.matrix_data;
+            osd_attr->width = ret_info.width;
+            osd_attr->height = ret_info.height;
+
+            /*---创建新的 surface ，即BMP图片数据缓存空间------*/
+            org_sfc.u32Width = osd_attr->width;
+            org_sfc.u32Height = osd_attr->height;
+            
+            char *org_bmp = create_surface(&org_sfc);
+            if (org_bmp == NULL) 
+            {
+                ERROR_LOG("create_surface org_bmp failed!\n");
+                free(ret_info.matrix_data);
+                return HLE_RET_ENORESOURCE;
+            }
+            
             draw_bmp(osd_attr, (HLE_U16 *) org_bmp);
+            create_single_osd_jpeg(encChn, i, osd_attr, &org_sfc);
+            
+            free(ret_info.matrix_data);
+            destroy_surface(&org_sfc, org_bmp);
+            
         }
         else if (i == RATE_OSD_INDEX)
+        {
             continue;
+        } 
         else
-            draw_bmp(osd_attr, (HLE_U16 *) org_bmp);
-
-        create_single_osd_jpeg(encChn, i, osd_attr, &org_sfc);
-        destroy_surface(&org_sfc, org_bmp);
+        {
+            //ERROR_LOG("not support OSD_INDEX(%d) !\n",i);
+            //draw_bmp(osd_attr, (HLE_U16 *) org_bmp);
+            continue;
+        }
+        
     }
 
     return HLE_RET_OK;
 }
+
 
 int encoder_set_osd(int channel, int osd_index, OSD_BITMAP_ATTR *osd_attr)
 {
@@ -2248,6 +2513,7 @@ static int __encoder_start_jpeg(int channel, ENC_JPEG_ATTR *jpeg_attr)
 
     //Create JPEG Venc Group
     VENC_CHN encChn = GET_JPEG_ENC_CHN(channel);
+    //DEBUG_LOG("START GET_JPEG_ENC_CHN = %d\n",encChn);
 
     MPP_CHN_S src, dst;
     src.enModId = HI_ID_VPSS;
@@ -2329,6 +2595,7 @@ static int __encoder_stop(int channel, int stream_index)
 static int __encoder_stop_jpeg(int channel)
 {
     int encChn = GET_JPEG_ENC_CHN(channel);
+    //DEBUG_LOG("STOP GET_JPEG_ENC_CHN = %d\n",encChn);
 
     int ret;
     ret = HI_MPI_VENC_DestroyChn(encChn);
@@ -2781,46 +3048,73 @@ int save_jpeg_to_file(char *data, int len)
 }
 #endif
 
+
+
+
+
+/*
+功能 ：请求一张JPEG图片
+参数 ：
+    @channel ：通道号(VI物理通道，0)
+    @size ：返回图像数据的大小
+    @image_size : 要求抓拍的图像大小
+返回：
+    成功 ：JPEG图像的数据指针
+    失败：NULL
+*/
 char *encoder_request_jpeg(int channel, int *size, int image_size)
 {
+    if (channel < 0 || channel >= VI_PORT_NUM || size == NULL) 
+    {
+        ERROR_LOG("invalid para!\n");
+        return NULL;
+    }
+       
     ENC_JPEG_ATTR jpeg_attr;
     jpeg_attr.img_size = image_size; //IMAGE_SIZE_1920x1080;
     jpeg_attr.level = 4;
     encoder_config_jpeg(0, &jpeg_attr);
 
-    if (channel < 0 || channel >= VI_PORT_NUM || size == NULL) {
-        ERROR_LOG("invalid para!\n");
-        return NULL;
-    }
-
-    if (jpeg_chn_state == ENC_STATE_IDLE) {
+    if (jpeg_chn_state == ENC_STATE_IDLE) 
+    {
         ERROR_LOG("Config jpeg encoder first!\n");
         return NULL;
     }
 
     VENC_CHN encChn = GET_JPEG_ENC_CHN(channel);
+    //DEBUG_LOG("GET_JPEG_ENC_CHN = %d\n",encChn);
+    
     pthread_mutex_lock(&jpeg_enc_lock);
     int ret;
     char *jpeg_data = NULL;
 
+    #if 1
     //Start JPEG Recv Venc Pictures
     ret = __encoder_start_jpeg(channel, &jpeg_chn_attr);
-    if (HLE_RET_OK != ret) {
+    if (HLE_RET_OK != ret) 
+    {
         ERROR_LOG("__encoder_start_jpeg (%d) failed \n", encChn);
         pthread_mutex_unlock(&jpeg_enc_lock);
         return NULL;
     }
+    #endif
 
+    /*---在JPEG通道上添加OSD---------------------------------------------*/
+    #if 1
     pthread_mutex_lock(osd_lock + channel);
     OSD_BITMAP_ATTR osd_attrs_jpeg[VI_PORT_NUM][VI_OSD_NUM];
     memcpy((char *) osd_attrs_jpeg, (char *) osd_attrs, sizeof (osd_attrs));
     ret = create_osd_jpeg(channel, osd_attrs_jpeg[channel]);
-    if (HLE_RET_OK != ret) {
+    if (HLE_RET_OK != ret) 
+    {
         pthread_mutex_unlock(osd_lock + channel);
         goto STOP_ENCODER_JPEG;
     }
     pthread_mutex_unlock(osd_lock + channel);
+    #endif
+    /*-------------------------------------------------------------------*/
 
+   // DEBUG_LOG("step 1. HI_MPI_VENC_StartRecvPic encChn(%d)\n",encChn);
     ret = HI_MPI_VENC_StartRecvPic(encChn);
     if (HI_SUCCESS != ret) {
         ERROR_LOG("HI_MPI_VENC_StartRecvPic (%d) fail: %#x!\n", encChn, ret);
@@ -2837,7 +3131,7 @@ char *encoder_request_jpeg(int channel, int *size, int image_size)
     FD_SET(venc_fd, &read_fds);
 
     struct timeval time_out;
-    time_out.tv_sec = 2;
+    time_out.tv_sec = 1;
     time_out.tv_usec = 0;
     ret = select(venc_fd + 1, &read_fds, NULL, NULL, &time_out);
     if (ret == -1) {
@@ -2923,15 +3217,18 @@ int hal_encoder_init(HLE_S32 pack_count)
     spm_init(pack_count); //pack count may should asigned by app layer
     sdp_init(pack_count);
 
-    //TempDisable zk_init();
+    zk_init();
     scaler_init();
 
-    if (enc_ctx.running == 1) {
+    if (enc_ctx.running == 1) 
+    {
         return HLE_RET_OK;
     }
 
-    for (i = 0; i < VI_PORT_NUM; i++) {
-        for (j = 0; j < STREAMS_PER_CHN; j++) {
+    for (i = 0; i < VI_PORT_NUM; i++) 
+    {
+        for (j = 0; j < STREAMS_PER_CHN; j++) 
+        {
             //创建编码通道组，并绑定到VI physical channel
             
             int encChn = GET_ENC_CHN(i, j);
@@ -2945,7 +3242,8 @@ int hal_encoder_init(HLE_S32 pack_count)
             dst.s32ChnId = encChn;
             ret = HI_MPI_SYS_Bind(&src, &dst);
             DEBUG_LOG("(%d, %d, %d)----->(%d, %d, %d)\n", src.enModId, src.s32DevId, src.s32ChnId, dst.enModId, dst.s32DevId, dst.s32ChnId);
-            if (HI_SUCCESS != ret) {
+            if (HI_SUCCESS != ret) 
+            {
                 ERROR_LOG("HI_MPI_SYS_Bind((%d, %d, %d), (%d, %d, %d)) fail: %#x!\n",
                           src.enModId, src.s32DevId, src.s32ChnId,
                           dst.enModId, dst.s32DevId, dst.s32ChnId, ret);
@@ -2989,21 +3287,19 @@ int hal_encoder_init(HLE_S32 pack_count)
             return HLE_RET_ERROR;
         }
     #else
-        #if 1
          if (pthread_create(&enc_ctx.Aenc_pid, 0, AAC_get_stream_proc, NULL)) 
         {
             enc_ctx.running = 0;
             ERROR_LOG("pthread_create AAC_get_stream_proc failed!\n");
             return HLE_RET_ERROR;
         }
-        #endif
     #endif
     
 
     
   #endif
 
-#if 0
+#if 1
     pthread_create(&enc_ctx.rate_osd_pid, 0, rate_osd_proc, NULL);
     pthread_create(&enc_ctx.time_osd_pid, 0, time_osd_proc, NULL);
 #endif
@@ -3036,6 +3332,13 @@ void hal_encoder_exit(void)
         pthread_mutex_destroy(roi_lock + i);
     }
 }
+
+
+
+
+
+
+
 
 
 

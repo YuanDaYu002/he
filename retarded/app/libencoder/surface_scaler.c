@@ -7,12 +7,15 @@
 #include "surface_scaler.h"
 
 
-//创建一个suface，调用前需指定sfc->u32Width和sfc->u32Height
-//返回surface的对应的虚拟地址
+/*
+功能：创建一个suface，
+返回：surface的对应的虚拟地址
+注意：调用前需指定sfc->u32Width和sfc->u32Height
+*/
 
 void *create_surface(HLE_SURFACE *sfc)
 {
-	void *addr = malloc(sfc->u32Width * sfc->u32Height * 2);
+	void *addr = malloc(sfc->u32Width * sfc->u32Height * 2); //每个像素2字节，RGB555，最高位空余
 	sfc->u32PhyAddr = (int) addr;
 	return addr;
 }
@@ -163,4 +166,6 @@ int scaler_init()
 {
 	return HLE_RET_OK;
 }
+
+
 

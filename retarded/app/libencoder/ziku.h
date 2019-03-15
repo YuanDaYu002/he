@@ -7,13 +7,34 @@
 
 #include "typeport.h"
 
+#define USE_VECTOR_FONT  1    //使用（矢量字库生成的）点阵字库
+
+/*所有字符点阵组合成最终OSD点阵的信息描述结构*/
+typedef struct _OSD_matrix_info_t
+{
+	int width; 	/*width of glyph*/
+    int height; /*height of glyph*/
+    int bpl; 	/*bytes per line*/
+	unsigned char* matrix_data;
+}OSD_matrix_info_t;
+
+
+
+/*（单个）字形点阵描述结构*/
 typedef struct _tag_GLYPH_LATTICE
 {
-    int width; /*width of glyph*/
-    int height; /*width of glyph*/
-    int bpl; /*bytes per line*/
-    const char *bits; /*start address of glyph lattice*/
+    int width; 	/*width of glyph*/
+    int height; /*height of glyph*/
+    int bpl; 	/*bytes per line*/
+    const char *bits; /*start address of glyph lattice，该字形点阵所在的位置*/
 } GLYPH_LATTICE;
+
+typedef enum 
+{
+	RESOLUTION_1920x1080 = 1,
+	RESOLUTION_960x544,
+	RESOLUTION_480x272
+} video_resolution;
 
 
 /*
@@ -55,16 +76,27 @@ int zk_get_lattice(const unsigned char *str, GLYPH_LATTICE *lattice);
  * */
 void str2matrix(const HLE_U8 *str, HLE_U8 *matrix_data);
 
+int str2matrix_vector(HLE_U8 *str, OSD_matrix_info_t* ret_info,int enc_w ,int enc_h );
+
 /*
  * function: int get_matrix_width(const HLE_U8 *str)
  * description:
  *              将str字符串转换成整片的点阵后，点阵的宽度，单位为像素
  * arguments:
  *              str, 需要转换的字符串
- * return:		点阵的宽度
+ 				resolution：按照哪种分辨率计算
+ 				width：OSD点阵的宽度（像素点个数）
+ 				height：OSD点阵的高度（像素点个数）
+ * return:	成功：0  失败 -1
  *
  * */
-int get_matrix_width(const HLE_U8 *str);
+int  get_matrix_width(const HLE_U8 *str,video_resolution resolution,HLE_U32* width,HLE_U32* height);
+
 
 #endif /*HAL_ZIKU_H*/
+
+
+
+
+
 

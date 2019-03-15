@@ -1,4 +1,4 @@
-﻿
+
 
 #ifndef HAL_DEF_H
 #define HAL_DEF_H
@@ -40,11 +40,11 @@ extern "C"
 #endif
 
 #define VI_COVER_NUM    4
-#define VI_OSD_NUM      3
+#define VI_OSD_NUM      3  /*OSD的总数目，详细如下：*/
 
 #define TIME_OSD_INDEX  0
-#define USER_OSD_INDEX 1
-#define RATE_OSD_INDEX 2
+#define USER_OSD_INDEX  1
+#define RATE_OSD_INDEX  2
 
 /*****************************AUDIO*****************************/
 //#define AI_CHN_NUM      1
@@ -69,7 +69,7 @@ extern "C"
 
 #define JPEGS_PER_CHN       1
 
-#define ENC_NUM_PER_CHN     (JPEGS_PER_CHN + STREAMS_PER_CHN)
+#define ENC_NUM_PER_CHN     (JPEGS_PER_CHN + STREAMS_PER_CHN)//每个(物理)通道的编码数目（jpeg流数 + 视频流数）
 
 #define AI_AENC_CHN         1   //音频编码通道数
 
@@ -104,4 +104,6 @@ extern "C"
 
 
 #endif
+
+
 

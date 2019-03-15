@@ -567,12 +567,21 @@ int generate_playlist(media_stats_t* stats, char* filename_template, char* outpu
 	ci = 0;
 	out = output_buffer;
 
-	ci += sprintf(out + ci, "#EXTM3U\n");
-	ci += sprintf(out + ci, "#EXT-X-TARGETDURATION:%d\n", ((int)max_piece_len) + 1);
-	ci += sprintf(out + ci, "#EXT-X-VERSION:3\n");
-	ci += sprintf(out + ci, "#EXT-X-MEDIA-SEQUENCE:0\n");
-	ci += sprintf(out + ci, "#EXT-X-PLAYLIST-TYPE:VOD\n");
-
+	#if 1
+		ci += snprintf(out + ci, 50, "#EXTM3U\n"); //snprintf 都只会返回实际的字符串长度
+		ci += snprintf(out + ci, 50,"#EXT-X-TARGETDURATION:%d\n", ((int)max_piece_len) + 1);
+		ci += snprintf(out + ci, 50,"#EXT-X-VERSION:3\n");
+		ci += snprintf(out + ci, 50, "#EXT-X-MEDIA-SEQUENCE:0\n");
+		ci += snprintf(out + ci, 50,"#EXT-X-PLAYLIST-TYPE:VOD\n");
+	#else
+		ci += sprintf(out + ci, "#EXTM3U\n");
+		
+		ci += sprintf(out + ci, "#EXT-X-TARGETDURATION:%d\n", ((int)max_piece_len) + 1);
+		ci += sprintf(out + ci, "#EXT-X-VERSION:3\n");
+		ci += sprintf(out + ci, "#EXT-X-MEDIA-SEQUENCE:0\n");
+		ci += sprintf(out + ci, "#EXT-X-PLAYLIST-TYPE:VOD\n");
+	#endif
+	
 	ts = stats->track[lead_track]->dts;
 	if (ts == 0)
 	{
@@ -585,9 +594,14 @@ int generate_playlist(media_stats_t* stats, char* filename_template, char* outpu
 		if (seg_len > recommended_length && (flags[i] & KEY_FRAME_FLAG) )//满足时长的前提下，还要保证
 		{
 			float csl = ts[i] - csp;
-			ci += sprintf(out + ci, "#EXTINF:%f,\n", (float)csl); //描述当前TS片的时长
-			ci += sprintf(out + ci, "%s_%d.ts\n", filename_template, ns);//描述当前TS片的文件名
-
+			#if 1
+				ci += snprintf(out + ci,50, "#EXTINF:%f,\n", (float)csl); //描述当前TS片的时长
+				ci += snprintf(out + ci,50, "%s_%d.ts\n", filename_template, ns);//描述当前TS片的文件名
+			#else
+				ci += sprintf(out + ci, "#EXTINF:%f,\n", (float)csl); //描述当前TS片的时长
+				ci += sprintf(out + ci, "%s_%d.ts\n", filename_template, ns);//描述当前TS片的文件名
+			#endif
+			
 			csp = ts[i];
 			++ns;
 		}
@@ -596,17 +610,28 @@ int generate_playlist(media_stats_t* stats, char* filename_template, char* outpu
 	seg_len = ts[n_frames - 1] - csp; //最后剩余的那部分帧的时长（内部时长）
 	if (seg_len > 1e-4)
 	{
-		ci += sprintf(out + ci, "#EXTINF:%f,\n", (float)seg_len);//描述最后一片TS片的时长
-
+		#if 1
+			ci += snprintf(out + ci,50, "#EXTINF:%f,\n", (float)seg_len);//描述最后一片TS片的时长
+		#else
+			ci += sprintf(out + ci, "#EXTINF:%f,\n", (float)seg_len);//描述最后一片TS片的时长
+		#endif
+		
 //		if (url)
 //			ci += sprintf(out + ci, "%s_%d.ts?source=%s\n", filename_template, ns, url);
 //		else
-			ci += sprintf(out + ci, "%s_%d.ts\n", filename_template, ns);//描述最后一片TS片的文件名
-
+			#if 1
+				ci += snprintf(out + ci,50, "%s_%d.ts\n", filename_template, ns);//描述最后一片TS片的文件名
+			#else
+				ci += sprintf(out + ci, "%s_%d.ts\n", filename_template, ns);//描述最后一片TS片的文件名
+			#endif
 		++ns;
 	}
 
-	ci += sprintf(out + ci,"#EXT-X-ENDLIST\n"); //写入 endlist （注意，这样就不是live m3u8模式）
+	#if 1
+		ci += snprintf(out + ci,50,"#EXT-X-ENDLIST\n"); //写入 endlist （注意，这样就不是live m3u8模式）
+	#else
+		ci += sprintf(out + ci,"#EXT-X-ENDLIST\n"); //写入 endlist （注意，这样就不是live m3u8模式）
+	#endif
 
 	return ci;
 }
@@ -855,6 +880,7 @@ int mux_to_ts(media_stats_t* stats, media_data_t* data, char* output_buffer, int
 
 	return pos;
 }
+
 
 
 

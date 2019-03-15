@@ -413,6 +413,9 @@ char *encoder_request_jpeg(int channel, int *size, int image_size);
  */
 void encoder_free_jpeg(char *jpeg_data);
 
+
+
+
 #ifdef __cplusplus
 }
 #endif
