@@ -33,13 +33,14 @@ typedef struct _fmp4_out_info_t
 /***STEP 1********************************************************************************
 功能：fmp4编码初始化
 参数：out_info ： 要生成的 fmp4 文件存储模式描述信息
-					
+	  IDR_frame: video IDR 帧数据 （内部需要一帧IDR帧来做初始化，否则mp4视频将无法解码播放）
+	  IDR_len：video IDR 帧数据长度
 	  Vframe_rate: 转入视频的原始帧率
 	  Aframe_rate：传入音频的原始帧率
 	  audio_sampling_rate: 传入音频数据的原始采样率
 返回值：成功 ： 0  失败：-1
 *******************************************************************************************/
-int Fmp4_encode_init(fmp4_out_info_t * out_info,unsigned int Vframe_rate,unsigned int Aframe_rate,unsigned short audio_sampling_rate);
+int Fmp4_encode_init(fmp4_out_info_t * out_info,void*IDR_frame,unsigned int IDR_len,unsigned int Vframe_rate,unsigned int Aframe_rate,unsigned short audio_sampling_rate);
 
 
 /***STEP 2********************************************************************************

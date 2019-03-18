@@ -499,7 +499,7 @@ int AAC_fd;  //AAC文件描述符
 #define AAC_4410_BUF_SIZE (1024)
 int AAC_44100_fd; //标准44100HZ的AAC文件描述符
 unsigned char * AAC_44100_buf = NULL; //临时缓存BUF
-int  Fmp4_encode_init(fmp4_out_info_t * info,unsigned int Vframe_rate,unsigned int Aframe_rate,unsigned short audio_sampling_rate)
+int  Fmp4_encode_init(fmp4_out_info_t * info,void*IDR_frame,unsigned int IDR_len,unsigned int Vframe_rate,unsigned int Aframe_rate,unsigned short audio_sampling_rate)
 {
 
 	if(NULL == info)
@@ -580,7 +580,7 @@ int  Fmp4_encode_init(fmp4_out_info_t * info,unsigned int Vframe_rate,unsigned i
 
 	
 	//先要初始化 avcc box
-	ret = sps_pps_parameter_set();
+	ret = sps_pps_parameter_set(IDR_frame,IDR_len);
 	if(ret < 0)
 	{
 		ERROR_LOG("sps_pps_parameter_set error!\n");
@@ -1037,7 +1037,6 @@ int  Fmp4_encode_init(fmp4_out_info_t * info,unsigned int Vframe_rate,unsigned i
 }
 
 
-
 /*===remux===================================================================
 音视频混合相关业务
 n*(moof + mdat)模式
@@ -1088,13 +1087,21 @@ int	remuxVideo(void *video_frame,unsigned int frame_length,unsigned int frame_ra
 		dependsOn = 2;
 		isDependedOn = 1;
 		isNonSync = 0;
+		int I_offset = get_I_start_offset();
 
+		
 		#define ENABLE_CUT_SPS_PPS 1  //使能：裁剪掉SPS   	PPS SEI， 并用4字节大小填充帧头
 		#if ENABLE_CUT_SPS_PPS
 		//只接受 I/P帧，对IDR帧之前的PPS SPS SEI做剔除
-		video_frame = (char*)video_frame + 37;//37字节为海思编码IDR帧的SPS + PPS + SEI总长度
+		/*
+		video_frame = (char*)video_frame + 37;//37字节为海思编码IDR帧的SPS + PPS + SEI总长度(1080P下是，但不能这么写)
 		frame_length = frame_length - 37;
+		*/
+		video_frame =(char*)video_frame + I_offset ;
+		frame_length = frame_length - I_offset;
+		print_char_array("I NALU :", (unsigned char*)video_frame , 10);
 		#endif
+		
 	}
 	else if(NALU_I == nalutype)
 	{
@@ -2239,7 +2246,7 @@ int remux_exit(void)
 	*/
 	DEBUG_LOG("into pthread_cond_wait !\n");
 	pthread_mutex_lock(&remux_write_last_mut);
-		pthread_cond_wait(&remux_write_last_ok, &remux_write_last_mut);
+		pthread_cond_wait(&remux_write_last_ok, &remux_write_last_mut); //当异常逻辑退出时，该处会阻塞，需修改
 	pthread_mutex_unlock(&remux_write_last_mut);
 		
 	//===释放=======================================
@@ -2286,6 +2293,9 @@ int remux_exit(void)
 	fmp4BOX.mdatBox = NULL;
 
 	Sequence_number = 0;
+	
+	free_SPS_PPS_info();
+	
 	if(out_mode == SAVE_IN_FILE)
 		fclose(file_handle);
 
@@ -2305,15 +2315,15 @@ int remux_exit(void)
 ========================================================================================================*/
 
 /*
-	开始编码前该接口需要先接收 sps/pps NALU 包，用来设置 avcC box参数，
+	开始编码前该接口需要先接收 sps/pps NALU 包(IDR 帧)，用来设置 avcC box参数，
 	否则的话解码器不能正常解码！！！
 	返回值： 成功：0 失败 -1;
 	注意：该接口内部会对naluData自动偏移5个字节长度
 */
-int sps_pps_parameter_set(void)
+int sps_pps_parameter_set(void *IDR_frame,unsigned int IDR_len)
 {
 	
-	avcc_box_info_t *avcc_buf = avcc_box_init();
+	avcc_box_info_t *avcc_buf = avcc_box_init(IDR_frame,IDR_len);
 	if(NULL == avcc_buf)
 	{
 		ERROR_LOG("sps_pps_parameter_set failed !\n");
@@ -2345,6 +2355,8 @@ int Fmp4_encode_exit(void)
 	//还需要释放每次申请的 box的空间
 	return ret;
 }
+
+
 
 
 

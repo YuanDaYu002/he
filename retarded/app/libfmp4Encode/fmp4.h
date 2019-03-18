@@ -311,9 +311,13 @@ buf_remux_audio_t buf_remux_audio = {0};
 
 
 int remux_init(unsigned int Vframe_rate,unsigned int Aframe_rate);
-int sps_pps_parameter_set(void);
+int sps_pps_parameter_set(void *IDR_frame,unsigned int IDR_len);
+
+
+
 
 
  #endif
+
 
 

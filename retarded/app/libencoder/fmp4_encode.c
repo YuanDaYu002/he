@@ -517,7 +517,7 @@ void print_array(unsigned char* box_name,unsigned char*start,unsigned int length
 #include <fcntl.h>
 
 
-#define RECODE_STREAM_ID 1     //进行录像的流id       ： 0或者1
+#define RECODE_STREAM_ID 0     //进行录像的流id       ： 0或者1
 #define VIDEO_RECORD_TIME 15   //录像时长 单位：S    
 #define FIND_IDR_MAX_NUM  200  //为了寻找IDR的的最大循环次数
 //#define FMP4_FILE  "/jffs0/fmp4.mp4"
@@ -560,13 +560,6 @@ void* fmp4_record(void* args)
         return NULL;
     }
     info.buf_mode.w_offset = 0;
-    int ret = Fmp4_encode_init(&info,V_FRAME_RATE , A_FRAME_RATE , AUDIO_SAMPLING_RATE);
-    if(ret < 0)
-    {
-        ERROR_LOG("fmp4 encode init failed!\n");
-        goto InitFmp4Encoder_Failed;
-        
-    }
         
     unsigned int skip_len = 0;
     unsigned int frame_len = 0;
@@ -597,7 +590,18 @@ void* fmp4_record(void* args)
             break;
         }       
     }
- 
+
+    skip_len = sizeof (FRAME_HDR) + sizeof (IFRAME_INFO);
+    frame_len = pack->length - skip_len;   
+    char * IDR_frame = (char*)pack->data + skip_len;
+    DEBUG_LOG("IDR_frame[]= %x %x %x %x %x %x\n",IDR_frame[0],IDR_frame[1],IDR_frame[2],IDR_frame[3],IDR_frame[4],IDR_frame[5]);           
+    int ret = Fmp4_encode_init(&info,IDR_frame , frame_len ,V_FRAME_RATE, A_FRAME_RATE , AUDIO_SAMPLING_RATE);
+    if(ret < 0)
+    {
+        ERROR_LOG("fmp4 encode init failed!\n");
+        goto InitFmp4Encoder_Failed;
+        
+    }
     
     //---debug 部分-------------------------------------------------------------------------
     #if 0   //保存找到的第一帧I帧数据到文件

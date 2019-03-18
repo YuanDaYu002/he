@@ -617,16 +617,6 @@ int app_main(int argc, char *argv[])
     jpgAttr.level = 0;
     encoder_config_jpeg(0, &jpgAttr);
 
-    //开始JPEG 编码
-    /*
-    ret = start_JPEG_encode();
-    if(ret < 0)
-    {
-
-        ERROR_LOG("start_JPEG_encode failed !\n");
-        return -1;
-    }
-    */
     
     #if 0
     
@@ -720,13 +710,13 @@ int app_main(int argc, char *argv[])
   
         #if 1
             ++snap;
-            if ((snap % 90) == 0) 
+            if ((snap % 30) == 0) 
             {
                 int size;
                 char * jpg = encoder_request_jpeg(0, &size, IMAGE_SIZE_1920x1080);
                 if (jpg) 
                 {
-                    #if 1
+                    #if 0
                     if( snap_count > 0)
                     {
                         snap_count --;

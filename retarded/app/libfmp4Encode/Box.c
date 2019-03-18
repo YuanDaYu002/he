@@ -1352,6 +1352,180 @@ int FrameType(unsigned char* naluData)
 
 #endif
 
+
+
+
+PPS_SPS_info_t PPS_SPS_info = {0};
+
+int set_sps(char* data,int len)
+{
+	if(NULL == data || len <= 0 ||PPS_SPS_info.SPS != NULL)
+		return -1;
+	
+	PPS_SPS_info.SPS = (char*)malloc(len);
+	if(NULL == PPS_SPS_info.SPS)
+	{
+		ERROR_LOG("malloc failed\n");
+		return -1;
+	}
+	memcpy(PPS_SPS_info.SPS,data,len);
+	PPS_SPS_info.SPS_len = len;
+	return 0;	
+}
+
+int get_sps(char**data,int *len)
+{
+	if(NULL == data || NULL == len)
+		return -1;
+	if(PPS_SPS_info.SPS == NULL)
+	{
+		ERROR_LOG("SPS not inited !\n");
+		return -1;
+	}
+
+	*data = PPS_SPS_info.SPS;
+	*len = PPS_SPS_info.SPS_len;
+	return 0;
+	
+}
+int set_pps(char* data,int len)
+{
+	if(NULL == data || len <= 0 || PPS_SPS_info.PPS != NULL)
+		return -1;
+	
+	PPS_SPS_info.PPS = (char*)malloc(len);
+	if(NULL == PPS_SPS_info.PPS)
+	{
+		ERROR_LOG("malloc failed\n");
+		return -1;
+	}
+	memcpy(PPS_SPS_info.PPS,data,len);
+	PPS_SPS_info.PPS_len = len;
+	return 0;
+}
+
+int get_pps( char**data, int *len)
+{
+	if(NULL == data || NULL == len)
+		return -1;
+
+	if(PPS_SPS_info.PPS == NULL)
+	{
+		ERROR_LOG("PPS not inited !\n");
+		return -1;
+	}
+
+	*data = PPS_SPS_info.PPS;
+	*len = PPS_SPS_info.PPS_len;
+	return 0;
+}
+
+void free_SPS_PPS_info(void)
+{
+	if(NULL != PPS_SPS_info.PPS)
+	{
+		free(PPS_SPS_info.PPS);
+		PPS_SPS_info.PPS = NULL;
+	}
+
+	if(NULL != PPS_SPS_info.SPS)
+	{
+		free(PPS_SPS_info.SPS);
+		PPS_SPS_info.SPS = NULL;
+	}
+	
+}
+
+int I_start_offset = 0; //IDR帧中 I NALU的偏移量
+int get_I_start_offset(void)
+{
+	if(I_start_offset <= 0)
+		return -1;
+	
+	return I_start_offset;	
+}
+
+int set_I_start_offset(unsigned int offset)
+{
+	I_start_offset = offset;
+	return 0;	
+}
+
+
+/*
+初始化 SPS PPS 数据--(默认源数据NALU顺序是：SPS PPS SEI顺序存放)
+请勿重复初始化
+返回：
+	成功：I NALU 距离帧数据开始位置的偏移量（大于0）
+	失败：-1 
+*/
+int init_SPS_PPS_done = 0;//初始化标记 0：未初始化 ，1：已初始化 
+int init_SPS_PPS(void *IDR_frame , unsigned int frame_length)
+{
+	if(init_SPS_PPS_done)
+	{
+		ERROR_LOG("SPS PPS already inited!\n");
+		return -1;
+	}
+	if(NULL == IDR_frame)
+	{
+		ERROR_LOG("Illegal parameter !\n");
+		return -1;
+	}
+	
+	char *data = IDR_frame;
+	char *sps_start = IDR_frame;
+	char *pps_start = NULL;
+	char *sei_start = NULL;
+	char *I_start = NULL;
+
+
+	//寻找 PPS SEI I NALU 的起始位置
+	int i = 0;
+	for(i = 0;i < frame_length;i++)
+	{
+		if(data[0]==0 && data[1]==0 && data[2]==0 && data[3]==1 && data[4]==0x68) // PPS NALU	
+			pps_start = data;
+		
+		if(data[0]==0 && data[1]==0 && data[2]==0 && data[3]==1 && data[4]==0x06) // SEI NALU	
+			sei_start = data;
+		
+		if(data[0]==0 && data[1]==0 && data[2]==0 && data[3]==1 && data[4]==0x65) // I NALU	
+			I_start = data;
+		
+		if(pps_start != NULL && sei_start != NULL && I_start != NULL)
+			break;
+		
+		data = (char*)IDR_frame + i;
+		
+	}
+	
+	if(i >= frame_length)
+	{
+		ERROR_LOG("find SPS PPS SEI I NALU failed!\n ");
+		return -1;
+	}
+	//注意此次设置进去的NALU 包含了起始头 0x 0001
+	if(set_sps(sps_start + 4, pps_start - sps_start - 4) < 0)  //4：NALU 的起始码 0x 0001
+	{	
+		ERROR_LOG("set_sps failed !\n");
+		return -1;
+	}
+	
+	if(set_pps(pps_start + 4, sei_start - pps_start - 4) < 0)
+	{
+		ERROR_LOG("set_pps failed !\n");
+		return -1;
+	}
+	init_SPS_PPS_done = 1;
+	set_I_start_offset(I_start - (char*)IDR_frame);
+	
+	return I_start_offset;
+
+}
+
+
+
 /*
 	 该函数只能用来接收 SPS PPS SEI 类型的 NALU
 	 并且该nalu需要用4字节的数据大小头替换原有的起始头，并且数据大小为big-endian格式
@@ -1375,8 +1549,9 @@ pictureParameterSetLength		2			pictureParameterSetLength
 PPS 							4			PPS的内容
 
 ************************************************************************************************************/
-//手动输入的NALU头信息
-unsigned char IDR_NALU[] = {
+#if 1
+//手动输入的默认NALU头信息
+unsigned char IDR_NALU_1920[] = {
 0x00,0x00,0x00,0x01, 0x67,0x4D,0x00,0x2A, 0x96,0x35,0xC0,0xF0, 0x04,0x4F,0xCB,0x37,
 0x01,0x01,0x01,0x02, 0x00,0x00,0x00,0x01, 0x68,0xEE,0x3C,0x80, 0x00,0x00,0x00,0x01,
 0x06,0xE5,0x01,0x2E, 0x80/*后边省略 I帧部分*/
@@ -1386,34 +1561,54 @@ unsigned char IDR_NALU[] = {
 //SPS:0x00,0x00,0x00,0x01, 0x67
 //PPS:0x00,0x00,0x00,0x01, 0x68
 //SEI:0x00,0x00,0x00,0x01, 0x06
-unsigned char my_SPS[] = {0x67,0x4D,0x00,0x2A, 0x96,0x35,0xC0,0xF0, 0x04,0x4F,0xCB,0x37,0x01,0x01,0x01,0x02};
+unsigned char SPS_1920[] = {0x67,0x4D,0x00,0x2A, 0x96,0x35,0xC0,0xF0, 0x04,0x4F,0xCB,0x37,0x01,0x01,0x01,0x02};
+unsigned char PPS_1920[] = {0x68,0xEE,0x3C,0x80};
+unsigned char SEI_1920[] = {0xE5,0x01,0x2E, 0x80};
 
-unsigned char my_PPS[] = {0x68,0xEE,0x3C,0x80};
-unsigned char my_SEI[] = {0xE5,0x01,0x2E, 0x80};
+//unsigned char SPS_480[] = {};
 
+#endif
 
 #if 1
-avcc_box_info_t *	avcc_box_init(void)
+avcc_box_info_t *	avcc_box_init(void *IDR_frame,unsigned int IDR_len)
 {
-
-
+	int ret,len;
+	
 	//计算 PPS的数据长度
 	DEBUG_LOG("start avcc_box_init..\n");
-	unsigned char * SPS_data_start_POS = my_SPS;		//记录 sps数据的起始位置
-	unsigned char * SPS_data_end_POS = my_SPS + sizeof(my_SPS)/sizeof(my_SPS[0]);	//记录 sps数据的结束位置
-	unsigned int SPS_len = sizeof(my_SPS);	//	记录SPS的实际长度
+	unsigned char * my_SPS = NULL;					//记录 sps数据的起始位置
+	unsigned int SPS_len = 0;						//	记录SPS的实际长度
+	
+	unsigned char * my_PPS = NULL;
+	unsigned int PPS_len = 0;
+
+	/*-------------------------------------------------------------*/
+	ret = init_SPS_PPS(IDR_frame,IDR_len); 
+	if(ret < 0)
+	{
+		ERROR_LOG("init_SPS_PPS failed !\n");
+		return NULL;
+	}
+	/*-------------------------------------------------------------*/
+	if( get_sps((char**)&my_SPS, (int*)&SPS_len) < 0)
+	{
+		ERROR_LOG("get_sps failed !\n");
+		return NULL;
+	}
 	DEBUG_LOG("SPS_len =  %d\n",SPS_len);
-
-	unsigned char * PPS_data_start_POS = my_PPS;
-	unsigned char * PPS_data_end_POS = my_PPS + sizeof(my_PPS)/sizeof(my_PPS[0]);
-	unsigned int PPS_len = sizeof(my_PPS);
+	print_char_array("SPS NALU :", (unsigned char*)my_SPS , 10);
+	
+	if( get_pps((char**)&my_PPS, (int*)&PPS_len) < 0)
+	{
+		ERROR_LOG("get_sps failed !\n");
+		return NULL;
+	}
 	DEBUG_LOG("PPS_len =  %d\n",PPS_len);
-
+	print_char_array("PPS NALU :", (unsigned char*)my_PPS , 10);
 	
 
-
-	#if 1 //和 海思的PPS数据头内容套不上
-	unsigned int offset = 5;//略过前5个字节 略过SPS的识别头（0x00 00 00 01 67），5字节
+#if 1 //和 海思的PPS数据头内容套不上
+	//unsigned int offset = 5;//略过前5个字节 略过SPS的识别头（0x00 00 00 01 67），5字节
 	#if 1
 		unsigned char configurationVersion =  0x1;	//naluData[offset+0];  // configurationVersion
 		unsigned char AVCProfileIndication =  my_SPS[1];	//naluData[offset+1];  // AVCProfileIndication
@@ -1485,7 +1680,7 @@ avcc_box_info_t *	avcc_box_init(void)
 		memcpy((unsigned char*)avcc_item->sequenceParameterSetNALUnit + SPS_len + 1,&pictureParameterSetLength,sizeof(pictureParameterSetLength)); //pictureParameterSetLength
 		memcpy((unsigned char*)avcc_item->sequenceParameterSetNALUnit + SPS_len + 1 + 2,my_PPS,PPS_len);//PPS数据
 	
-		#endif
+#endif
 		DEBUG_LOG("start avcc_box_init..06\n");
 		avcc_box_info.avcc_buf = avcc_item;
 		avcc_box_info.buf_length = box_len;
@@ -1734,7 +1929,7 @@ avcc_box_info_t *	avcc_box_init(unsigned char* naluData, int naluSize)
 		#endif
 		
 		avcc_box_info.avcc_buf = avcc_item;
-		avcc_box_info.buf_length = box_len;
+		avcc_box_info.buf_length = box_len;
 	return &avcc_box_info;
 	
 }
@@ -1746,6 +1941,9 @@ avcc_box_info_t *	avcc_box_init(unsigned char* naluData, int naluSize)
 /***一般mp4文件部分********************************************************************************
 专门针对普通mp4文件部分
 *********************************************************************************************************/
+
+
+
 
 
 

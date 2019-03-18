@@ -40,6 +40,15 @@ typedef unsigned int Fmp4TrackId; //轨道ID
 #define HINT  3 //一般不用 
 
 
+typedef struct _PPS_SPS_info_t
+{
+	char*	SPS;		//指向保存的SPS NAL数据
+	int 	SPS_len;	//SPS的数据长度
+	char*	PPS;		//指向保存的PPS NAL数据
+	int 	PPS_len;	//PPS的数据长度
+}PPS_SPS_info_t;
+
+
 
 typedef struct _BoxHeader_t
 {
@@ -911,13 +920,16 @@ int	urn_box_init(void);
 avc1_box* avc1_box_init(void);
 mp4a_box* mp4a_box_init(void);
 //avcc_box_info_t *	avcc_box_init(unsigned char* naluData, int naluSize);
-avcc_box_info_t *	avcc_box_init(void);
+avcc_box_info_t *	avcc_box_init(void *IDR_frame,unsigned int IDR_len);
 int FrameType(unsigned char* naluData);
 void print_char_array(unsigned char* box_name,unsigned char*start,unsigned int length);
 mfra_box* mfra_box_init(void);
 tfra_video_t * tfra_video_init(void);
 tfra_audio_t * tfra_audio_init(void);
 mfro_box * mfro_box_init(void);
+
+void free_SPS_PPS_info(void);
+int get_I_start_offset(void);
 
 
 /***一般mp4文件部分特有 box结构********************************************************************************
@@ -1029,6 +1041,7 @@ typedef struct MetaBox_t
 #endif
 
 #endif
+
 
 
 
