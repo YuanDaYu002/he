@@ -43,6 +43,7 @@ typedef unsigned char   uint8_t;
  
  
 /********************************************************g711a encode decode**********************************************/
+#if 0
 static const int16_t alawtos16[256] =
 {
      -5504,  -5248,  -6016,  -5760,  -4480,  -4224,  -4992,  -4736,
@@ -322,8 +323,7 @@ int g711a_encode(void *pout_buf, int *pout_len, const void *pin_buf, const int i
     return Ret;
 }
 
-
-
+#endif
 
 /*
     判断nalu 包的类型
