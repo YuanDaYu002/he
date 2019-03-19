@@ -1,0 +1,109 @@
+diff --git a/cxxstl/c++/4.9.4/backward/binders.h b/cxxstl/c++/4.9.4/backward/binders.h
+index bda52ed..34a1f45 100644
+--- a/cxxstl/c++/4.9.4/backward/binders.h
++++ b/cxxstl/c++/4.9.4/backward/binders.h
+@@ -113,11 +113,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+       binder1st(const _Operation& __x,
+ 		const typename _Operation::first_argument_type& __y)
+       : op(__x), value(__y) { }
+-
++#if 0   /* Huawei LiteOS adapt */
+       typename _Operation::result_type
+       operator()(const typename _Operation::second_argument_type& __x) const
+       { return op(value, __x); }
+-
++#endif
+       // _GLIBCXX_RESOLVE_LIB_DEFECTS
+       // 109.  Missing binders for non-const sequence elements
+       typename _Operation::result_type
+@@ -148,11 +148,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+       binder2nd(const _Operation& __x,
+ 		const typename _Operation::second_argument_type& __y)
+       : op(__x), value(__y) { }
+-
++#if 0   /* Huawei LiteOS adapt */
+       typename _Operation::result_type
+       operator()(const typename _Operation::first_argument_type& __x) const
+       { return op(__x, value); }
+-
++#endif
+       // _GLIBCXX_RESOLVE_LIB_DEFECTS
+       // 109.  Missing binders for non-const sequence elements
+       typename _Operation::result_type
+diff --git a/cxxstl/c++/4.9.4/backward/hash_fun.h b/cxxstl/c++/4.9.4/backward/hash_fun.h
+index 473babc..3d4879c 100644
+--- a/cxxstl/c++/4.9.4/backward/hash_fun.h
++++ b/cxxstl/c++/4.9.4/backward/hash_fun.h
+@@ -163,7 +163,17 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+       operator()(unsigned long __x) const
+       { return __x; }
+     };
+-
++#if 1   /* Huawei LiteOS adapt */
++    template<>
++    struct hash<std::string>
++    {
++      size_t
++      operator()(const std::string &__x) const
++      {
++          return __stl_hash_string(__x.c_str());
++      }
++    };
++#endif
+ _GLIBCXX_END_NAMESPACE_VERSION
+ } // namespace
+ 
+diff --git a/cxxstl/gccinclude/bits/pthreadtypes.h b/cxxstl/gccinclude/bits/pthreadtypes.h
+index 3ece5b9..2b49026 100644
+--- a/cxxstl/gccinclude/bits/pthreadtypes.h
++++ b/cxxstl/gccinclude/bits/pthreadtypes.h
+@@ -31,7 +31,7 @@
+ #define __SIZEOF_PTHREAD_BARRIER_T 20
+ #define __SIZEOF_PTHREAD_BARRIERATTR_T 4
+ 
+-
++#if 0    /* Huawei LiteOS adapt */
+ /* Thread identifiers.  The structure of the attribute type is not
+    exposed on purpose.  */
+ typedef unsigned long int pthread_t;
+@@ -42,6 +42,7 @@ union pthread_attr_t
+   char __size[__SIZEOF_PTHREAD_ATTR_T];
+   long int __align;
+ };
++#endif
+ #ifndef __have_pthread_attr_t
+ typedef union pthread_attr_t pthread_attr_t;
+ # define __have_pthread_attr_t	1
+@@ -53,7 +54,7 @@ typedef struct __pthread_internal_slist
+   struct __pthread_internal_slist *__next;
+ } __pthread_slist_t;
+ 
+-
++#if 0   /* Huawei LiteOS adapt */
+ /* Data structures for mutex handling.  The structure of the attribute
+    type is not exposed on purpose.  */
+ typedef union
+@@ -115,7 +116,7 @@ typedef union
+ 
+ /* Keys for thread-specific data */
+ typedef unsigned int pthread_key_t;
+-
++#endif
+ 
+ /* Once-only execution */
+ typedef int pthread_once_t;
+diff --git a/cxxstl/gccinclude/malloc.h b/cxxstl/gccinclude/malloc.h
+index 30bb91a..f997b84 100644
+--- a/cxxstl/gccinclude/malloc.h
++++ b/cxxstl/gccinclude/malloc.h
+@@ -34,6 +34,10 @@
+ 
+ __BEGIN_DECLS
+ 
++#ifdef __THROW
++#define __THROW
++#endif
++
+ /* Allocate SIZE bytes of memory.  */
+ extern void *malloc (size_t __size) __THROW __attribute_malloc__ __wur;
+ 

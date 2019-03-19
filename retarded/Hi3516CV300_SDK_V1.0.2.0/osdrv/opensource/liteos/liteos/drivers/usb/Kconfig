@@ -1,0 +1,123 @@
+config LOSCFG_DRIVERS_USB
+    bool "Enable USB"
+    default y
+    depends on LOSCFG_DRIVERS
+    help
+      Answer Y to enable LiteOS support usb.
+
+config LOSCFG_DRIVERS_USB_HOST_DRIVER
+    bool "Enable USB HCD"
+    default y
+    depends on LOSCFG_DRIVERS_USB && LOSCFG_DRIVERS
+    help
+      Answer Y to enable LiteOS to support usb host controller driver.
+
+choice
+    depends on LOSCFG_DRIVERS_USB_HOST_DRIVER
+    prompt "USB HCD"
+    default y
+    help
+      Enable EHCI for USB 2.0.
+
+config LOSCFG_DRIVERS_USB_HOST_EHCI
+    bool "Enable EHCI HCD (USB 2.0)"
+    depends on LOSCFG_DRIVERS_USB
+
+endchoice
+
+config LOSCFG_DRIVERS_USB_DEVICE_CLASS_DRIVERS
+    bool "Enable USB Device Class Drivers"
+    default y
+    depends on LOSCFG_DRIVERS_USB && LOSCFG_DRIVERS && LOSCFG_DRIVERS_USB_HOST_DRIVER
+    help
+      Answer Y to enable LiteOS to support usb device class drivers.
+
+menu "USB Device Class Drivers"
+    depends on LOSCFG_DRIVERS_USB_DEVICE_CLASS_DRIVERS
+config LOSCFG_DRIVERS_USB_MASS_STORAGE
+    bool "Enable USB Mass Storage Support"
+    default y
+    depends on LOSCFG_DRIVERS_USB_DEVICE_CLASS_DRIVERS && LOSCFG_FS_VFS
+    help
+      Say Y here if you want to connect USB mass storage devices to your system's USB port.
+
+config LOSCFG_DRIVERS_USB_4G_MODEM
+    bool "Enable USB 4G Modem Support"
+    default y
+    depends on LOSCFG_DRIVERS_USB_DEVICE_CLASS_DRIVERS && LOSCFG_NET_LWIP_SACK
+    help
+      Say Y here if you want to connect USB 4G devices to your system's USB port.
+
+config LOSCFG_DRIVERS_USB_SERIAL
+    bool "Enable USB Serial Converter Support"
+    default y
+    depends on LOSCFG_DRIVERS_USB_DEVICE_CLASS_DRIVERS
+    help
+      Say Y here if you want to connect USB serial devices to your system's USB port.
+
+config LOSCFG_DRIVERS_USB_ETHERNET
+    bool "Enable USB Ethernet Support"
+    depends on LOSCFG_NET_LWIP_SACK && LOSCFG_DRIVERS_USB_DEVICE_CLASS_DRIVERS
+    help
+      Say Y here if you want to connect USB ethernet devices to your system's USB port.
+
+config LOSCFG_DRIVERS_USB_WIRELESS
+    bool "Enable USB Wireless Device Support"
+    depends on LOSCFG_NET_LWIP_SACK && LOSCFG_DRIVERS_USB_DEVICE_CLASS_DRIVERS
+    help
+      Say Y here if you want to connect usb-wifi devices to your system's USB port.
+
+endmenu
+
+config LOSCFG_DRIVERS_USB_DWC_DRIVER
+    bool "Enable USB DWC Controller"
+    default y
+    depends on LOSCFG_DRIVERS_USB && LOSCFG_DRIVERS
+    help
+      Answer Y to enable LiteOS to support device controller driver.
+
+choice
+    depends on LOSCFG_DRIVERS_USB_DWC_DRIVER
+    prompt "DWC Controller"
+    default y
+    help
+      This selects the usb(ehci/xhci) family usb device.
+      Say Y to enable usb2.0 or usb3.0 controller driver.
+
+config LOSCFG_DRIVERS_USB2_DEVICE_CONTROLLER
+    bool "Enable USB2.0 Device Controller"
+
+endchoice
+
+config LOSCFG_DRIVERS_USB_GADGET
+    bool "Enable USB Gadget Support"
+    default y
+    depends on LOSCFG_DRIVERS_USB && LOSCFG_DRIVERS && LOSCFG_DRIVERS_USB_DWC_DRIVER
+    help
+      Answer Y to enable LiteOS to support usb peripheral devices.
+      Enable this configuration option if you want to run LiteOS inside a USB peripheral device.
+
+menu "USB Gadget Drivers"
+    depends on LOSCFG_DRIVERS_USB_GADGET
+
+config LOSCFG_DRIVERS_USB_MASS_STORAGE_GADGET
+    bool "Enable USB Mass Storage Gadget"
+    default y
+    depends on LOSCFG_FS_VFS
+
+config LOSCFG_DRIVERS_USB_UVC_GADGET
+    bool "Enable USB Video Class Gadget"
+    depends on LOSCFG_DRIVERS_USB_GADGET
+
+config LOSCFG_DRIVERS_USB_SERIAL_GADGET
+    bool "Enable USB Serial Gadget"
+    depends on LOSCFG_DRIVERS_UART && LOSCFG_SHELL
+
+config LOSCFG_DRIVERS_USB_ETHERNET_GADGET
+    bool "Enable USB Ethernet Gadget"
+    depends on LOSCFG_NET_LWIP_SACK
+
+config LOSCFG_DRIVERS_USB_DFU_GADGET
+    bool "Enable USB Dfu Gadget"
+    depends on LOSCFG_DRIVERS_USB_GADGET
+endmenu

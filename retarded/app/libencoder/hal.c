@@ -77,8 +77,8 @@ static int mpp_sys_init(void)
     memset(&vb_conf, 0, sizeof (VB_CONF_S));
     vb_conf.u32MaxPoolCnt = VB_MAX_POOLS;
     vb_conf.astCommPool[0].u32BlkSize = calc_pic_vbblk_size(1920, 1088, SYS_ALIGN_WIDTH);
-    //vb_conf.astCommPool[0].u32BlkCnt = 6;
-    vb_conf.astCommPool[0].u32BlkCnt = 5;
+    vb_conf.astCommPool[0].u32BlkCnt = 6;
+    //vb_conf.astCommPool[0].u32BlkCnt = 5;
     //vb_conf.astCommPool[1].u32BlkSize = calc_pic_vbblk_size(960, 544, SYS_ALIGN_WIDTH);
     //vb_conf.astCommPool[1].u32BlkCnt = 6;
     vb_conf.astCommPool[1].u32BlkSize = calc_pic_vbblk_size(480, 272, SYS_ALIGN_WIDTH);
@@ -712,6 +712,7 @@ int app_main(int argc, char *argv[])
             ++snap;
             if ((snap % 30) == 0) 
             {
+            	snap = 0;
                 int size;
                 char * jpg = encoder_request_jpeg(0, &size, IMAGE_SIZE_1920x1080);
                 if (jpg) 
@@ -859,6 +860,7 @@ int app_main(int argc, char *argv[])
 }
 
 #endif
+
 
 
 

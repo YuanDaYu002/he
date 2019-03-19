@@ -1,0 +1,51 @@
+diff --git a/cxxstl/c++/6.3.0/backward/binders.h b/cxxstl/c++/6.3.0/backward/binders.h
+index bda52ed..0cd7384 100644
+--- a/cxxstl/c++/6.3.0/backward/binders.h
++++ b/cxxstl/c++/6.3.0/backward/binders.h
+@@ -118,9 +118,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+ 		const typename _Operation::first_argument_type& __y)
+       : op(__x), value(__y) { }
+ 
++#if 0   /* Huawei LiteOS adapt */
+       typename _Operation::result_type
+       operator()(const typename _Operation::second_argument_type& __x) const
+       { return op(value, __x); }
++#endif
+ 
+       // _GLIBCXX_RESOLVE_LIB_DEFECTS
+       // 109.  Missing binders for non-const sequence elements
+@@ -153,9 +155,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+ 		const typename _Operation::second_argument_type& __y)
+       : op(__x), value(__y) { }
+ 
++#if 0   /* Huawei LiteOS adapt */
+       typename _Operation::result_type
+       operator()(const typename _Operation::first_argument_type& __x) const
+       { return op(__x, value); }
++#endif
+ 
+       // _GLIBCXX_RESOLVE_LIB_DEFECTS
+       // 109.  Missing binders for non-const sequence elements
+diff --git a/cxxstl/c++/6.3.0/backward/hash_fun.h b/cxxstl/c++/6.3.0/backward/hash_fun.h
+index 473babc..d3f228e 100644
+--- a/cxxstl/c++/6.3.0/backward/hash_fun.h
++++ b/cxxstl/c++/6.3.0/backward/hash_fun.h
+@@ -164,6 +164,18 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+       { return __x; }
+     };
+ 
++#if 1   /* Huawei LiteOS adapt */
++    template<>
++    struct hash<std::string>
++    {
++      size_t
++      operator()(const std::string &__x) const
++      {
++          return __stl_hash_string(__x.c_str());
++      }
++    };
++#endif
++
+ _GLIBCXX_END_NAMESPACE_VERSION
+ } // namespace
+ 

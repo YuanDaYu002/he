@@ -1,0 +1,6 @@
+config LOSCFG_DRIVERS_PM
+    bool "Enable PM"
+    default y
+    depends on LOSCFG_DRIVERS && (LOSCFG_PLATFORM_HI3559_CORTEX_A17 || LOSCFG_PLATFORM_HI3556_CORTEX_A17)
+    help
+      Answer Y to enable LiteOS support pm.

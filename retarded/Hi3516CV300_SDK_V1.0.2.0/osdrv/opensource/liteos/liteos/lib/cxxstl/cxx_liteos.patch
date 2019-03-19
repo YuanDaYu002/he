@@ -1,0 +1,117 @@
+diff --git a/cxxstl/c++/4.9.4/backward/binders.h b/cxxstl/c++/4.9.4/backward/binders.h
+index bda52ed..0cd7384 100644
+--- a/cxxstl/c++/4.9.4/backward/binders.h
++++ b/cxxstl/c++/4.9.4/backward/binders.h
+@@ -114,9 +114,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+ 		const typename _Operation::first_argument_type& __y)
+       : op(__x), value(__y) { }
+
++#if 0   /* Huawei LiteOS adapt */
+       typename _Operation::result_type
+       operator()(const typename _Operation::second_argument_type& __x) const
+       { return op(value, __x); }
++#endif
+
+       // _GLIBCXX_RESOLVE_LIB_DEFECTS
+       // 109.  Missing binders for non-const sequence elements
+@@ -149,9 +151,11 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+ 		const typename _Operation::second_argument_type& __y)
+       : op(__x), value(__y) { }
+
++#if 0   /* Huawei LiteOS adapt */
+       typename _Operation::result_type
+       operator()(const typename _Operation::first_argument_type& __x) const
+       { return op(__x, value); }
++#endif
+
+       // _GLIBCXX_RESOLVE_LIB_DEFECTS
+       // 109.  Missing binders for non-const sequence elements
+diff --git a/cxxstl/c++/4.9.4/backward/hash_fun.h b/cxxstl/c++/4.9.4/backward/hash_fun.h
+index 473babc..d3f228e 100644
+--- a/cxxstl/c++/4.9.4/backward/hash_fun.h
++++ b/cxxstl/c++/4.9.4/backward/hash_fun.h
+@@ -164,6 +164,18 @@ _GLIBCXX_BEGIN_NAMESPACE_VERSION
+       { return __x; }
+     };
+
++#if 1   /* Huawei LiteOS adapt */
++    template<>
++    struct hash<std::string>
++    {
++      size_t
++      operator()(const std::string &__x) const
++      {
++          return __stl_hash_string(__x.c_str());
++      }
++    };
++#endif
++
+ _GLIBCXX_END_NAMESPACE_VERSION
+ } // namespace
+
+diff --git a/cxxstl/gccinclude/bits/pthreadtypes.h b/cxxstl/gccinclude/bits/pthreadtypes.h
+index e1b115c..063e42a 100644
+--- a/cxxstl/gccinclude/bits/pthreadtypes.h
++++ b/cxxstl/gccinclude/bits/pthreadtypes.h
+@@ -35,6 +35,7 @@
+
+ /* Thread identifiers.  The structure of the attribute type is not
+    exposed on purpose.  */
++   #if 0    /* Huawei LiteOS adapt */
+ typedef unsigned long int pthread_t;
+
+
+@@ -43,7 +44,7 @@ typedef union
+   char __size[__SIZEOF_PTHREAD_ATTR_T];
+   long int __align;
+ } pthread_attr_t;
+-
++#endif
+
+ typedef struct __pthread_internal_slist
+ {
+@@ -53,6 +54,7 @@ typedef struct __pthread_internal_slist
+
+ /* Data structures for mutex handling.  The structure of the attribute
+    type is not exposed on purpose.  */
++#if 0   /* Huawei LiteOS adapt */
+ typedef union
+ {
+   struct __pthread_mutex_s
+@@ -109,7 +111,7 @@ typedef union
+
+ /* Keys for thread-specific data */
+ typedef unsigned int pthread_key_t;
+-
++#endif
+
+ /* Once-only execution */
+ typedef int pthread_once_t;
+diff --git a/cxxstl/gccinclude/bits/uClibc_pthread.h b/cxxstl/gccinclude/bits/uClibc_pthread.h
+index 437c96b..eb0f66a 100644
+--- a/cxxstl/gccinclude/bits/uClibc_pthread.h
++++ b/cxxstl/gccinclude/bits/uClibc_pthread.h
+@@ -23,7 +23,9 @@
+ #ifndef _UCLIBC_PTHREAD_H
+ #define _UCLIBC_PTHREAD_H
+
+-#ifndef _PTHREAD_H
++/* Huawei LiteOS adapt */
++/* #ifndef _PTHREAD_H > #ifndef _HWLITEOS_POSIX_PTHREAD_H */
++#ifndef _HWLITEOS_POSIX_PTHREAD_H
+ # error "Always include <pthread.h> rather than <bits/uClibc_pthread.h>"
+ #endif
+
+diff --git a/cxxstl/gccinclude/malloc.h b/cxxstl/gccinclude/malloc.h
+index 49c4dbb..d331059 100644
+--- a/cxxstl/gccinclude/malloc.h
++++ b/cxxstl/gccinclude/malloc.h
+@@ -67,7 +67,7 @@
+ #  define __THROW
+ # endif
+ #endif
+-# define __MALLOC_P(args)	args __THROW
++# define __MALLOC_P(args)	args // __THROW
+ /* This macro will be used for functions which might take C++ callback
+    functions.  */
+ # define __MALLOC_PMT(args)	args

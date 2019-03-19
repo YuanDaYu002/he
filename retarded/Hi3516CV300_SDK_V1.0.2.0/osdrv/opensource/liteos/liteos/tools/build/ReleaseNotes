@@ -1,0 +1,1130 @@
+Huawei LiteOS Release Notes
+===========================
+
+This file contains all the release notes of Huawei LiteOS for every release.
+The text is just as was written at the time of release(with perhaps some
+corrected typos).
+
+The release note include three parts, New Features, Bug Fixes and Known Issues.
+Each part contains several modules, with issue description in detail.
+
+Kernel development documentation is available in /doc under main folder.
+
+Huawei LiteOS V200R001C10B035   2018/04/28
+Huawei LiteOS 1.4.10
+-----------
+New Features
+The following are some new features with this release.
+
+Bug Fixs
+The following are some bug fixs with this release.
+
+    * fs:
+      - Replace macro CONFIG_NET_TCP with CONFIG_LWIP_SACK in vfs.
+      - fix file released when close failed
+
+    * net:
+      - fix call send  in nonblock may sleep issue.
+      - Fix: tcp connect failed on the same four tuple as the RST segment would be dropped by TIME_WAIT socket.
+
+Huawei LiteOS V200R001C10B034   2018/04/20
+Huawei LiteOS 1.4.9
+-----------
+New Features
+The following are some new features with this release.
+
+Bug Fixs
+The following are some bug fixs with this release.
+
+    * compat:
+      - Modify the function adjtime
+
+    * shell:
+      - Non-safety functions
+
+    * net:
+      - Fixed bzero to memset
+      - fix call send  in nonblock may sleep issue.
+
+Huawei LiteOS V200R001C10B033   2018/04/12
+Huawei LiteOS 1.4.8
+-----------
+New Features
+The following are some new features with this release.
+
+    * fs:
+      - Delete CONFIG_NSOCKET_NUM in pre-complie code, for that it is a global var acturaly now.
+
+    * lib:
+      - Set FD_SETSIZE to 512 instead of depending on lwip socket num and file socket num.
+
+    * net:
+      - Modify memp module in lwip to support configuring socket num with api.
+
+Bug Fixs
+The following are some bug fixs with this release.
+
+    * drivers:
+      - Modify the response of SET_INTERFACE
+      - Fix to solve the redefine of usb skbuff when open the device network.
+
+    * platform:
+      - Set TEXT_OFFSET to 0 for the mmu page tables were store in bss.
+
+    * net:
+      - fix the lwip_send return -1 issue in tcp_write_checks().
+
+    * tools:
+      - Modify source files of menuconfig.Delete abandoned code.
+
+Huawei LiteOS V200R001C10B032   2018/03/08
+Huawei LiteOS 1.4.7
+-----------
+New Features
+The following are some new features with this release.
+
+    * drivers:
+      - Multi device driven libraries become one
+
+    * net:
+      - enhanced the bind interface:
+
+Bug Fixs
+The following are some bug fixs with this release.
+
+    * kernel:
+      - update release notes & version number
+
+    * drivers:
+      - Fix to add the header file when lwip is closed that leads to compile error.
+      - Modify to clear the the variable that recording the size of updating file when disconnect usb cable.
+      - Fix to clear pclint.
+      - Fix the bug that fmass driver can only choose the partition0 when the medium is emmc.
+
+    * net:
+      - fix above issue
+      - add SO_DONTROUTE and SO_BINDTODEVICE support
+
+Huawei LiteOS V200R001C10B031   2018/02/28
+Huawei LiteOS 1.4.6
+-----------
+New Features
+The following are some new features with this release.
+
+    * lib:
+      - add adjtime support
+
+    * net:
+      - fix set/getsockopt failed issue caused by socket filter merge
+      - add socket filter support
+      - make input DHCP packets pass through lwIP stack
+
+    * tools:
+      - add pcap
+
+Bug Fixs
+The following are some bug fixs with this release.
+
+    * fs:
+      - Modify SD card driver unregister flow.
+      - for readonly file system
+
+    * lib:
+      - Change #if __LP64__ to #ifdef __LP64__ in libc header files.
+
+    * doc:
+      - Modify Developer Guide for adding tcpdump shell command section.
+
+    * drivers:
+      - Fix to delete the invalid print of uvc.
+      - Fix the bug of 4G class that can not identify the ECM network.
+      - Fix udc compile error.
+
+    * net:
+      - Fixed compile errors in new header files.
+      - fix memory cross-border access mentioned above
+      - delect everything related with secondary netif
+      - 1.add PACKET_OUTGOING support to make tcpdump to capture output packets; 2.add packets delivery in netif_poll to make tcpdump to capture loopback packets
+      - change lwIP timers to use the absolute time to trigger timeout.
+
+    * tools:
+      - Modify conf_get_cofnigname and conf_write function.
+      - make CI compiles lwip testsuit on hi3518e when there is a new commit
+      - delete #if 0 dead code
+
+Huawei LiteOS V200R001C10B017   2017/12/15
+Huawei LiteOS 1.4.5
+-----------
+New Features
+The following are some new features with this release.
+
+        * kernel:
+          - Add the exception information to the buffer
+
+        * lib:
+          - Clear pclint errors when header files fixing.
+          - Fixed header files according to bionic.
+
+        * drivers:
+          - Modify fo usb header file
+
+        * platform:
+          - Provide exception information to store without losing medium
+          - store the exception information to the buffer
+
+        * shell:
+          - Add the command of reading the exception information
+
+Bug Fixs
+The following are some bug fixs with this release.
+
+        * compat:
+          - Fix pclint issue
+          - Modify for new rules of PCLINT
+
+        * kernel:
+          - rollback runstop DTS modification
+
+        * fs:
+          - Fixed pclint error in jffs.
+          - Add pclint comment in jffs.
+          - Modify for new rules of PCLINT
+
+        * lib:
+          - from int to ssize_t
+          - add extern "C" to head files
+          - Fix bug, calling API that may lead kernel schedule in swtmr callback should be forbidden.Modify ramdon() implementation in libc.
+          - Fixed the bug of CVE-2016-9840, CVE-2016-9841, CVE-2016-9843.
+          - Modify pclint bug
+          - Fixed header files according to bionic
+          - Replace STDIO_INIT with LOSCFG_FS_VFS for getchar bugfix
+
+        * doc:
+          - Modify FAT precaution in zh and en developer guide.
+
+        * drivers:
+          - Fix to optimize the initialization process of usb driver.
+          - Fix dfu update failed.
+          - Fix the bug of uvc camera about pressure test.
+          - Fix dfu attach failed.
+          - Fixed pclint error
+
+        * platform:
+          - add extern "C" to head files
+          - Fixed the releasenotes for B108
+
+        * shell:
+          - Fix shell bug, which tab completion printf one more line
+
+        * net:
+          - Add hanewin supported NFS.
+          - 1. add ioctl cmd SIOCGIFMTU and SIOCSIFMTU support.
+          - Fix the bugs of the full of hash table and the arp proxy about free arp.
+          - add extern "C" to head files
+          - Replace common functions with securtiy functions.
+          - Client connected to LiteOS by telnet. When client disconnect to LiteOS for a while(about 60s), LiteOS cannot recover the contol of serial.
+          - Fixed pclint error
+          - Add pclint comment in wpa.
+          - Modify for new rules of PCLINT
+
+        * tools:
+          - add extern "C" to head files
+
+Huawei LiteOS V200R001C10B016   2017/12/07
+Huawei LiteOS 1.4.4
+-----------
+New Features
+The following are some new features with this release.
+
+    * net:
+      - add start ip address of dhcp lease and ip pool size in netifapi_dhcps_start().
+      - add hostname option in dhcp discover and request msg.
+      - Add the bridge and arp proxy.
+      - add support of configurable of ip pool range of dhcp server.
+
+Bug Fixes
+The following are some bug fixes with this release.
+
+    * compat:
+      - delete the useless files.
+      - Make msec_to_jiffies behave like Linux
+      - added the div64_u64 and div64_s64 interface.
+      - move "checksum.h" from libc to compat
+      - Added warning log and backtrace in blocking API
+      - apply DTS2017080802334 changes to BVT_20170719
+
+    * kernel:
+      - Fixed the bug of membox when double free the membox.
+      - PC review in DTS2017080802334
+      - Added protect in each API that may lead kernel schedule.
+
+    * fs:
+      - delete the useless files.
+      - Sync tickets to branch B104
+      - Add extern "C" to head files
+      - update relpath in dup and dup2
+      - Add branch detection for select API. While input readfds/writefds/exceptfds are NULL
+
+    * lib:
+      - fix standard net & libc header
+      - Replace STDIO_INIT with LOSCFG_FS_VFS for getchar bugfix
+      - fix standard net & libc header
+      - Fix getchar can not get '\r' bug
+      - delete the useless files.
+      - Fix ICSL in lib.include memcheck macro,dead code,codedex
+      - Fixed the bug of CVE-2016-9840, CVE-2016-9841, CVE-2016-9843.
+
+    * doc:
+      - Modify three apis in lwip api reference. They are netifapi_set_hostname, netifapi_get_hostname and netifapi_dhcps_start.
+      - Modify liteos developer guide in zh, en and chm for changes in fat. That is add exFAT.
+
+    * drivers:
+      - invalid cache after dma transfer.
+      - apply DTS2017080802334 changes to BVT_20170719
+      - Fix synchronization main line USB driver problem list.
+
+    * platform:
+      - Add extern "C" to head file
+      - added license and delete unused files
+      - Code review icsl
+      - added license of los_dispatch.s and los_hw_exc.s.
+
+    * shell:
+      - fix codex in shell module
+      - Fix shell bug, which tab completion printf one more line
+
+    * net:
+      - add extern "C" to head files
+      - delete the inconrrect params judgement in function lwip_ioctl_internal_SIOCGIFCONF
+      - add check netconn valid.
+      - fix telnet not init tcpip,telnet test fs testsuit error
+      - upgrade to TR5 version
+
+Huawei LiteOS V100R002C10B107   2017/11/29
+Huawei LiteOS 1.4.3
+-----------
+New Features
+The following are some new features with this release.
+
+    * drivers:
+      - Add the uvc and dfu drivers.
+
+    * fs:
+      - Support exFat filesystem and fallocate truncate interface.
+
+    * net：
+      - Add hostname option in dhcp msg.
+      - Add support of configurable of ip pool range of dhcp server.
+      - Add the bridge and arp proxy.
+
+    * compat:
+      - Support settimeofday.
+
+Bug Fixes
+The following are some bug fixes with this release.
+
+Huawei LiteOS V100R002C10B104   2017/07/19
+Huawei LiteOS 1.4.2
+-----------
+
+Bug Fixes
+The following are some bug fixes with this release.
+
+    * fs:
+      - Fix system hangup bug.
+      - Default socket number is 32, which is a little bit small, need to increase to 128.
+      - Fixed relate to a unregister_blockdriver bug when mount spinorblock into yaffs.
+      - Fixed show_part should be remove in disk_partition_register since it will decrease performance.
+      - Fixed read file error after dup.
+      - Fixed nfs_read error after rename.
+      - Fixed nfs disconnected after receive FIN package.
+      - Fixed Description Error.
+      - Fixed the problems in proc.
+          - Fixed fs umount bug that the crefs of mountpoint node is modified to zero while umount.
+
+    * platform:
+      - Fix mmu bug.
+      - Added exc stack for sp when exception touched.
+
+    * compat:
+      - Added the check of nanosleep args.
+      - Modify the precision of settimezone.
+
+    * drivers:
+      - Fix USB ethernet gadget connection status exception.
+      - Fix the bug of umass that writing and reading using unaligned memory and leads system exception.
+      - Fixed to the bug that external hub disconnects again and again when open the host/device automatically switching mode.
+
+    * net：
+      - there are two garbage bytes at the beginning of input data for pf-raw socket Modify content:Modify function recv_raw().
+      - expose tcp source code from V2R1 mainline.
+      - optimize ping cmd to support -t/-k/-w param and output 13 statistics when finished.
+      - use TCP keepalive machanism to check telnet connection.
+      - modified netif.c for lo netif can be found.
+      - Fix shell ping command appear ttl time=0ms, which is impossible.
+      - Domain name can not be resolved while using ntpdate cmd.
+      - Fix ping failed with 0 data size while pinging some internet sites.
+      - Fixed bug, telnet can not switch to uart when you close cmd windows after call telnet off.
+      - Fixed ifconfig bug when input 6 arguments.
+      - lack of api to get netif config.
+      - get ipaddr;netmask;gateway interface error.
+      - ping interval time is too long, run in the sys_msleep.
+
+
+    * tools:
+      - Update the version.
+      - Fixed bug, iperf can not creat parallel threads more than a number which Lwip and LiteOS support.
+      - modify menuconfig option--delet product option.
+
+Huawei LiteOS V100R002C10B082   2017/04/19
+Huawei LiteOS 1.4.1
+-----------
+
+New Features
+The following are some new features with this release.
+
+Bug Fixes
+The following are some bug fixes with this release.
+
+    * kernel:
+          - Fixed the redefinition problems in dynload load.
+             1.Bug description: A symbol may duplicate defined in multi-modules, when other module call this symbol, dynload-linker do not know which one to relocated, it will lead to some error.
+             2.Fix description: Failed to relocate a symbol if this symbol had been loaded in muti-modules, except has a explicit rely relationship.
+
+    * fs:
+          - Fixed fs_dupfd errno bug.
+          - Fixed some bugs that format shellcmd can not show usage when parameter is wrong.
+          - Fixed a bug lead to crash after the second delete of 0 partition when there are more than 1 partition.
+
+    * platform:
+          - Updated releaseNotes and version number.
+    * build:
+          - Free the limit for partition shellcmd in NON-YAFFS and NON-JFFS filesystem.
+
+Huawei LiteOS V100R002C10B073   2017/03/21
+Huawei LiteOS 1.3.2
+-----------
+New Features
+The following are some new features with this release.
+
+Bug Fixes
+The following are some bug fixes with this release.
+
+    * drivers:
+      - Fixed the Kconfig of usb affecting other drivers cutting out when using the blank sapce key.
+      - Fixed a bug to cause the system exception that pull the usb cable when the usb fether
+        is in the process of data transmission,because of wild pointer.
+      - Fixed a bug that the byte alignment of frame header when receiving more frames.
+
+    * fs:
+      - Fixed mutli-paratition bugs related to boundary limited.
+
+    * lib:
+      - The API strftime support weekday display
+
+Huawei LiteOS V100R002C10B071   2017/03/11
+Huawei LiteOS 1.3.1
+-----------
+New Features
+The following are some new features with this release.
+
+    * drivers:
+      - Added the usb device network using Microsoft RNDIS protocol.
+      - Added a type(USBNET_DRIVER_IF) of link layer to support the name of net device,such as usb0.
+
+    * tools:
+      - Added CPP Exceptions Support and related macro for g++.
+
+Bug Fixes
+The following are some bug fixes with this release.
+
+    * fs:
+      - Fixed the bug of writeproc function parameter length.
+      - Fixed bug of part.
+        1.Added the judge to limit part read/write int current part.
+        2.Added the judge to prevent to free null pointer.
+      - Fixed memory lost after umount nfs when a opened directory exists.
+
+    * kernel:
+      - Fixed the problems in.
+        1.Bug description: use variable in bss before bss_clear is unpredictable.
+        2.Fix description: move g_swResumeFromImg from bss to data.
+      - Fixed the interface of add_timer to be Compatible witch linux.
+
+
+Huawei LiteOS V100R002C10B063   2017/02/28
+Huawei LiteOS 1.2.9
+-----------
+New Features
+The following are some new features with this release.
+
+Bug Fixes
+The following are some bug fixes with this release.
+
+    * kernel:
+      - Fixed the problems in dynload load.
+        1.Bug description:
+        Not consider the situation of symbol with a version suffix, like "strncmp@@Version1.0"
+        2.Fix description:
+        When extract a symbol from the elf symbol table, should get rid of the version information.
+
+      - Fixed the problems in dynload load.
+        1.Bug description:
+        when call LOS_ModuleUnload times exceed than the times LOS_SoLoad,
+        and this *.so is needed by other *.so, will real-unload this so, and led to the error result.
+        2.Fix description:
+        when the times of call LOS_ModuleUnload exceed than the times LOS_SoLoad, should return error.
+
+      - Fixed the problems in.
+        1.Bug description:
+        call LOS_SysCpuUsage after wakeup from wifi image may return an abnormal number.
+        2.Fix description:
+        add a LOS_CpupReset interface to reset cpup data, call this function in runstop callback.
+
+    * fs:
+      - Fixed the bug of lseek function when the fd is closed.
+
+Huawei LiteOS V100R002C10B062   2017/02/21
+Huawei LiteOS 1.2.8
+-----------
+New Features
+The following are some new features with this release.
+
+    * kernel:
+      - Support circle rely in dynload load.
+      1) add the loadding flags to make sure all the modules only be load one times even exist the circle rely situations.
+      2) add the loadding flags to make sure all the modules only be unload one times even exist the circle rely situations.
+      3) add the loadding flags to make sure all the modules only be search one times even exist the circle rely situations.
+      4) add the loadding flags to make sure the same module only be loaded one times even load him twice.
+
+    * drivers:
+      - Added the changes to support USB module cutting.
+
+Bug Fixs
+The following are some bug fixs with this release.
+
+    * fs:
+      - Fixed license issue
+      - Fixed read wrong buffer when using tcp-based NFS, caused by receiving incompletely.
+      - Added extended partition type 0x05 support; support 16 available partitions
+
+    * lib:
+      - Fixed dangerous function transposition safety function.
+
+    * platform:
+      - Fixed dangerous function transposition safety function.
+      - Added some api commit for mmu_config.h
+      - Fixed the compatibility of hrtimer using configuration macro.
+
+    * net:
+      - Fixed bug, tested by codenomicon software.
+      - Fixed a netstat shell command issue, which is udp recQ value is negative.
+      - Fixed bug of telnet if ioctl failed.
+
+Huawei LiteOS V100R002C10B043   2016/12/28
+Huawei LiteOS 1.2.6
+-----------
+Bug Fixs
+The following are some bug fixs with this release.
+
+    * compat:
+      - Fixed the bug of comment about time function
+
+    * kernel:
+      - Fixed kernel bug when tick interrupt comes before osSchedule.
+      - Fixed the problems in los queue.
+      1.Bug description:
+      1)if the queue size is less then 4Bytes may cause a memory wrong operation when call LOS_QueueWrite and LOS_QueueWriteHead.
+      2)if the buffsize is less then 4Bytes will lead to a wrong memory operation when call LOS_QueueRead.
+      3)osQueueMailAlloc/osQueueMailFree in a un-created queue may cause error.
+      2.Fix description: 1)the queue size can not less than 4Bytes if we use LOS_QueueWrite and LOS_QueueWriteHead.
+      2)the buffer size can not less than 4Bytes if we use LOS_QueueRead.
+      3)all operations should in a queue which had been created.
+
+    * platform:
+      - Fixed the bug of udelay that Global variable leak caused locking system.
+
+    * tools:
+      - Fixed version number, releasenotes and mklibversion.sh.
+      - Fixed the problems in.
+      1.Bug description: using LITEOS_PLATFORM parameter to distinguish temporary files of each platform is nonsense and may introduce bugs
+      2.Fix description: remove LITEOS_PLATFORM parameter for liblist.sh and scatter.sh
+
+
+Huawei LiteOS V100R002C10B042   2016/12/12
+Huawei LiteOS 1.2.5
+-----------
+New Features The following are some new features with this release.
+
+    * fs:
+      - Added the feature to provide 64bit about vfs
+
+    * net:
+      - Added new API of use tftp Transfer files to memory.
+
+Bug Fixs The following are some bug fixs with this release.
+
+    * kernel:
+      - Fixed the problems in.
+        1.Bug description:
+        1) the elf_symbol.so put users into inconvenience when dynload loadding.
+        2) it'll result in failure when call the LOS_LdInit function more than once.
+        3) when load the .o files, some section is not 4Bytes aligned, and it result in loadding failed.
+        2.Fix description:
+        1) make the elf_symbol.so transparent, users no need to cooperate this globl symbol file any more.
+        2) delete the LOS_LdInit function.
+        3) when load the .o files, allows not-4Bytes aligned sections.
+      - Fix kernel bug when tick interrupt comes before osSchedule.
+
+    * fs:
+      - Added: support recognizing disk without mbr
+      - Removed fs_sendfile.c which unused.
+
+    * drivers:
+      - Add USB/Host ethernet driver for AX8872B device.
+
+    * platform:
+      - make libversion based on cpu.
+
+    * net:
+      - Added lwip macro configuration document "Readme" for users.
+      - Fixed bug, update lwip code to VPP2.0 V100R001C20 from VPP team.
+
+    * tools:
+      - Fixed bug, iperf tcp tx task can excute nomally in telnet.
+
+Huawei LiteOS V100R002C10B033   2016/11/24
+Huawei LiteOS 1.2.4
+-----------
+New Features
+The following are some new features with this release.
+
+Bug Fixs
+The following are some bug fixs with this release.
+
+    * compat:
+      - Added the judge of parametric for alignment.The alignment was zero returned EINVAL
+      - Fixed the interface (wait_event_interruptible_timeout) that leads to low efficiency of mass gadget, because of while(1).
+
+    * kernel:
+      - Added filter for MEMUSE add up, so just system pool can be count
+      - Added the judge of parametric for uwBundary.
+
+    * doc:
+      - Fixed bug, updated LWIP docs.
+
+    * net:
+      - Fixed bug, update lwip form vpp.
+      1. Performance optimization changes with the dma allocation change for zero copy
+      2. PF_PACKET family support for SOCK_RAW type sockets.
+
+    * tools:
+      - This problem is the same with   DTS2016102101551. Fixed the problems in tools/scripit.
+      1.Bug description: It's rely on the awk tool when create the elf_symbol.so in Huawei LiteOS dynload tools,
+      if awk is not point to "GNU Awk" or the version is older than "3.1.8", will result in some error while making elf_symbol.so,
+      and this error is difficult to find out.
+      2.Fix description: First step is check the version of awk before make the elf_symbol.so.
+
+Huawei LiteOS V100R002C10B023   2016/10/25
+Huawei LiteOS 1.2.3
+-----------
+New Features
+The following are some new features with this release.
+
+    * kernel:
+      - Added a callback for runstop, callback called in idle
+
+    * compat:
+      - Added the interface nanosleep()
+
+    * fs:
+      - Added the function about change oppsite path to full path
+      - Added tcp based nfs support
+      - Added disk mutli-partitions feature
+
+    * drivers:
+      - Support USB multi-device
+
+Bug Fixes
+The following are some bug fixs with this release.
+
+    * kernel:
+      - Fixed the prompt information of task and uname
+      - Fixed the problems in dynamic lod when use the *.so is zip-format
+          1)Bug description: when load the *.so in zip format, user must supply a function which is used to calculate the load size, it's too complicated
+          2)Fix description: First calculate the load size by self
+      - Fixed the comment of los_QueueWrite and LOS_QueueWriteCopy
+          1)the param of buffer is in-param
+      - Fixed nfs mount failde when port reused
+
+    * fs:
+      - Modified blib to bcache
+      - Fixed the bug in yaffs
+          1)Bug description: If open a directory, then seek or read the opened fd, will cause a system dump when close this fd
+          2)Fix description: The open function return -1 if the opened-path is a directory, and errno is set to "EISDIR"
+
+    * lib:
+      - Added the API comment of nanosleep
+      - Fixed the comment in time.h
+
+    * platform:
+      - Modify the max support tasks on hi3559 cortex-a17 form 64 to 256
+      - Fixed modify for hi3559_a17 mmu, add a func second_small_page_init
+
+    * net:
+      - Fixed complie error while turning off LWIP
+      - Fixed wifi station mode can not be used
+      - Fixed Qualcomm wifi disconnected after 5 mins while run as AP
+
+Huawei LiteOS V100R002C10B101   2016/9/14
+Huawei LiteOS 1.2.1
+-----------
+New Features
+The following are some new features with this release.
+
+    * kernel:
+      - Add the memory pool maximum memory usage statistics
+
+Bug Fixes
+The following are some bug fixes with this release.
+
+    * compat:
+      - Fixed the comments in mqueue.h and pthread_cond.h
+      - Fixed premises of functions about mqueue and pthread.
+
+    * kernel:
+      - Fixed move memcheck errorID to "los_memory.h" from "los_memory.ph"
+      - modify comment style, fix typos
+      - modify interface api comment
+      - Fixed ICSL check.
+      - Added (1) add dynamic memory usage optimized (2) add implicit dynamic load (3) add dynamic load for zipped shared object
+
+    * lib:
+      - Fix the comments in time.h. 1. change the Chinese comments to English comments.
+
+    * platform:
+      - Fixed the bug of setjmp's return value. 1. if the 2-th param of longjmp is zero, the return value of setjmp should be 1.
+      - platform internal api modify
+      - modify api usage instruction
+
+    * net:
+      - Fixed the prompt of telnet.
+      - Fixed ping self bug, which is only half of requests is received when ping self several times.
+
+    * tools:
+      - Added (1) add script to identify those symbols which cannot be relocated
+
+Huawei LiteOS V100R002C00B307   2016/9/2
+Huawei LiteOS 1.1.7
+-----------
+New Features
+The following are some new features with this release.
+
+Bug Fixes
+The following are some bug fixes with this release.
+
+Huawei LiteOS V100R002C00B306   2016/8/30
+Huawei LiteOS 1.1.6
+-----------
+New Features
+The following are some new features with this release.
+
+Bug Fixes
+The following are some bug fixes with this release.
+
+    * kernel:
+      - Added declaration for LOS_ShowBox in los_membox.h
+
+    * fs:
+      - Added explanatory for proc_fs_init
+      - Fixed ioctl() return value bug.
+
+    * lib:
+      - Fixed the bug of deadlock of nfs for the used of arc4random. 1.used the driver interface instead of vfs interface in arc4random to get random.
+
+    * doc:
+      - Fixed bug, updated lwip version VPP2.0 V100R001C10SPC001B010.
+
+    * net:
+      - Fixed bug, updated lwip version VPP2.0 V100R001C10SPC001B010.
+      - Fixed When the file transfer does not exist and is named and local to the same will overwrite the local file.
+
+Huawei LiteOS V100R002C00B305   2016/8/22
+Huawei LiteOS 1.1.5T1
+-----------
+
+New Features
+The following are some new features with this release.
+
+Bug Fixes
+The following are some bug fixes with this release.
+
+    * kernel:
+      - Fixed the problem that the abnormal call order of task due to the bug of mutex.
+
+    * fs:
+      - Fixed the bug of open file need to check flags
+
+    * lib:
+      - 1.Update strtod function.
+
+    * shell:
+      - Fixed shell commands don't show warning message for error parameter
+
+    * net:
+      - Fixed the warning of pclint in telnet module.
+
+Huawei LiteOS V100R002C00B303   2016/8/11
+Huawei LiteOS 1.1.5T0
+-----------
+
+New Features
+The following are some new features with this release.
+
+Bug Fixes
+The following are some bug fixes with this release.
+
+    * kernel:
+      - Added (1) add interface to flush instruction and data cache (2) flush icache when dynload done
+
+    * fs:
+      - Fixed the bug of arrangement of fs's header file
+
+    * lib:
+      - Fixed:replace rand with arc4random, for the rand is not safety.
+
+    * net:
+      - Fixed the arp commands.Added the judgement of netif if it is NULL.
+
+
+Huawei LiteOS V100R002C00B302   2016/8/1
+Huawei LiteOS 1.1.4T6
+-----------
+New Features
+The following are some new features with this release.
+
+Bug Fixes
+The following are some bug fixes with this release.
+
+    * compat:
+      - Fixed to perfect the API annotations.
+
+    * kernel:
+      - Added (1) modify interfaces of priqueue from external to internal
+      - fixed rename interface LOS_EventDestroy
+      - Add one attention illustration in the annotation of LOS_Msleep.
+      - fix macro FALSE/TRUE compile failed,when using in #if; modify macro FALSE/TRUE define, ((BOOL)0) -> (0U), ((BOOL)1) -> (1U)
+      - Added global variable "g_sys_clock" for storage sys clock
+
+    * fs:
+      - Added (1) fix a vfs and other fs dirent adapt problem
+
+    * shell:
+      - Fixed the bug of history command. 1.Separated from the history command of shell in telnet.
+
+    * net:
+      - Fixed the bug of telnet.Modified the deal with errno,by syncing the lwip modified errno num when return errno
+      - Added . 1) added secure SSP registration with safe function. 2) provided API for configuring the pbuf ram size. 3) provided API for getting the TCP/IP UDP/IP connect information. 4) BSD like socket interface(support multi-thread).
+      - Fixed the bug of history command.
+
+    * platform:
+      -  Fixed bug,uart can change by change a macro in uart.h.
+
+Huawei LiteOS V100R002C00B301   2016/7/21
+Huawei LiteOS 1.1.4T5
+-----------
+New Features
+The following are some new features with this release.
+
+Bug Fixes
+The following are some bug Fixes with this release.
+
+    * compat:
+      - Fixed the interface of irq_bottom_half(). added an input param which will be used in the func of work.
+      - Fixed the bug of pthread priority value in pthread_create.
+        1.when pthread create task select inheritance patterns, and the parent thread created by kernel interface,resulting in property inheritance pthread_attr_t error.
+      - Fixed the bug of message queue.
+        1. when we call the mq_receive and mq_timedreceive, will pass out the data's memory address,but the other task can write over new data into this address after then, so the user may get the wrong data using the address getted before. 2. when we call the mq_receive and mq_timedreceive, the return value is the real-size store in the queue,but the LOS_QueueReadCopy function does not support return the read size,so this size is calculated after call the LOS_QueueReadCopy function, as the same reason, the size stored in the queue is also not save.
+
+    * kernel:
+      - Added func "LOS_MemPoolSizeGet(void *)" for get pool's size
+      - Added func "LOS_MemInfoGet(void *, LOS_MEM_POOL_STATUS *)" for get pool's status
+      - delete "LOS_MemGetUsed(void)","LOS_MemGetTotal(void)"
+      - Add parameter description for public API.
+      - fix the scatter and runstop Redefined Symbol for SAI
+      - change the API of LOS_ScatterLoad,the second parameter type FLASH_READ_FUNC -> SCATTER_FLASH_READ_FUNC
+
+    * platform:
+      - Fixed move los_hw_tick_minor.c to bsp/common from cpu/arm
+      - Fixed the return value of LOS_AtomicAdd
+
+Huawei LiteOS V100R002C00B215   2016/7/12:
+Huawei LiteOS 1.1.4T4
+-----------
+
+New Features
+The following are some new features with this release.
+
+Bug Fixes
+The following are some bug Fixes with this release.
+
+    * compat:
+      - Fixed the bug of message queue. 1. when we call the mq_receive and mq_timedreceive, will pass out the data's memory address,but the other task can write over new data into this address after then, so the user may get the wrong data using the address getted before. 2. when we call the mq_receive and mq_timedreceive, the return value is the real-size store in the queue,but the LOS_QueueReadCopy function does not support return the read size,so this size is calculated after call the LOS_QueueReadCopy function, as the same reason, the size stored in the queue is also not save.
+      - Fixed the bug of pthread_join which the multi-thread joining with one-thread will be block(pended) not release the resources in addition to the first joining thread. 1 In multi-thread joining one-thread case,only the first joining thread return to the correct value 0,other joining thread return to EVAIL. 2 Added corresponding test cases apply
+
+    * kernel:
+      - Fixed Fixed the bug of message queue. 1. when we call the LOS_QueueReadCopy, will pass out the data's memory address, but the other task can write over new data into this address after then, so the user may get the wrong data using the address getted before. 2. the LOS_QueueReadCopy function does not support return the read size, but we need the real-size, so change the paramer of the function.
+
+    * fs:
+      - Fixed the bug of proc file open with O_DIRECTORY oflags and the error number of unlink a directory
+      - Fixed the bug of procfs nonsupport multithread operate
+
+    * lib:
+      - Fixed the bug of vfscanf.The macro of FLOATING_POINT which detetes by pclint modified causeing the floatting point with sscanf scanf is not normal.
+      - Fixed Fixed the bug of pclint in stdio stdlib
+
+    * platform:
+      - Added func "los_sys_mem_set","los_usb_mem_set" which can be called by app to adjust 3731 mem distribution
+      - Fixed use same format of MMU for 16a & 18e & 3731 change func "LOS_MMUParamSet" instead "LOS_MMUAPSet"
+      - Fixed cancel limit of print width.
+
+    * net:
+      - Fixed the bug of ping and dns net commands
+      - Fixed bug of lwip. 1)Bidirectional data transfer support for single socket in  multi-thread environment; 2)Congestion control performance improvement; 3)New config file lwipopts.h for liteos has been added at path /include/conf/liteos/lwipopts.h; 4)New interface implemented for modifying MTU, modifying IP and dual IP support; -netifapi_netif_add -netifapi_netif_set_mtu -netifapi_netif_second_if_add -netifapi_netif_set_addr
+
+Huawei LiteOS V100R002C00B213   2016/6/27
+Huawei LiteOS 1.1.4T3
+-----------
+New Features
+The following are some new features with this release.
+
+Bug Fixes
+The following are some bug Fixes with this release.
+
+    * kernel:
+      - Added (1) add an interface for loading shared object, support for "implicit dynamic load".
+    * drivers
+      - Fixed usage information of ifconfig.
+          - Fixed usage log of ntpdate.
+    * platform
+      - change __dprintf to static.
+
+Huawei LiteOS V100R002C00B211   2016/6/12
+Huawei LiteOS 1.1.4T2
+-----------
+New Features
+The following are some new features with this release.
+
+    * platform:
+      - Added the atomic
+    * fs:
+      -Added the feature of fat filesystem support readonly and hidden
+      -Added a new function that blib block size can be configuration.
+      - decouple vfs and certain fs such as yaffs and fat etc., using FSMAP_ENTRY macro to register a certain fs.
+
+    * shell
+      - remove osCmdReg interface, using SHELLCMD_ENTRY macro to regist a shell command instead.
+    * IDE:
+      - Added: new compiler supported: arm-hisiv500-linux-uclibcgnueabi
+
+Bug Fixes
+The following are some bug Fixes with this release.
+
+    * shell:
+      - Modified the part of commands argument format(hex or decimal) that Depend on the user input
+
+    * tools:
+      - Added:add compiler arm-liteos-linux-uclibcgnueabi
+
+Huawei LiteOS_KernelV100R002C00B116   2016/5/13
+Huawei LiteOS 1.1.4T1
+-----------
+New Features
+The following are some new features with this release.
+
+    * kernel:
+      - OS supported thumb instruction in base kernel and extern kernel(cppsupport,dynload,scatter).
+
+    * drivers:
+      - Added support mtd char device operation;
+
+Bug Fixes
+The following are some bug Fixes with this release.
+
+    * compat:
+      - Fixed timezone,automatically set 0 zone
+
+    * kernel:
+      - Added (1) clean .h .ph up (2) rename functions, macros, structs names in .h and .ph respectively
+      - Added (1) default path management of dynload
+      - Added (1) add scatter load code to 18e app_init (2) modify LITEOS_MINISYS from y to n in board.mk of 18e
+      - modify mem code style include: 1)delete los_dlinkmem 2)modify func interface name
+
+    * fs:
+      - Fixed the bug of the partition command.
+
+    * platform:
+      - rename the LOS_GetCpuTick() to LOS_GetCpuCycle() and raname the osGetCpuTick() to osGetCpuCycle().Because the function of the interfaces is to get the cycle of cpu.
+
+    * shell:
+      - Fixed the display of cpup.Now the sum of cpup is closer to 100.
+      - Fixed the bug of readreg command and statfs,added prompt in writereg command.
+
+HuaweiLite_OS_KernelV100R002C00B111   2016/3/26
+HuaweiLite_OS 1.1.3
+-----------
+New Features
+The following are some new features with this release.
+
+    * shell:
+      - Added "cp" command to copy files.
+
+Bug Fixes
+The following are some bug Fixes with this release.
+
+    * kernel:
+      - Added (1) move some functions, macros and data structure from .h to .ph and .inc
+      - Added (1) restructure kernel directory, ready for interface clean up. (2) add interface to enable unicode, when interface is not called, a big memory can be saved. (3) add some scripts
+      - added some comments for documents
+      - Decoupling the CPUP
+      - Fixed the bug of the memused atistics in task. Memory use in interrupt is not calculated.
+      - Fixed the bug that swtmr may be deleted mistakenly by swtmrid. 1.when the one_off swtmr was self deleting,the swtmrCB id will be changed.when delete swtmr by the original swtmrid,it returns error.
+
+    * fs:
+      - support jffs2 filesystem on TV chip hi3731
+      - Fixed:multi_partition coupling adjustment involves with yaffs, jffs, drivers.
+
+    * lib:
+      - Fixed the bug of the printf memory used.Modified the malloc memory which reduce 32K to 8K
+
+    * drivers:
+      - Fixed 1,fix write large data timeout problerm for spi nor;
+
+    * platform:
+      - Fixed "-help" commands to "help".
+      - Fixed the problem that the hwi Response mechanisms of hi3516a and hi3518e are different.On the platform hi3516a,the next node pointer was got before the the interrupt handler was executed.On the platform hi3518e,the next node pointer was got after the the interrupt handler was executed Modify the hwi Response mechanism of hi3518e consistent with hi3516a's.
+
+    * tools:
+      - Fixed remove -v for CXXFLAGS CFLAGS;
+      - Fixed:multi_partition coupling adjustment involves with yaffs, jffs, drivers.
+
+
+HuaweiLite_OS_KernelV100R002C00B110   2016/3/11
+HuaweiLite_OS 1.1.2
+-----------
+New Features
+The following are some new features with this release.
+
+    * tools:
+      - Upgrade complier from hisv300 to hisv500.
+
+Bug Fixes
+The following are some bug Fixes with this release.
+
+    * kernel:
+      - Fixed wrong cpu usage returned in LOS_xxxCpuUsage api. An error number was returned.
+
+    * fs:
+      - Fixed seekdir() and rewinddir() failed in jffs.
+      - Fixed the bug that mount dir of filesystem jffs2 can be deleted.
+
+
+HuaweiLite_OS_KernelV100R002C00B013   2016/2/20
+HuaweiLite_OS 1.1.1
+-----------
+New Features
+The following are some new features with this release.
+
+    * fs:
+      - Added /proc/mounts node to recognition fat filesystem
+      - Added ramfs support vfs_ramfs_statfs function
+      - Added /proc/mounts node to look over mountpoints info
+
+    * drivers:
+      - Added add netif->drv_set_hwaddr interface;
+      - Added the usb compat layer for wifi
+
+    * platform:
+      - Add drivers support hi3516a hi3519 hi3518ev200;
+      - Added add usb shell command;
+
+Bug Fixes
+The following are some bug Fixes with this release.
+
+    * compat:
+      - Fixed a bug in macro wait_event_interruptible_timeout, mutex should be unlocked before return.
+      - Fixed (1)fixed complete bug that wait_for_completion and wait_for_completion_timeout can not be use if used complete.(2)modify the realization of completion,like semaphore but not use os resource.(3)modify the API of completion.(4)added test case of completion
+      - Fixed remove __KERNEL__ __LITEOS__ macro
+      - Removed the warning of posix  module
+      - Modified the version.Added the public version in unmae->version strings
+      - Added the comment of pthread_cancel.
+      - Fixed the commnet of the pthread_key.Delete the pthread key which is not support.
+      - Fixed the comment of pthread_init_attr.Modify the brief of pthread_attr_init in attention list.
+      - Fixed the bug of pthread_condition.delete the mutex which Affects video play.
+      - Fixed 1,fix gettimeofday time back off bug;
+      - Fixed the bug of los_confg.h .Deleted the useless macro of OS_SYS_MEM_NUM.
+      - Fixed the bug of shell. 1, Fixed the proberm which input the command before shell initialization caused system exceptions 2, Added the Magic flag to forbid register command before shell initialized.
+
+    * kernel:
+      - Fixed bug of CodeCC scan in kernel;
+      - Removed the warning of kernel module
+      - Fixed the case that some swtmr interfaces cannot be used in interrupt
+      - Deleted useless interface declaration in los_sem.h
+      - Fixed los_queue api comments, add LOS_MailAlloc and LOS_MailFree descriptions
+      - Fixed the comment of los_event API.added the retval of macros OS_ERRNO_EVENT_SETBIT_INVALID and OS_ERRNO_EVENT_FLAGS_INVALID in los_EventRead brief.
+      - 1), Fixed memory-check leading crash while system(task module) is not fully initialed. 2), Enable memory check in dynamic memory module while OS_SYS_MEM_CHECK is turning on.
+
+    * fs:
+      - Replace yaffs with authorized license version.
+      - Fixed teh errno of fat
+      - Fixed 1).close ylib cache due to flash service life. 2).add erase block function in ylib's yio_bwrite method,it will erase the block before write according to nand flash write feature.
+      - Fixed the bug of unified the proc module configuration switch
+      - Fixed writev bug in upd, a vector wrote by writev causes multi packages in network.
+      - Fixed a readv bug in c++ environment, about 5s delay after select, readv can get data.
+      - Fixed bug in yaffs that could make a directory or a file named "."
+      - Replace yaffs with authorized license version.
+      - Fixed the bug of unified the proc module configuration switch
+
+    * lib:
+      - Added memset.S, memcpy.S and new memset.c. Optimized the memset() and memcpy().
+      - Removed the warning of libc libm module
+      - Fixed the bug of printf.added the judgment of value type,when print integer value.if not do this,the value of 0x80000000 prints error.
+      - Added cpp header files, compile cpp source file using header files of liteos, no more header files of compiler.
+
+    * drivers:
+      - Fixed 1,remove useless c and head file; 2,use liteos timer instead of lwip timer; 3,add mac addr set interface;
+
+    * platform:
+      - Removed the warning of platform in uart_shell.c
+      - Added codes of cortex-a17 and supported hi3519 based on cortex-a17.memset() used different codes based on LITEOS_CPU_TYPE (1).hi3519 based on cortex-a17 used uart2,added config of uart in console.c (2).replace NUM_HAL_INTERRUPT_UART0 by NUM_HAL_INTERRUPT_UART defined in bsp (3).added codes of cortex-a17 and codes of hi3519 based on cortex-a17 (4).modify config.mk and Config.in to support hi3519 based on cortex-a7 and cortex-a17 (5)memset() used different codes based on LITEOS_CPU_TYPE,nowcpu cortex-a7 used .s files and others used c files.
+      - Deleted the readl macros in clock.h
+      - Sync the comments of readreg and writereg in hi3518e and him5v100.
+      - Fixed the telnet command.Modified the telnet command function.
+      - Added: add net.h for hi3911 and him5v100
+      - Added: add ticks_read interface for hi3911 and him5v100
+      - Fixed the commads.Modify readreg and writereg command which is only support 16hex.
+      - Fixed a bug when memset bss is called in reset_vector, reason is function stack(__svc_stack_top) used by reset_vector located in bss, when memset function called to clear bss raise the bug.
+      - Added:support hi3519 on cortex-a7. 1)modify the Makefile and config.mk to support hi3519. 2)modify board.mk to select DIR of driver(mmc spinor nand). 3)add dsb in interface of irq_trigger()
+
+    * shell:
+      - Fixed the bug of telnet. 1,fixed the input problem in telnet by sercureCRT tool. 2,deleted the redundant printf infomation and added the juedment of repeat operation with telnet on ,off.
+      - Removed the warning of shell module
+      - Fixed the telnet command.Modified the telnet command as: 1,telnet on: Init telnet server. 2,telnet off: Deinit telnet server.
+      - Added a new command name of 'close' to delete the telnet task.
+      - Fixed the bug of pwd. no exist directory shows error.
+
+    * tools:
+      - Added the releaseNotes
+      - Fixed a dynamic load script parameter, make script more easy to use.
+
+Known Issues
+The following are some known issues with this release.
+
+    * kernel:
+      - cpu usage:  The mechanism of cpu usage is different from Linux.
+
+    * fs:
+      - yaffs: ylib, a cache between nand driver and yaffs, is turned off by default in this release.
+      This is a tradeoff between access speed and nand flash lifetime. Turning on ylib may decrease nand
+      flash lifetime because ylib will erase more frequently due to cache update. Add macro
+      CONFIG_FS_YAFFS_CACHE to turn on ylib.

@@ -1,0 +1,367 @@
+#
+# For a description of the syntax of this configuration file,
+# see extra/config/Kconfig-language.txt
+#
+mainmenu "Huawei LiteOS Configuration"
+
+menu "Compiler"
+choice
+    prompt "LiteOS_Compiler_Type"
+    default LOSCFG_COMPILER_HISIV500
+    help
+      Enable hisiv300 or hisiv500 or liteos compiler.
+config LOSCFG_COMPILER_HUAWEILITEOS
+    bool "arm-himix100-linux"
+
+config LOSCFG_COMPILER_LITEOS
+    bool "arm-liteos-linux-uclibcgnueabi"
+
+config LOSCFG_COMPILER_HISIV500
+    bool "arm-hisiv500-linux-uclibcgnueabi"
+
+config LOSCFG_COMPILER_HISIV300
+    bool "arm-hisiv300-linux-uclibcgnueabi"
+config LOSCFG_COMPILER_HISIV600
+    bool "arm-hisiv600-linux-gnueabi"
+endchoice
+
+
+endmenu
+
+menu "Platform"
+
+
+choice
+
+    prompt "IPCAMERA Chip"
+    default LOSCFG_PLATFORM_HI3516A
+    help
+      IPC has several chips:
+      hi3516a
+      hi3518e
+      hi3519
+      hi3519v101
+      hi3559
+      hi3911
+      him5v100
+      hi3516cv300
+
+config LOSCFG_PLATFORM_HI3516A
+    bool "hi3516a"
+
+
+
+config LOSCFG_PLATFORM_HI3518EV200
+    bool "hi3518ev200"
+
+
+config LOSCFG_PLATFORM_HI3519
+    bool "hi3519"
+
+
+config LOSCFG_PLATFORM_HI3519V101
+    bool "hi3519v101"
+
+
+config LOSCFG_PLATFORM_HI3559
+    bool "hi3559"
+
+config LOSCFG_PLATFORM_HI3556
+    bool "hi3556"
+
+config LOSCFG_PLATFORM_HI3911
+    bool "hi3911"
+
+
+config LOSCFG_PLATFORM_HIM5V100
+    bool "him5v100"
+
+
+config LOSCFG_PLATFORM_HI3516CV300
+    bool "hi3516cv300"
+
+config LOSCFG_PLATFORM_HI3731
+   bool "hi3731"
+
+endchoice
+
+choice
+    depends on  LOSCFG_PLATFORM_HI3519
+    prompt "HI3519 Cpu"
+    default LOSCFG_PLATFORM_HI3519_CORTEX_A7
+    help
+      HI3519 has two cpus
+      cortex-a7
+      cortex-a17
+
+config LOSCFG_PLATFORM_HI3519_CORTEX_A7
+   bool "cortex-a7"
+   depends on LOSCFG_PLATFORM_HI3519
+
+config LOSCFG_PLATFORM_HI3519_CORTEX_A17
+   bool "cortex-a17"
+   depends on LOSCFG_PLATFORM_HI3519
+endchoice
+
+choice
+    depends on  LOSCFG_PLATFORM_HI3519V101
+    prompt "HI3519V101 Cpu"
+    default LOSCFG_PLATFORM_HI3519V101_CORTEX_A7
+    help
+      HI3519V101 has two cpus
+      cortex-a7
+      cortex-a17
+
+config LOSCFG_PLATFORM_HI3519V101_CORTEX_A7
+   bool "cortex-a7"
+   depends on LOSCFG_PLATFORM_HI3519V101
+
+config LOSCFG_PLATFORM_HI3519V101_CORTEX_A17
+   bool "cortex-a17"
+   depends on LOSCFG_PLATFORM_HI3519V101
+endchoice
+
+choice
+    depends on  LOSCFG_PLATFORM_HI3559
+    prompt "HI3559 Cpu"
+    default LOSCFG_PLATFORM_HI3559_CORTEX_A7
+    help
+      HI3559 has two cpus
+      cortex-a7
+      cortex-a17
+
+config LOSCFG_PLATFORM_HI3559_CORTEX_A7
+   bool "cortex-a7"
+   depends on LOSCFG_PLATFORM_HI3559
+
+config LOSCFG_PLATFORM_HI3559_CORTEX_A17
+   bool "cortex-a17"
+   depends on LOSCFG_PLATFORM_HI3559
+endchoice
+
+choice
+    depends on  LOSCFG_PLATFORM_HI3556
+    prompt "HI3556 Cpu"
+    default LOSCFG_PLATFORM_HI3556_CORTEX_A7
+config LOSCFG_PLATFORM_HI3556_CORTEX_A7
+   bool "cortex-a7"
+   depends on LOSCFG_PLATFORM_HI3556
+config LOSCFG_PLATFORM_HI3556_CORTEX_A17
+   bool "cortex-a17"
+   depends on LOSCFG_PLATFORM_HI3556
+endchoice
+
+
+endmenu
+
+######################### config options of kernel #####################
+source "../../kernel/Kconfig"
+######################### config options of lib ########################
+source "../../lib/Kconfig"
+######################### config options of compatibility ##############
+menu "Compat"
+source "../../compat/posix/Kconfig"
+source "../../compat/linux/Kconfig"
+endmenu
+
+######################### config options of framework ##################
+#source "../../frameworks/m2mcomm/Kconfig"
+
+######################## config options of filesystem ##################
+menu "FileSystem"
+source "../../fs/vfs/Kconfig"
+source "../../fs/fat/Kconfig"
+source "../../fs/ramfs/Kconfig"
+source "../../fs/yaffs2/Kconfig"
+source "../../fs/nfs/Kconfig"
+source "../../fs/proc/Kconfig"
+source "../../fs/jffs2/Kconfig"
+endmenu
+
+######################## config options of net ############################
+source "../../net/Kconfig"
+
+######################## config options of debug ########################
+menu "Debug"
+config LOSCFG_COMPILE_DEBUG
+    bool "Enable GCC -g Option"
+    default n
+
+    help
+      Answer Y to add -g option in gcc command. But the LiteOS size will be much larger.
+
+config LOSCFG_PLATFORM_ADAPT
+    bool "Enable Os_adapt"
+    default y
+
+    help
+      Answer Y to add os_adapt.c to LiteOS.
+config LOSCFG_THUMB
+    bool "Enable Thumb"
+    default n
+
+    help
+      Answer Y to build thumb version.  This will make LiteOS smaller.
+config LOSCFG_PLATFORM_DVFS
+    bool "Enable Dvfs"
+    default n
+    depends on  LOSCFG_COMPAT_LINUX
+    help
+      Answer Y to enable LiteOS support dynamic voltage and frequency scaling feature for
+      low power consumption.
+
+config LOSCFG_DEBUG_VERSION
+    bool "Enable a Debug Version"
+    default n
+
+    help
+      If you do not select this option that means you enable a release version for LiteOS.
+      It also means you do not want to use debug modules, like shell,telnet,tftp,iperf,
+      ,nfs,ramfs proc and memory check.
+      If you select this option that means you enable a debug version for LiteOS.
+      That means you want a opposite behaviour compared to release version.
+
+
+source "../../shell/Kconfig"
+config LOSCFG_NET_LWIP_SACK_TFTP
+    bool "Enable Tftp"
+    default y
+    depends on LOSCFG_SHELL && LOSCFG_NET_LWIP_SACK && LOSCFG_DEBUG_VERSION
+    help
+      Answer Y to enable LiteOS support tftp cmd and tftp tool.
+source "../../net/telnet/Kconfig"
+source "../../tools/iperf-2.0.5/Kconfig"
+source "../../tools/pcap/Kconfig"
+config LOSCFG_MEMORY_CHECK
+    bool "Enable Memory Check"
+    default y
+    depends on LOSCFG_DEBUG_VERSION
+    help
+      Answer Y to enable LiteOS support memory check function.
+      One is memeory node integrity check.
+      Another one is memory node size check.
+config LOSCFG_BASE_MEM_NODE_INTEGRITY_CHECK
+    int "Enable integrity check or not (0,1)"
+    default 0
+    depends on LOSCFG_MEMORY_CHECK
+config LOSCFG_BASE_MEM_NODE_SIZE_CHECK
+    int "Enable size check or not (0,1)"
+    default 0
+    depends on LOSCFG_MEMORY_CHECK
+
+choice
+    prompt "Enable Uart"
+    default LOSCFG_DRIVERS_UART
+
+    help
+      Enable simple uart (without vfs) only for litekernel.
+      Enable general uart (with vfs) for full code.
+source "../../drivers/uart/Kconfig"
+config LOSCFG_PLATFORM_UART_WITHOUT_VFS
+    bool "Simple Uart"
+
+endchoice
+
+choice
+    prompt "Enable TestSuit or AppInit"
+    default  LOSCFG_PLATFORM_OSAPPINIT
+
+    help
+      Enable osAppinit or testsuit for LiteOS.
+config LOSCFG_PLATFORM_OSAPPINIT
+    bool "Enable Appinit"
+
+endchoice
+
+endmenu
+
+
+######################## config options os drivers ########################
+menu "Driver"
+config LOSCFG_DRIVERS
+    bool "Enable Driver"
+    default y
+
+    help
+      Answer Y to enable LiteOS support driver.
+
+source "../../drivers/gpio/Kconfig"
+source "../../drivers/hidmac/Kconfig"
+
+config LOSCFG_DRIVERS_NETDEV
+    bool "Enable Net Device"
+    default y
+    depends on LOSCFG_DRIVERS && LOSCFG_NET_LWIP_SACK
+    help
+      Answer Y to enable LiteOS support net device.
+
+choice
+    depends on LOSCFG_DRIVERS_NETDEV
+    prompt "MAC"
+    default LOSCFG_DRIVERS_HIGMAC
+    help
+      Enable higmac for hi3516a hi3519.
+      Enable hieth-sf for hi3518ev200 hi3911 and him5v100.
+source "../../drivers/hieth-sf/Kconfig"
+source "../../drivers/higmac/Kconfig"
+endchoice
+
+source "../../drivers/i2c/Kconfig"
+source "../../drivers/mem/Kconfig"
+source "../../drivers/mmc/Kconfig"
+
+
+config LOSCFG_DRIVERS_MTD
+    bool "Enable MTD"
+    default y
+    depends on LOSCFG_DRIVERS && LOSCFG_FS_VFS
+    help
+      Answer Y to enable LiteOS support yaffs and jffs2 multipartion.
+
+source "../../drivers/mtd/nand/Kconfig"
+source "../../drivers/mtd/spi_nor/Kconfig"
+source "../../drivers/random/Kconfig"
+source "../../drivers/rtc/Kconfig"
+source "../../drivers/spi/Kconfig"
+source "../../drivers/usb/Kconfig"
+source "../../drivers/video/Kconfig"
+source "../../drivers/pm/Kconfig"
+
+endmenu
+
+
+menu "Stack Smashing Protector (SSP) Compiler Feature"
+
+choice
+    prompt "Enable stack buffer overflow detection"
+    default  LOSCFG_CC_NO_STACKPROTECTOR
+
+    --help---
+    This option turns on the -fstack-protector GCC feature. This
+    feature puts, at the beginning of functions, a canary value on
+    the stack just before the return address, and validates
+    the value just before actually returning.  Stack based buffer
+    overflows (that need to overwrite this return address) now also
+    overwrite the canary, which gets detected and the attack is then
+    neutralized via a kernel panic.
+
+    This feature requires gcc version 4.2 or above, or a distribution
+    gcc with the feature backported. Older versions are automatically
+    detected and for those versions, this configuration option is
+    ignored. (and a warning is printed during bootup)
+
+config LOSCFG_CC_NO_STACKPROTECTOR
+    bool "-fno-stack-protector"
+
+
+config LOSCFG_CC_STACKPROTECTOR
+    bool "-fstack-protector"
+
+
+config LOSCFG_CC_STACKPROTECTOR_ALL
+    bool "-fstack-protector-all"
+
+
+endchoice
+
+endmenu

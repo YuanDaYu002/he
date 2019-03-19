@@ -1,0 +1,57 @@
+diff -Naru a/cxxstl/c++/4.9.4/bits/stl_tempbuf.h b/cxxstl/c++/4.9.4/bits/stl_tempbuf.h
+--- a/cxxstl/c++/4.9.4/bits/stl_tempbuf.h	2017-01-19 10:21:02.654591000 +0800
++++ b/cxxstl/c++/4.9.4/bits/stl_tempbuf.h	2017-01-19 10:21:19.838591000 +0800
+@@ -107,6 +107,7 @@
+    *
+    *  Frees the memory pointed to by __p.
+    */
++  #warning "return_temporary_buffer will leak memory."
+   template<typename _Tp>
+     inline void
+     return_temporary_buffer(_Tp* __p)
+diff -Naru a/cxxstl/c++/4.9.4/iosfwd b/cxxstl/c++/4.9.4/iosfwd
+--- a/cxxstl/c++/4.9.4/iosfwd	2017-01-19 10:21:02.642591000 +0800
++++ b/cxxstl/c++/4.9.4/iosfwd	2017-01-19 10:21:19.830591000 +0800
+@@ -142,7 +142,9 @@
+   typedef basic_stringbuf<char> 	stringbuf;
+ 
+   /// Class for @c char input memory streams.
+-  typedef basic_istringstream<char> 	istringstream;
++  #warning "istringstream WON'T work on LITEOS"
++  //typedef basic_istringstream<char> 	istringstream;
++  typedef basic_istringstream<char> 	istringstream_NOT_SUPPORT;
+ 
+   /// Class for @c char output memory streams.
+   typedef basic_ostringstream<char> 	ostringstream;
+@@ -156,8 +158,10 @@
+   /// Class for @c char input file streams.
+   typedef basic_ifstream<char> 		ifstream;
+ 
++  #warning "ofstream WON'T work on LITEOS"
+   /// Class for @c char output file streams.
+-  typedef basic_ofstream<char> 		ofstream;
++  //typedef basic_ofstream<char> 		ofstream;
++  typedef basic_ofstream<char> 		ofstream_NOT_SUPPORT;
+ 
+   /// Class for @c char mixed input and output file streams.
+   typedef basic_fstream<char> 		fstream;
+@@ -182,7 +186,8 @@
+   typedef basic_stringbuf<wchar_t> 	wstringbuf;
+ 
+   /// Class for @c wchar_t input memory streams.
+-  typedef basic_istringstream<wchar_t> 	wistringstream;
++  //typedef basic_istringstream<wchar_t> 	wistringstream;
++  typedef basic_istringstream<wchar_t> 	wistringstream_NOT_SUPPORT;
+ 
+   /// Class for @c wchar_t output memory streams.
+   typedef basic_ostringstream<wchar_t> 	wostringstream;
+@@ -197,7 +202,8 @@
+   typedef basic_ifstream<wchar_t> 	wifstream;
+ 
+   /// Class for @c wchar_t output file streams.
+-  typedef basic_ofstream<wchar_t> 	wofstream;
++  //typedef basic_ofstream<wchar_t> 	wofstream;
++  typedef basic_ofstream<wchar_t> 	wofstream_NOT_SUPPORT;
+ 
+   /// Class for @c wchar_t mixed input and output file streams.
+   typedef basic_fstream<wchar_t> 	wfstream;

@@ -2237,16 +2237,19 @@ int remux_exit(void)
 {
 	remux_run = 0;//通知remux 业务退出
 	//需要等待remux业务将buf中最后没有存满1s的数据写入文件
-	/*
-	if(0 == remux_write_last_ok)
-	{
-		DEBUG_LOG("waiting  remux_write_last_ok(%d)...\n",remux_write_last_ok);
-		usleep(1000*100);
-	}
-	*/
 	DEBUG_LOG("into pthread_cond_wait !\n");
+	
+	unsigned int timeout_ms = 1000*3; //最多等待3S
+	struct timespec abstime;
+	struct timeval now;
+	gettimeofday(&now, NULL);
+	int nsec = now.tv_usec * 1000 + (timeout_ms % 1000) * 1000000;
+	abstime.tv_nsec = nsec % 1000000000;
+	abstime.tv_sec = now.tv_sec + nsec / 1000000000 + timeout_ms / 1000;
+
 	pthread_mutex_lock(&remux_write_last_mut);
-		pthread_cond_wait(&remux_write_last_ok, &remux_write_last_mut); //当异常逻辑退出时，该处会阻塞，需修改
+		//pthread_cond_wait(&remux_write_last_ok, &remux_write_last_mut); //当异常逻辑退出时，该处会阻塞，需修改
+		pthread_cond_timedwait(&remux_write_last_ok, &remux_write_last_mut,&abstime);
 	pthread_mutex_unlock(&remux_write_last_mut);
 		
 	//===释放=======================================

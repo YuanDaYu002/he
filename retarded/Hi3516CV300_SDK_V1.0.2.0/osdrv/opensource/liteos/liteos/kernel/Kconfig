@@ -1,0 +1,62 @@
+menu "Kernel"
+config LOSCFG_KERNEL_LITEKERNEL
+    bool "Enable Lite Kernel"
+    default y
+    help
+      This option will enable lite kernel of LiteOS. This is a basic feature,
+      so you should say Y here.
+
+config LOSCFG_KERNEL_EXTKERNEL
+    bool "Enable Extend Kernel"
+    default y
+    depends on  LOSCFG_KERNEL_LITEKERNEL
+    help
+      This option will enable extend Kernel of LiteOS.  Extend kernel include
+      cppsupport, cpup, dynload, runstop and scatter. You can select one or some
+      of them.
+
+config LOSCFG_KERNEL_CPPSUPPORT
+    bool "C++ Support"
+    default y
+    depends on LOSCFG_KERNEL_EXTKERNEL
+    help
+      If you wish to build LiteOS with support for C++.
+
+config LOSCFG_KERNEL_CPP_EXCEPTIONS_SUPPORT
+    bool "C++ Exceptions Support"
+    default n
+    depends on LOSCFG_KERNEL_CPPSUPPORT
+    help
+      If you wish to build LiteOS with exceptions support for C++, eg. try...catch().
+
+config LOSCFG_KERNEL_CPUP
+    bool "Enable Cpup"
+    default y
+    depends on LOSCFG_KERNEL_EXTKERNEL
+    help
+      If you wish to build LiteOS with support for cpup.
+
+config LOSCFG_KERNEL_DYNLOAD
+    bool "Enable Dynamic Load Feature"
+    default y
+    depends on LOSCFG_KERNEL_EXTKERNEL
+    help
+      If you wish to build LiteOS with support for dynamic load.
+
+config LOSCFG_KERNEL_RUNSTOP
+    bool "Enable Run stop Feature"
+    default y
+    depends on LOSCFG_KERNEL_EXTKERNEL
+    help
+      If you wish to build LiteOS with support for run-stop.
+
+config LOSCFG_KERNEL_SCATTER
+    bool "Enable Scatter Feature"
+    default y
+    depends on LOSCFG_KERNEL_EXTKERNEL
+    help
+      If you wish to build LiteOS with support for scatter.
+endmenu
+
+
+
