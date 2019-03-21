@@ -3154,7 +3154,6 @@ char *encoder_request_jpeg(int channel, int *size, int image_size)
         ERROR_LOG("select time out, exit thread\n");
         goto STOP_RECE_PIC;
     }
-    DEBUG_LOG("JPEG 005 \n");
 
     if (FD_ISSET(venc_fd, &read_fds)) 
     {
@@ -3245,7 +3244,7 @@ int hal_encoder_init(HLE_S32 pack_count)
     {
         for (j = 0; j < STREAMS_PER_CHN; j++) 
         {
-            //创建编码通道组，并绑定到VI physical channel
+            //创建 venc 编码通道，并绑定到 vpss 对应通道
             
             int encChn = GET_ENC_CHN(i, j);
 
@@ -3277,9 +3276,6 @@ int hal_encoder_init(HLE_S32 pack_count)
         pthread_mutex_init(roi_lock + i, NULL);
     }
 
-    /*----------------------------------------------*/
-    //jpeg_init(0,IMAGE_SIZE_1920x1080);
-    /*----------------------------------------------*/
     enc_ctx.running = 1;
     
    
@@ -3352,7 +3348,6 @@ void hal_encoder_exit(void)
         pthread_mutex_destroy(roi_lock + i);
     }
 
-    //jpeg_exit(0);
     
 }
 
