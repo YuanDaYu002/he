@@ -106,8 +106,6 @@ static HLE_S32 media_server_exit(void)
 *参数 ： 	   arg： 
 *返回值 ：	   NULL
 *****************************************************************/
-HLE_S32 connected_client_num = 0;
-
 static void* media_server_Idle(void*arg)
 {
 
@@ -138,11 +136,8 @@ static void* media_server_Idle(void*arg)
 	{
 		
 		//do something
-		connected_client_num = P2P_handle.Session_num;
 		//printf("connected_client_num = %d\n",connected_client_num);
 		usleep(50*1000);//该延迟不宜太长，因为connected_client_num的值不能实时更新，将导致编码队列的编码数据包累积过多。
-		
-	
 		
 
 	}
@@ -276,6 +271,7 @@ P2P_restart:
 		
     return NULL;
 }
+
 
 
 

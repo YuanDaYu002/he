@@ -96,23 +96,23 @@ typedef struct _med_ser_init_info_t
 	const HLE_S8 		*app_version;
 	const HLE_S8 		*network_interface;			//网卡名称 wlan0, ra0, eth0 ...；
 	const HLE_S8 		*high_resolution;			//主码流(高清)的分辨率,格式:1920*1080;
-	const HLE_S8 		*secondary_resolution;		//次码流(普清)的分辨率,格式:1280*720;
-	const HLE_S8 		*low_resolution;			//低码流(低清)的分辨率,格式:640*480;
+	const HLE_S8 		*secondary_resolution;		//次码流(普清)的分辨率,格式:960*544;
+	const HLE_S8 		*low_resolution;			//低码流(低清)的分辨率,格式:480*272;
 
 	key_t msg_queue_key;				//消息队列键值（设备端app和media server 之间进行通信,
 										//media_server_init会初始化）。需不需要这个东西呢？？？
 	
 	/*服务器返回时间戳校时，回调函数*/
-	void (*timing_callback)(time_t timestamp);
+	void (*timing)(time_t timestamp);
 
 	/*设备上线会回调该函数，告知设备软件设备已上线*/
-	void (*device_is_online_callback)(HLE_S32 status);
+	void (*device_is_online)(HLE_S32 status);
 	
 	/*告警的推送策略设置接口,服务器下发的告警策略，media server 会调用该接口进行设置
  	  @condition:策略
  	  @condition_count:策略的条数
  	*/
-	void (*set_push_condition_callback)(med_ser_alarm_push_condition_t *condition,HLE_S32 condition_count);
+	void (*set_push_condition)(med_ser_alarm_push_condition_t *condition,HLE_S32 condition_count);
 	
 
 	/*
@@ -122,14 +122,14 @@ typedef struct _med_ser_init_info_t
  	  @frame_rate: 当type为1时，表示码流帧率
  	  @bit_rate: 当type为1时，表示码流码率，单位Kbit		
 	*/
-	void (*set_stream_temporary_callback)(HLE_S32 type, HLE_S32 stream_type, HLE_S32 frame_rate, HLE_S32 bit_rate);	
+	void (*set_stream_temporary)(HLE_S32 type, HLE_S32 stream_type, HLE_S32 frame_rate, HLE_S32 bit_rate);	
 	
 	/*
  	  临时设置或者恢复码流的gop
   	  @type: 1为临时设置，0为恢复默认
  	  @gop: I帧间隔,1~10S
  	*/
-	void (*on_set_stream_gop_callback)(HLE_S32 type, HLE_S32 gop);
+	void (*on_set_stream_gop)(HLE_S32 type, HLE_S32 gop);
 
 	/*
 	 一系列获取帧返回的接口
@@ -137,34 +137,50 @@ typedef struct _med_ser_init_info_t
 	 @frame_addr:帧地址
 	 @length: 帧长度 
 	*/
-	HLE_S32 (*get_one_YUV_frame_callback )(HLE_S32 stream_id,const void*frame_addr,HLE_S32 length);
-	HLE_S32 (*get_one_H264_frame_callback)(HLE_S32 stream_id,const void*frame_addr,HLE_S32 length);
-	HLE_S32 (*get_one_H265_frame_callback)(HLE_S32 stream_id,const void*frame_addr,HLE_S32 length);
-	HLE_S32 (*get_one_JPEG_frame_callback)(const void*frame_addr,HLE_S32 length);
-	HLE_S32 (*get_one_g711_frame_callback)(const void*frame_addr,HLE_S32 length);
-	HLE_S32 (*get_one_g726_frame_callback)(const void*frame_addr,HLE_S32 length);
-	HLE_S32 (*get_one_PCM_frame_callback )(const void*frame_addr,HLE_S32 length); 
+	HLE_S32 (*get_one_YUV_frame )(HLE_S32 stream_id,const void*frame_addr,HLE_S32 length);
+	HLE_S32 (*get_one_H264_frame)(HLE_S32 stream_id,const void*frame_addr,HLE_S32 length);
+	HLE_S32 (*get_one_H265_frame)(HLE_S32 stream_id,const void*frame_addr,HLE_S32 length);
+	HLE_S32 (*get_one_JPEG_frame)(const void*frame_addr,HLE_S32 length);
+	HLE_S32 (*get_one_g711_frame)(const void*frame_addr,HLE_S32 length);
+	HLE_S32 (*get_one_g726_frame)(const void*frame_addr,HLE_S32 length);
+	HLE_S32 (*get_one_PCM_frame )(const void*frame_addr,HLE_S32 length); 
 
+	/*
+	 请求编码流 
+	 @channel ： VI通道号（0）
+	 @stream_index ：码流编码
+	 @auto_rc ： 是否影响自动码率控制，1---影响，0---不影响
+	 返回： 
+	 	成功：>0 的stream_id
+	 	失败： < 0 的错误码
+	*/
+	HLE_S32 (*encoder_request_stream)(int channel, int stream_index, int auto_rc);
+
+	/*
+	 释放一个包数据（编码帧）
+	*/
+	HLE_S32 (*encoder_release_packet)(void *pack);
+
+	/*
+	 释放编码流 
+	 @stream_id : encoder_request_stream 返回的值
+	*/
+	HLE_S32 (*encoder_free_stream)(int stream_id);
+	
 	/*
 	 获取一个编码帧返回（实时流传输）。
 	 	考虑编码后的缓存buffer，如果视频帧和audio帧是在一个大buffer中均匀混合的，
 	 	media server就不区分是音频帧还是视频帧,在传输实时流也不需要去区分。
-	 @stream_id（传入）: 编码流编号, 0:1920*1088P , 1:960*544P, 2:480*272
+	 @stream_id（传入）: 编码流编号, 0:1920*1080P , 1:960*544P, 2:480*272
 	 @have_audio（传入）：是否需要audio帧
 	 @pack_addr（返回）：编码帧所在的包的首地址，用于发送完成后释放数据包
 	 @frame_addr（返回）:编码帧地址
 	 @frame_length: 编码帧长度 
 	*/
-	HLE_S32 (*get_one_encoded_frame_callback)(HLE_S32 stream_id,HLE_S8 have_audio, void **pack_addr, void**frame_addr,HLE_S32* frame_length);
-	
-	/*
-		编码帧（包）的引用计数减1回调接口，加1在get_one_encoded_frame_callback函数里边执行
-		如果减1后帧引用计数为0,则帧缓存会被释放
-	*/
-	HLE_S32 (*dec_frame_ref_callback)(void*pack_addr);
+	HLE_S32 (*encoder_get_packet)(HLE_S32 queue_id,HLE_S8 have_audio, void **pack_addr, void**frame_addr,HLE_S32* frame_length);
+	//ENC_STREAM_PACK* (*encoder_get_packet)(int stream_id);
 
-
-	HLE_S32 (*set_device_id_callback)(device_id_t*data,HLE_S32 length);
+	HLE_S32 (*set_device_id)(device_id_t*data,HLE_S32 length);
 	
 	//强制I帧回调函数
 	HLE_S32 (*encoder_force_iframe)(HLE_S32 channel, HLE_S32 stream_index);
@@ -228,6 +244,7 @@ int dowload_upadte_file(int argc,char**argv);
 
 #endif
  
+
 
 
 

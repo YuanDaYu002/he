@@ -147,6 +147,7 @@ static ENC_STREAM_ATTR defEncStreamAttr[STREAMS_PER_CHN] = {
     },
 };
 
+/*设置audio帧标志位（是否进行 audio 帧编码）*/
 int encoder_if_have_audio(int stream_id,char have_audio)
 {
     if(stream_id > ENC_STREAM_NUM || stream_id < 0)
@@ -2870,6 +2871,7 @@ int encoder_request_stream(int channel, int stream_index, int auto_rc)
     }
 
     int encChn = GET_ENC_CHN(channel, stream_index);
+        DEBUG_LOG("sdp_request_queue encChn(%d)\n",encChn);
     return sdp_request_queue(encChn, auto_rc);
 }
 
@@ -3350,6 +3352,7 @@ void hal_encoder_exit(void)
 
     
 }
+
 
 
 

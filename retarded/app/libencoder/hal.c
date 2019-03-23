@@ -466,30 +466,50 @@ HLE_S32 get_one_JPEG_frame(const void*frame_addr,HLE_S32 length)
 }
 
 
-int client_stream_id = -1; //后边最好定义一个能直返回正在请求流编号的接口替换
-HLE_S32 get_one_encoded_frame(HLE_S32 stream_id,HLE_S8 have_audio, void **pack_addr, void**frame_addr,HLE_S32* frame_length)
+static char audio_status = 1; //标记是否需要音频编码(默认有音频)
+HLE_S32 MS_encoder_get_packet(HLE_S32 queue_id,HLE_S8 have_audio, void **pack_addr, void**frame_addr,HLE_S32* frame_length)
 {
 
-    if(stream_id > ENC_STREAM_NUM || stream_id < 0)
-        return HLE_RET_EINVAL;
-
-    client_stream_id = stream_id;
-    int skip_len = 0;
-
-    encoder_if_have_audio(stream_id,have_audio);
-
-    ENC_STREAM_PACK *pack = encoder_get_packet(stream_id);
-    if(NULL == pack)
+    if(NULL == pack_addr || NULL == frame_addr || NULL == frame_length)
     {
-        return HLE_RET_ERROR;
+        ERROR_LOG("Illegal parameter!\n");
+        return HLE_RET_EINVAL;
     }
-    
+       
+    /*
+    if(audio_status != have_audio)//audio 标记有变化再修改
+    {
+        audio_status = have_audio;
+        //encoder_if_have_audio(stream_id,have_audio);//应该是直接判断包是否为音频包，进行过滤
+    }
+    */
+    ENC_STREAM_PACK *pack = NULL;
+    while(1)
+    {
+        pack = encoder_get_packet(queue_id);
+        if(NULL == pack)
+        {
+            ERROR_LOG("encoder_get_packet failed ! queue_id = %d\n",queue_id);
+            return HLE_RET_ERROR;
+        }
+        
+        FRAME_HDR *header = (FRAME_HDR *) pack->data;
+        if( !(have_audio) && header->type == 0xFA)//不需要audio帧 ,则过滤
+        {
+            encoder_release_packet(pack);
+            continue;
+        }
+        else  //不需要audio帧 ，则不需处理
+        {
+            break;
+        }
+    }
+
     
     *pack_addr = pack;
     *frame_addr = pack->data;
     *frame_length = pack->length;
-    //printf("get pack pack_addr(%p)  frame_addr(%p)  frame_length(%d) bytes\n",*pack_addr,*frame_addr,*frame_length);
-
+   // printf("get pack pack_addr(%p) frame_addr(%p) frame_length(%d) bytes\n",*pack_addr,*frame_addr,*frame_length);
 
     return HLE_RET_OK;
 }
@@ -499,6 +519,7 @@ HLE_S32 get_one_encoded_frame(HLE_S32 stream_id,HLE_S8 have_audio, void **pack_a
 /*
     media server 回调函数，编码帧（包）的引用计数减1
 */
+/*
 extern int spm_dec_pack_ref(ENC_STREAM_PACK *pack);
 int dec_frame_ref(void *pack_addr)
 {
@@ -512,16 +533,39 @@ int dec_frame_ref(void *pack_addr)
     
     return HLE_RET_OK;
 }
+*/
+
+/*
+media server 释放一个包（回调接口）
+返回：
+    失败：-1
+    成功：0
+*/
+int MS_encoder_release_packet(void* pak)
+{
+    if(NULL == pak)
+    {
+        ERROR_LOG("the pak is NULL!\n");
+        return -1;
+    }
+    
+    ENC_STREAM_PACK * pack = (ENC_STREAM_PACK*)pak;
+    return encoder_release_packet(pack);
+    
+}
 
 int media_server_module_init(void)
 {
     med_ser_init_info_t med_ser_init_info;
     memset(&med_ser_init_info,0,sizeof(med_ser_init_info));
-    
-    med_ser_init_info.get_one_encoded_frame_callback =get_one_encoded_frame;
-    med_ser_init_info.dec_frame_ref_callback = dec_frame_ref;
+
+    med_ser_init_info.encoder_request_stream = encoder_request_stream;
+    med_ser_init_info.encoder_get_packet = MS_encoder_get_packet;
+    med_ser_init_info.encoder_release_packet = MS_encoder_release_packet;
+    med_ser_init_info.encoder_free_stream = encoder_free_stream;
+   
     med_ser_init_info.encoder_force_iframe = encoder_force_iframe;
-    med_ser_init_info.get_one_JPEG_frame_callback = get_one_JPEG_frame;
+    med_ser_init_info.get_one_JPEG_frame = get_one_JPEG_frame;
     med_ser_init_info.use_wireless_network = 1;
     //其余的项暂时不初始化，以后需要再加
     
@@ -551,7 +595,7 @@ int app_main(int argc, char *argv[])
     }
     
 
-    #if 0
+    #if 1
 
     ret = media_server_module_init();
     if (HLE_RET_OK != ret) {
@@ -584,7 +628,7 @@ int app_main(int argc, char *argv[])
         //获取queue_id
         id[i] = encoder_request_stream(0, i, 1);
         
-        
+        DEBUG_LOG("stream id[%d] = %d\n",i, id[i]);
         char buf[50];
         snprintf(buf, sizeof(buf), "/jffs0/test%d.h264", i);
        // fd[i] = open(buf, O_CREAT | O_WRONLY | O_TRUNC, 0664);
@@ -644,28 +688,7 @@ int app_main(int argc, char *argv[])
     {
          for (i = 0; i < STREAMS_PER_CHN; ++i) 
         {
-            
-     
-            if(connected_client_num >0)//依据queue_id号来决定哪些编码队列不做处理
-            {
-                //流编号和客户端正在拉取的一致，这里就不做处理，直接continue
-                if(i == client_stream_id)
-                {
-                    cycle_num++;
-                    if(10 == cycle_num)
-                    {
-                        printf("client num(%d) app_main... \n",connected_client_num);
-                        cycle_num = 0;
-
-                            
-                    }
-                    printf("continue...\n");
-                    continue;
-                }
-                    
-            }
-            
-                
+      
             ENC_STREAM_PACK *pack = encoder_get_packet(id[i]);
             FRAME_HDR *header = (FRAME_HDR *) pack->data;
             if (header->sync_code[0] != 0 || header->sync_code[1] != 0\
@@ -858,6 +881,7 @@ int app_main(int argc, char *argv[])
 }
 
 #endif
+
 
 
 

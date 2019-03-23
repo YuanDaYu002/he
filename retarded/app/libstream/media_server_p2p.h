@@ -21,7 +21,7 @@
 
 #define CH_CMD				0	//信令传输通道（P2P）
 #define CH_STREAM			1	//编码流传输通道（P2P）
-#define CH_DATA				1
+#define CH_DATA				2	//其他数据传输通道（P2P）
 #define SERVER_NUM			3	// WakeUp Server Number
 #define SIZE_DID 			30	// Device ID Size
 #define SIZE_APILICENSE 	24	// APILicense Size
@@ -129,6 +129,7 @@ void st_info(const HLE_S8 *format, ...);
 
 
 #endif
+
 
 
 

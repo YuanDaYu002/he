@@ -69,7 +69,7 @@ int motion_detect_data_proc(MOTION_CONTEX* ctx)
 	IVE_CCBLOB_S* blob = (IVE_CCBLOB_S*) ctx->blob.pu8VirAddr;
 	HLE_U32 area = 0;
 	
-	printf("\n---into parse result ....----\n");
+	//printf("\n---into parse result ....----\n");
 	for (i = 1; i < blob->u8RegionNum; ++i) 
 	{
 		//可对划定的区域进行过滤，不属于区域内的检测结果过滤掉
@@ -85,12 +85,12 @@ int motion_detect_data_proc(MOTION_CONTEX* ctx)
 	
 	HLE_S32 lvl = area * 100 / detect_region.total_area;//将百分比小数转换成整数
 	
-	printf("*sensitive_level(%d) actual_lvl(%d), area = %d\n ",sensitive_level[ctx->usr_config_level], lvl,area);
+	//printf("*sensitive_level(%d) actual_lvl(%d), area = %d\n ",sensitive_level[ctx->usr_config_level], lvl,area);
 	if (lvl >= sensitive_level[ctx->usr_config_level]) //检测结果连续大于阈值的次数统计
 	{
 		if (ctx->count < 25) ctx->count++;
 		//motion_detect_val |= (1 << ctx->chn);
-		printf("level(%d) > sensitive_level, motion_detect_val = %d\n",sensitive_level[ctx->usr_config_level],motion_detect_val);
+		//printf("level(%d) > sensitive_level, motion_detect_val = %d\n",sensitive_level[ctx->usr_config_level],motion_detect_val);
 		//printf("1111lvl=%d, count=%d\n ", lvl, ctx->count);
 
 	} 
@@ -98,7 +98,7 @@ int motion_detect_data_proc(MOTION_CONTEX* ctx)
 	{
 		if (ctx->count) ctx->count--;
 		//motion_detect_val &= ~(1  << ctx->chn);
-		printf("lvl(%d) < sensitive_level, result count=%d\n ", lvl, ctx->count);
+		//printf("lvl(%d) < sensitive_level, result count=%d\n ", lvl, ctx->count);
 	}
 
 	/***MD告警触发     结果判断******************/
@@ -740,6 +740,7 @@ int motion_detect_write_cfg(void)
 
 	return motion_detect_config(0, &g_motion_detect_artr);
 }
+
 
 
 

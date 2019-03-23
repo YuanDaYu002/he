@@ -250,10 +250,10 @@ extern "C"
     HLE_S32 get_one_JPEG_frame(const void*frame_addr,HLE_S32 length);
 
     /*
-        function:  get_one_encoded_frame
+        function:  MS_encoder_get_packet
         description:  获取一个编码帧，media server 请求编码帧时回调该函数
         args:
-            stream_id(传入) :码流编号
+            queue_id(传入) :申请的码流队列编号
             have_audio(传入):是否有音频帧
             pack_addr（返回）:帧所在的包首地址
             frame_addr（返回）：获取到的帧首地址，用于发送完成后释放数据包
@@ -263,7 +263,7 @@ extern "C"
             <0, 失败，返回值为错误码，具体见错误码定义
      */
 
-    HLE_S32 get_one_encoded_frame(HLE_S32 stream_id,HLE_S8 have_audio,void**pack_addr, void**frame_addr,HLE_S32* frame_length);
+    HLE_S32 MS_encoder_get_packet(HLE_S32 queue_id,HLE_S8 have_audio,void**pack_addr, void**frame_addr,HLE_S32* frame_length);
 
     /*
         function:  media_server_module_init
@@ -281,6 +281,7 @@ extern "C"
 #endif
 
 #endif
+
 
 
 

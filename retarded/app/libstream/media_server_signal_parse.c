@@ -263,13 +263,10 @@ void* cmd_open_living(void* args)
 
 	 printf("videoType(%d)  openAudio(%d)!\n",stream_args.cmd_data.videoType,stream_args.cmd_data.openAudio);
 	
-
+	int queue_id; //申请一道码流（id号）
 	//解析 cmd_body，回传对应码流,目前只有 MAIN_STREAM 和 LOWER_STREAM 两道流
 	if(MAIN_STREAM == stream_args.cmd_data.videoType ||LOWER_STREAM == stream_args.cmd_data.videoType)
 	{
-		void* pack_addr = NULL;
-		void* frame_addr = NULL;
-		HLE_S32 length = 0;
 		st_PPCS_Session Sinfo;
 		int ret;
 		DEBUG_LOG("SessionID(%d): real time stream(%d) transmission start!\n",stream_args.SessionID ,stream_args.cmd_data.videoType);	
@@ -292,26 +289,41 @@ void* cmd_open_living(void* args)
 			ERROR_LOG("change_session_status failed !\n");
 			pthread_exit(NULL) ;
 		}
-		
 
+		/*---请求码流------------------------------------------------------*/
+		int stream_index;
+		if(MAIN_STREAM == stream_args.cmd_data.videoType)
+			stream_index = 0;
+		else
+			stream_index = 1;
+		DEBUG_LOG("stream_index = %d\n",stream_index);
+		queue_id = g_med_ser_envir.encoder_request_stream(0,stream_index,1);//里边自带强制 I 帧
+		if(queue_id < 0)
+		{
+			ERROR_LOG("encoder_request_stream failed !\n");
+			pthread_exit(NULL) ;
+			
+		}
+		DEBUG_LOG("------encoder_request_stream stream_id(%d) stream_index(%d)------\n",queue_id,stream_index);
+		/*---强制I帧------------------------------------------------------*/
 		int first_is_iframe = 0;//初次进入码流发送状态需要强制I帧
-		g_med_ser_envir.encoder_force_iframe(0,stream_args.cmd_data.videoType);
-
+		//g_med_ser_envir.encoder_force_iframe(0,stream_index);
 		HLE_S8 write_err_count = 0;
-				
+		
+		/*---开始获取数据包并发送-----------------------------------------*/		
 		while(OPEN == status.stream_status)//如若客户端退出，自然 stream_status会是0,所以这里不再判断客户端是否在线。
 		{
-			frame_addr = NULL;
-			length = 0;
+			void* pack_addr = NULL;
+			void* frame_addr = NULL;
+			HLE_S32 length = 0;
 
 			memset(&status,0,sizeof(status));
 			get_session_status(stream_args.SessionID,&status);
 			
-			g_med_ser_envir.get_one_encoded_frame_callback(stream_args.cmd_data.videoType,\
-														   stream_args.cmd_data.openAudio,\
-															&pack_addr,\
-															&frame_addr,&length);
- 
+			g_med_ser_envir.encoder_get_packet(queue_id,\
+											   stream_args.cmd_data.openAudio,\
+											   &pack_addr,\
+											   &frame_addr,&length);
 
 			//寻找视频关键帧。
 			if(0 == first_is_iframe)
@@ -320,16 +332,15 @@ void* cmd_open_living(void* args)
 				if(header->type == 0xF8)//找到视频关键帧,进入传输模式
 				{
 					first_is_iframe = 1;
-					DEBUG_LOG("find the I frame!\n");
+					DEBUG_LOG("I frame finded!\n");
 				}
 				else
 				{
-					g_med_ser_envir.dec_frame_ref_callback(pack_addr);
-					//spm_pack_print_ref(pack_addr);
+					//DEBUG_LOG("find I frame ......pack_addr(%#x)\n",pack_addr);  
+					g_med_ser_envir.encoder_release_packet(pack_addr);
+					//DEBUG_LOG("after find I frame !\n");
 					continue;
-				}
-					
-				
+				}	
 			}
 
 			//进入传输状态
@@ -352,8 +363,9 @@ void* cmd_open_living(void* args)
 						
 					}	
 					
-					g_med_ser_envir.dec_frame_ref_callback(pack_addr);
+					g_med_ser_envir.encoder_release_packet(pack_addr);
 
+					/*-----一次发送失败并不能断定为断开连接，后续需要改进-------------*/
 					memset(&status,0,sizeof(status));
 					get_session_status(stream_args.SessionID,&status);
 					status.stream_status = CLOSE;
@@ -362,7 +374,6 @@ void* cmd_open_living(void* args)
 	
 					break;
 
-					
 					#if 0
 					g_med_ser_envir.dec_frame_ref_callback(pack_addr);
 		
@@ -385,24 +396,22 @@ void* cmd_open_living(void* args)
 				}
 				else
 				{
-					//DEBUG_LOG("send success! pack_addr(%p) frame_addr(%p)  length(%d) write(%d)bytes!\n",pack_addr,frame_addr,length,ret);
-					g_med_ser_envir.dec_frame_ref_callback(pack_addr);	
+					//DEBUG_LOG("send success! free pack!\n");
+					g_med_ser_envir.encoder_release_packet(pack_addr);	
 				}
 			}
 			
-		
 		}
 		
 	}
 	else
 	{
 		ERROR_LOG("stream resolution(%d) not support ! \n",stream_args.cmd_data.videoType);
-		pthread_exit(NULL) ;
-		
 	}
 
 	DEBUG_LOG("SessionID(%d): real time stream(%d) closed !\n",stream_args.SessionID,stream_args.cmd_data.videoType);
-	pthread_exit(NULL) ;
+	g_med_ser_envir.encoder_free_stream(queue_id);
+	pthread_exit(NULL);
 	return NULL;
 }
 
@@ -785,6 +794,8 @@ HLE_S32 med_ser_signal_parse(HLE_S32 SessionID,cmd_header_t *data,HLE_S32 length
 
 	return HLE_RET_OK;
 }
+
+
 
 
 
