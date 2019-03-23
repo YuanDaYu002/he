@@ -207,10 +207,10 @@ int amazon_put_even_enable(void)
 *@ Description    :  合成完整的文件上传 amazon URL 
 *@ Input          :
 					path：
-					url:
 					type:
 					finename:
 *@ Output         :
+					url：
 *@ Return         :成功 ：0  		失败：-1 
 *******************************************************************************/
 int amazon_info_complet(char *path, char *url, char *type, char *finename)
@@ -1078,17 +1078,19 @@ void* amazon_put_even(void *arg)
 	strcpy(putname,ts.file_name);
 	//printf("...................%d; %s ;%d,%d\n",ts.ts_flag,putname,ts.offset,  ts.ts_tlen);
 	int ret;
+
+	/*---上传的是图片---*/
 	if(ts.ts_flag == TS_FLAG_JPG)	//jpg
 	{
 		type = TYPE_JPG;
-		if(gInDebug != 0)
-			ret = amazon_curl_send(putname, ts.ts_flag ,type);
+		if(gInDebug != 0)//如果是在调试
+			ret = amazon_curl_send(putname, ts.ts_flag ,type);  //????????????????看差异
 		else //america
-			ret = amazon_curl_send_am(putname, ts.ts_flag ,type);
+			ret = amazon_curl_send_am(putname, ts.ts_flag ,type);//???????????????
 		
 		if(ret != 0)printf("curl_send_ts fail:%d,,,%s\n",++failnum,putname);		
 	}
-	else
+	else /*上传的不是图片*/
 	{	
 		char *p=strstr(putname,".mkv");
 		if(p != NULL)strcpy(p, ".ts");//printf("10000020 =%d \n",ts.ts_flag);
@@ -1157,6 +1159,7 @@ void* amazon_put_even(void *arg)
 		} 
 	}
 	
+	//删除缓存文件
 #if 1 //test
 	//remov /tmp/      ex. /tmp/121915.mkv
 	sprintf(cmd, "rm -rf /tmp/%s*", ts.datetime); 
