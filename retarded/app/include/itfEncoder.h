@@ -18,14 +18,13 @@ extern "C"
 
 //MAKE_HR_ERR
 
-void* fmp4_record(void* args);
-
 
 #ifdef __cplusplus
 }
 #endif
 
 #endif /* ITFENCODER_H */
+
 
 
 

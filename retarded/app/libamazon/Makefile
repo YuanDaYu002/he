@@ -5,6 +5,7 @@ OBJS=$(patsubst %.c,%.o,$(SRCS))
 TARGET=libamazon.a
 TEST_TARGET=test_amazon
 
+
 .PHONY: all clean test
 
 all:$(TARGET)
