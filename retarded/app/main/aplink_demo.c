@@ -18,6 +18,7 @@
     extern "C" {
 #endif
 #endif
+#include <unistd.h>
 #include "hisilink_adapt.h"
 #include "hostapd/hostapd_if.h"
 #include "wpa_supplicant/wpa_supplicant.h"

@@ -11,9 +11,15 @@ export LINUX_ROOT?=$(SDK_PATH)/osdrv/opensource/liteos/$(KERNEL_NAME)
 export LITEOSTOPDIR?=$(LINUX_ROOT)
 include $(LITEOSTOPDIR)/config.mk
 #########################################################################
-INC_FLAGS = -I$(SDK_PATH)/mpp/include -I$(SDK_PATH)/osal/include -I$(MY_PATH)/include -I$(MY_PATH)/3rdinc
+INC_FLAGS = -I$(SDK_PATH)/mpp/include -I$(SDK_PATH)/osal/include -I$(MY_PATH)/include -I$(MY_PATH)/3rdinc 
 INC_FLAGS += -I$(MY_PATH)/3rdinc/faac
+#INC_FLAGS += -I$(MY_PATH)/3rdinc/curl
+INC_FLAGS += -I$(MY_PATH)/3rdinc/cJSON
+INC_FLAGS += -I$(MY_PATH)/3rdinc/openssl
 INC_FLAGS += -I$(LITEOSTOPDIR)/lib/libc/kernel/uapi/liteos
+#INC_FLAGS += -I$(LITEOSTOPDIR)/compat/linux/include
+INC_FLAGS += -I$(LITEOSTOPDIR)/drivers/mmc/host/himci
+INC_FLAGS += -I$(LITEOSTOPDIR)/platform/bsp/hi3516cv300/include/asm
 ##########################################################################
 CFLAGS = $(LIBS_CFLAGS)
 CFLAGS += $(LITEOS_COPTS) -D__LITEOS__
@@ -83,7 +89,7 @@ SDK_LIB := -lacodec -ldnvqe -lhi3516cv300_adec -lhi3516cv300_aenc -lhi3516cv300_
 -lhi3516cv300_vou -lhi3516cv300_vpss -lhi3516cv300_wdt -l_hiae -l_hiaf -l_hiawb -lhi_cipher \
 -l_hidefog -l_hiirauto -lhi_mipi -lhi_osal -lisp -live -lmd -lmpi -lupvqe -lvirtualhifb -lVoiceEngine \
 -lhi_piris -ltools   
-SDK_LIB += -lcurl -lc -lfmp4Encoder -lfaac
+SDK_LIB +=  -lc -lfmp4Encoder  -lfaac -lcJSON  -lssl -lcrypto -lnecessary
 SDK_LIB += $(SENSOR_LIBS)
 
 

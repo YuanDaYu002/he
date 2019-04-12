@@ -12,7 +12,7 @@
  * at the top of the source tree.
  *
  */
-
+#if 0
 #include "hls_media.h"
 #include "mod_conf.h"
 #include <string.h>
@@ -323,3 +323,10 @@ media_handler_t mp3_file_handler = {
 										.get_media_stats = mp3_media_get_stats,
 										.get_media_data  = mp3_media_get_data
 									};
+
+
+
+
+
+
+#endif

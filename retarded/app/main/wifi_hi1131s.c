@@ -14,6 +14,8 @@
 #include "hilink_link.h"
 #include "driver_hisi_lib_api.h"
 #include "linux/completion.h"
+#include "himci.h"
+
 
 
 typedef enum
@@ -230,6 +232,7 @@ void hi_wifi_register_init(void)
     hi_wifi_rst_set(1);
 }
 
+extern void hi_mci_pad_ctrl_cfg(struct himci_host *host, enum signal_volt voltage);
 void himci_wifi_sdio_detect_trigger(void)
 {
     unsigned int reg_value = 0;
@@ -505,6 +508,7 @@ void hisi_wifi_hostapd_event_cb(enum hostapd_event event)
     }
 }
 
+extern void proc_fs_init(void);
 void hi1131s_init(void)
 {
     hi_wifi_pre_proc();
@@ -521,3 +525,4 @@ void hi1131s_init(void)
             hisi_wlan_wifi_deinit();
     }
 }
+

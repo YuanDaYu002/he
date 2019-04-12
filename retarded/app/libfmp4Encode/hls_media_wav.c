@@ -13,6 +13,8 @@
  *
  */
 
+#if 0
+
 #include "hls_media.h"
 #include "mod_conf.h"
 #include <string.h>
@@ -499,36 +501,8 @@ media_handler_t wav_file_handler = {
 										.get_media_data  = wav_media_get_data
 									};
 
-extern media_handler_t mp3_file_handler;
-extern media_handler_t mp4_file_handler;
 
-/*
-依据文件的后缀识别媒体文件的类型，返回对应的处理句柄
-*/
-media_handler_t* get_media_handler(char* filename)
-{
-	int fn_len = strlen(filename);
-	if ( get_allow_wav() && fn_len > 3 && filename[fn_len-4] == '.' 
-		 && ((filename[fn_len - 3] == 'W' || filename[fn_len - 3] == 'w') 
-		 && (filename[fn_len - 2] == 'A' || filename[fn_len - 2] == 'a') 
-		 && (filename[fn_len - 1] == 'V' || filename[fn_len - 1] == 'v')))
-	{
-		return &wav_file_handler;
-	}else if ( 	get_allow_mp3() && fn_len > 3 && filename[fn_len-4] == '.' 
-				&& ((filename[fn_len - 3] == 'M' || filename[fn_len - 3] == 'm') 
-				&& (filename[fn_len - 2] == 'P' || filename[fn_len - 2] == 'p') 
-				&& (filename[fn_len - 1] == '3')) )
-	{
-		return &mp3_file_handler;
-	}else if ( get_allow_mp4() && fn_len > 3 && filename[fn_len-4] == '.' 
-				&& ((filename[fn_len - 3] == 'M' || filename[fn_len - 3] == 'm') 
-				&& (filename[fn_len - 2] == 'P' || filename[fn_len - 2] == 'p') 
-				&& (filename[fn_len - 1] == '4')) )
-	{
-		return &mp4_file_handler;
-	}
-	return 0;
-}
 
+#endif
 
 

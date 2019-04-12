@@ -1,14 +1,10 @@
 
-
-
-
-
 #include <string.h>
 #include <sys/time.h>
 #include <stdlib.h>
 
 #include "Box.h"
-#include "typeport.h"
+#include "fmp4_print.h"
 #include "my_inet.h"
 
 
@@ -32,7 +28,7 @@ int switch_small_BigEndian(int num)
 //用来以十六进制字节流打印box,用于调试
 void print_char_array(unsigned char* box_name,unsigned char*start,unsigned int length)
 {
-	#ifdef HLE_DEBUG
+	#ifdef FMP4_DEBUG
 		unsigned char*p = start;
 		unsigned int i = 0;
 		printf("\n  %s[]: ",box_name);
@@ -64,7 +60,7 @@ ftyp_box * ftyp_box_init(void)
         	};
 
 	int box_size = sizeof(Array)+sizeof(BoxHeader_t);
-	DEBUG_LOG("ftpy_item malloc size(%d)\n",box_size);
+	FMP4_DEBUG_LOG("ftpy_item malloc size(%d)\n",box_size);
 	ftyp_box *ftyp_item = (ftyp_box *)malloc(box_size);
 	if(NULL == ftyp_item)
 		return NULL;
@@ -81,7 +77,7 @@ ftyp_box * ftyp_box_init(void)
 
 moov_box* moov_box_init(unsigned int box_length)
 {
-	DEBUG_LOG("moov_item malloc size(%d)\n",box_length);
+	FMP4_DEBUG_LOG("moov_item malloc size(%d)\n",box_length);
 	moov_box * moov_item = (moov_box *)malloc(box_length);
 	if(NULL == moov_item)
 		return NULL;
@@ -96,7 +92,7 @@ moov_box* moov_box_init(unsigned int box_length)
 
 moof_box* moof_box_init(unsigned int box_length)
 {
-	DEBUG_LOG("moof_item malloc size(%d)\n",box_length);
+	FMP4_DEBUG_LOG("moof_item malloc size(%d)\n",box_length);
 	moof_box * moof_item = (moof_box *)malloc(box_length);
 	if(NULL == moof_item)
 		return NULL;
@@ -109,7 +105,7 @@ moof_box* moof_box_init(unsigned int box_length)
 
 mdat_box* mdat_box_init(unsigned int box_length)
 {
-	DEBUG_LOG("mdat_item malloc size(%d)\n",box_length);
+	FMP4_DEBUG_LOG("mdat_item malloc size(%d)\n",box_length);
 	mdat_box * mdat_item = (mdat_box *)malloc(box_length);
 	if(NULL == mdat_item)
 		return NULL;
@@ -122,7 +118,7 @@ mdat_box* mdat_box_init(unsigned int box_length)
 
 mfra_box* mfra_box_init(void)
 {
-	DEBUG_LOG("mfra_item malloc size(%d)\n",sizeof(mfra_box));
+	FMP4_DEBUG_LOG("mfra_item malloc size(%d)\n",sizeof(mfra_box));
 	mfra_box * mfra_item = (mfra_box *)malloc(sizeof(mfra_box));
 	if(NULL == mfra_item)
 		return NULL;
@@ -141,11 +137,11 @@ mfra_box* mfra_box_init(void)
 */
 mvhd_box* mvhd_box_init(unsigned int timescale,unsigned int duration)
 {
-	DEBUG_LOG("mvhd_item malloc size(%d)\n",sizeof(mvhd_box));
+	FMP4_DEBUG_LOG("mvhd_item malloc size(%d)\n",sizeof(mvhd_box));
 	mvhd_box * mvhd_item = (mvhd_box *)malloc(sizeof(mvhd_box));
 	if(NULL == mvhd_item)
 	{
-		ERROR_LOG("malloc failed!\n");
+		FMP4_ERROR_LOG("malloc failed!\n");
 		return NULL;
 	}
 		
@@ -193,7 +189,7 @@ mvhd_box* mvhd_box_init(unsigned int timescale,unsigned int duration)
 				0x00, 0x00, 0x00, 0x00, // ----end pre_defined 6 * 4 bytes----
 				0x00, 0x00, 0x00, 0x02  // next_track_ID 下一个track使用的id号
 		};
-		DEBUG_LOG("sizeof(MVHD) = %d\n",sizeof(MVHD));
+		FMP4_DEBUG_LOG("sizeof(MVHD) = %d\n",sizeof(MVHD));
 		memcpy((char*)mvhd_item + 8,MVHD,sizeof(MVHD));//+8是为了跳过header的size和type
 
 		return mvhd_item;
@@ -202,12 +198,12 @@ mvhd_box* mvhd_box_init(unsigned int timescale,unsigned int duration)
 
 trak_box* trak_box_init(unsigned int box_length)
 {
-	DEBUG_LOG("track_item malloc size(%d)\n",box_length);
+	FMP4_DEBUG_LOG("track_item malloc size(%d)\n",box_length);
 	
 	trak_box *track_item = (trak_box*)malloc(box_length);
 	if(NULL == track_item)
 	{
-		ERROR_LOG("trak_box_init error!\n");
+		FMP4_ERROR_LOG("trak_box_init error!\n");
 		return NULL;
 	}
 	memset(track_item,0,box_length);
@@ -220,11 +216,11 @@ trak_box* trak_box_init(unsigned int box_length)
 
 mvex_box*	mvex_box_init(unsigned int box_length)
 {
-	DEBUG_LOG("mvex_item malloc size(%d)\n",box_length);
+	FMP4_DEBUG_LOG("mvex_item malloc size(%d)\n",box_length);
 	mvex_box *mvex_item = (mvex_box*)malloc(box_length);
 	if(NULL == mvex_item)
 	{
-		ERROR_LOG("malloc failed!\n");
+		FMP4_ERROR_LOG("malloc failed!\n");
 		return NULL;
 	}
 	
@@ -239,7 +235,7 @@ mvex_box*	mvex_box_init(unsigned int box_length)
 
 mfhd_box* mfhd_box_init(void)
 {
-	DEBUG_LOG("mfhd_item malloc size(%d)\n",sizeof(mfhd_box));
+	FMP4_DEBUG_LOG("mfhd_item malloc size(%d)\n",sizeof(mfhd_box));
 	mfhd_box *mfhd_item = (mfhd_box*)malloc(sizeof(mfhd_box));
 	if(NULL == mfhd_item)
 		return NULL;
@@ -253,7 +249,7 @@ mfhd_box* mfhd_box_init(void)
 
 traf_box*	traf_box_init(unsigned int box_length)
 {
-	DEBUG_LOG("traf_item malloc size(%d)\n",box_length);
+	FMP4_DEBUG_LOG("traf_item malloc size(%d)\n",box_length);
 	traf_box *traf_item = (traf_box*)malloc(box_length);
 	if(NULL == traf_item)
 		return NULL;
@@ -267,11 +263,11 @@ traf_box*	traf_box_init(unsigned int box_length)
 
 tfra_box * tfra_box_init(void)
 {
-	DEBUG_LOG("tfra_item malloc size(%d)\n",sizeof(tfra_box));
+	FMP4_DEBUG_LOG("tfra_item malloc size(%d)\n",sizeof(tfra_box));
 	tfra_box *tfra_item = (tfra_box*)malloc(sizeof(tfra_box));
 	if(NULL == tfra_item)
 	{
-		ERROR_LOG("malloc failed !\n");
+		FMP4_ERROR_LOG("malloc failed !\n");
 		return NULL;
 	}
 	memset(tfra_item,0,sizeof(tfra_box));
@@ -295,7 +291,7 @@ tfra_video_t * tfra_video_init(void)
 	tfra_video.tfraBox = tfra_box_init();
 	if(NULL == tfra_video.tfraBox)
 	{
-		ERROR_LOG("tfra_video_init failed !\n");
+		FMP4_ERROR_LOG("tfra_video_init failed !\n");
 		return NULL;
 	}
 	return &tfra_video;
@@ -307,7 +303,7 @@ tfra_audio_t * tfra_audio_init()
 	tfra_audio.tfraBox = tfra_box_init();
 	if(NULL == tfra_audio.tfraBox)
 	{
-		ERROR_LOG("tfra_audio_init failed !\n");
+		FMP4_ERROR_LOG("tfra_audio_init failed !\n");
 		return NULL;
 	}
 	return &tfra_audio;
@@ -317,11 +313,11 @@ tfra_audio_t * tfra_audio_init()
 
 mfro_box * mfro_box_init(void)
 {
-	DEBUG_LOG("mfro_item malloc size(%d)\n",sizeof(mfro_box));
+	FMP4_DEBUG_LOG("mfro_item malloc size(%d)\n",sizeof(mfro_box));
 	mfro_box *mfro_item = (mfro_box*)malloc(sizeof(mfro_box));
 	if(NULL == mfro_item)
 	{
-		ERROR_LOG("malloc failed !\n");
+		FMP4_ERROR_LOG("malloc failed !\n");
 		return NULL;
 	}
 	memset(mfro_item,0,sizeof(mfro_box));
@@ -339,11 +335,11 @@ mfro_box * mfro_box_init(void)
 /***三级BOX初始化***************************************/
 tkhd_box* tkhd_box_init(unsigned int trackId,unsigned int duration,unsigned short width,unsigned short height)
 {
-	DEBUG_LOG("tkhd_item malloc size(%d)\n",sizeof(tkhd_box));
+	FMP4_DEBUG_LOG("tkhd_item malloc size(%d)\n",sizeof(tkhd_box));
 	tkhd_box *tkhd_item = (tkhd_box*)malloc(sizeof(tkhd_box));
 	if(NULL == tkhd_item)
 	{
-		ERROR_LOG("malloc failed !\n");
+		FMP4_ERROR_LOG("malloc failed !\n");
 		return NULL;
 	}
 	tkhd_item->header.size = t_htonl(sizeof(tkhd_box));
@@ -389,7 +385,7 @@ tkhd_box* tkhd_box_init(unsigned int trackId,unsigned int duration,unsigned shor
             0x00, 0x00
         };
 			
-		DEBUG_LOG("sizeof(TKHD) = %d\n",sizeof(TKHD));	
+		FMP4_DEBUG_LOG("sizeof(TKHD) = %d\n",sizeof(TKHD));	
 		memcpy((unsigned char*)tkhd_item + 8,TKHD,sizeof(TKHD));//+ 8 为了跳过 header 里边的size和type
 		return tkhd_item;
 	
@@ -397,11 +393,11 @@ tkhd_box* tkhd_box_init(unsigned int trackId,unsigned int duration,unsigned shor
 
 mdia_box* mdia_box_init(unsigned int box_length)
 {
-	DEBUG_LOG("mdia_item malloc size(%d)\n",box_length);
+	FMP4_DEBUG_LOG("mdia_item malloc size(%d)\n",box_length);
 	mdia_box* mdia_item = (mdia_box*)malloc(box_length);
 	if(NULL == mdia_item)
 	{
-		ERROR_LOG("malloc failed !\n");
+		FMP4_ERROR_LOG("malloc failed !\n");
 		return NULL;
 	}
 		
@@ -418,18 +414,18 @@ mdia_box* mdia_box_init(unsigned int box_length)
 trex_box*	trex_box_init(unsigned int trackId)
 {
 
-	DEBUG_LOG("trex_item malloc size(%d)\n",sizeof(trex_box));	
+	FMP4_DEBUG_LOG("trex_item malloc size(%d)\n",sizeof(trex_box));	
 	trex_box* trex_item = (trex_box*)malloc(sizeof(trex_box));
 	if(NULL == trex_item)
 	{
-		ERROR_LOG("malloc failed!\n");
+		FMP4_ERROR_LOG("malloc failed!\n");
 		return NULL;
 	}
 
 	memset(trex_item,0,sizeof(trex_box));
 	trex_item->header.size = t_htonl(sizeof(trex_box));
 	strncpy(trex_item->header.type,"trex",4);
-	DEBUG_LOG("trackId = %d\n",trackId);
+	FMP4_DEBUG_LOG("trackId = %d\n",trackId);
 	
 		 const unsigned char TREX[] = {
             0x00, 0x00, 0x00, 0x00, // version(0) + flags
@@ -449,7 +445,7 @@ trex_box*	trex_box_init(unsigned int trackId)
 
 tfhd_box*	tfhd_box_init(unsigned int trackId)
 {
-	DEBUG_LOG("tfhd_item malloc size(%d)\n",sizeof(tfhd_box));
+	FMP4_DEBUG_LOG("tfhd_item malloc size(%d)\n",sizeof(tfhd_box));
 	tfhd_box* tfhd_item = (tfhd_box*)malloc(sizeof(tfhd_box));
 	if(NULL == tfhd_item)
 		return NULL;
@@ -516,7 +512,7 @@ tfhd_box*	tfhd_box_init(unsigned int trackId)
        // 0x00,0x00,0x00,0x00, //default_sample_flags
         
     	};
-	DEBUG_LOG("ziseof(TFHD) = %d\n",sizeof(TFHD));
+	FMP4_DEBUG_LOG("ziseof(TFHD) = %d\n",sizeof(TFHD));
 	memcpy((unsigned char*)tfhd_item + 8,TFHD,sizeof(TFHD));
 	#endif
 	
@@ -532,7 +528,7 @@ tfdt_box*	tfdt_box_init(int baseMediaDecodeTime)
 	if(NULL == tfdt_item)
 		return NULL;
 	memset(tfdt_item,0,box_size);
-	DEBUG_LOG("tfdt_item malloc size(%d)\n",box_size);
+	FMP4_DEBUG_LOG("tfdt_item malloc size(%d)\n",box_size);
 	
 	tfdt_item->header.size = t_htonl(box_size);
 	strncpy(tfdt_item->header.type,"tfdt",4);
@@ -544,7 +540,7 @@ tfdt_box*	tfdt_box_init(int baseMediaDecodeTime)
 		    (baseMediaDecodeTime >> 8 ) & 0xFF,
 		    (baseMediaDecodeTime) & 0xFF
 			};
-	DEBUG_LOG("sizeof(TFDT) = %d\n",sizeof(TFDT));
+	FMP4_DEBUG_LOG("sizeof(TFDT) = %d\n",sizeof(TFDT));
 	memcpy((unsigned char *)tfdt_item + 8,TFDT,sizeof(TFDT));
 
 	return tfdt_item;
@@ -553,7 +549,7 @@ tfdt_box*	tfdt_box_init(int baseMediaDecodeTime)
 }
 sdtp_box*	sdtp_box_init(void)
 {
-	DEBUG_LOG("sdtp_item malloc size(%d)\n",sizeof(sdtp_box));
+	FMP4_DEBUG_LOG("sdtp_item malloc size(%d)\n",sizeof(sdtp_box));
 	sdtp_box* sdtp_item = (sdtp_box*)malloc(sizeof(sdtp_box));
 	if(NULL == sdtp_item)
 		return NULL;
@@ -571,7 +567,7 @@ sdtp_box*	sdtp_box_init(void)
 
 trun_box*	trun_box_init(unsigned int trackId)
 {
-	DEBUG_LOG("trun_item malloc size(%d)\n",sizeof(trun_box));
+	FMP4_DEBUG_LOG("trun_item malloc size(%d)\n",sizeof(trun_box));
 	trun_box* trun_item = (trun_box*)malloc(sizeof(trun_box));
 	if(NULL == trun_item)
 		return NULL;
@@ -623,7 +619,7 @@ trun_box*	trun_box_init(unsigned int trackId)
 
 mdhd_box* mdhd_box_init(unsigned int timescale,unsigned int duration)
 {
-	DEBUG_LOG("mdhd_item malloc size(%d)\n",sizeof(mdhd_box));
+	FMP4_DEBUG_LOG("mdhd_item malloc size(%d)\n",sizeof(mdhd_box));
 	mdhd_box* mdhd_item = (mdhd_box*)malloc(sizeof(mdhd_box));
 	if(NULL == mdhd_item)
 		return NULL;
@@ -648,7 +644,7 @@ mdhd_box* mdhd_box_init(unsigned int timescale,unsigned int duration)
             0x55, 0xC4, // language: und (undetermined) 媒体语言码。最高位为0，后面15位为3个字符（见ISO 639-2/T标准中定义）
             0x00, 0x00 // pre_defined = 0
         	};
-	DEBUG_LOG("sizeof(MDHD) = %d\n",sizeof(MDHD));
+	FMP4_DEBUG_LOG("sizeof(MDHD) = %d\n",sizeof(MDHD));
 	memcpy((unsigned char*)mdhd_item + 8,MDHD,sizeof(MDHD));
 
 	return mdhd_item;
@@ -672,7 +668,7 @@ hdlr_box*	hdlr_box_init(unsigned int handler_type)
         	};
 			
 	unsigned int box_length = sizeof(FullBoxHeader_t)-4 + sizeof(HDLR);//-4代表除去version + flags的长度，因算到数组HDLR中了
-	DEBUG_LOG("hdlr_item malloc size(%d) sizeof(HDLR) = %d\n",box_length,sizeof(HDLR));
+	FMP4_DEBUG_LOG("hdlr_item malloc size(%d) sizeof(HDLR) = %d\n",box_length,sizeof(HDLR));
 	hdlr_box* hdlr_item = (hdlr_box*)malloc(box_length);
 	if(NULL == hdlr_item)
 		return NULL;
@@ -694,7 +690,7 @@ hdlr_box*	hdlr_box_init(unsigned int handler_type)
 		unsigned char name[] = {0x53,0x6F,0x75,0x6E,0x64,0x48,0x61,0x6E,0x64,0x6C,0x65,0x72,0x00}; //字符串：SoundHandler
 		memcpy(hdlr_item->name,name,sizeof(name));
 		//重新修正长度信息，其实是一样长的。
-		DEBUG_LOG("hdlr_item->header.size = %d\n",sizeof(hdlr_box) + sizeof(name));
+		FMP4_DEBUG_LOG("hdlr_item->header.size = %d\n",sizeof(hdlr_box) + sizeof(name));
 		hdlr_item->header.size = t_htonl(sizeof(hdlr_box) + sizeof(name));
 	}
 	
@@ -705,7 +701,7 @@ hdlr_box*	hdlr_box_init(unsigned int handler_type)
 
 minf_box*	minf_box_init(unsigned int box_length)
 {
-	DEBUG_LOG("minf_item malloc size(%d)\n",box_length);
+	FMP4_DEBUG_LOG("minf_item malloc size(%d)\n",box_length);
 	minf_box*minf_item = (minf_box*)malloc(box_length);
 	if(NULL == minf_item)
 		return NULL;
@@ -722,7 +718,7 @@ minf_box*	minf_box_init(unsigned int box_length)
 
 vmhd_box* vmhd_box_init(void)
 {
-	DEBUG_LOG("vmhd_item malloc size(%d)\n",sizeof(vmhd_box));
+	FMP4_DEBUG_LOG("vmhd_item malloc size(%d)\n",sizeof(vmhd_box));
 	vmhd_box* vmhd_item = (vmhd_box*)malloc(sizeof(vmhd_box));
 	if(NULL == vmhd_item)
 		return NULL;
@@ -738,7 +734,7 @@ vmhd_box* vmhd_box_init(void)
             0x00, 0x00, 0x00, 0x00, // opcolor: 3 * 2 bytes ｛red，green，blue｝
             0x00, 0x00
         	};
-	DEBUG_LOG("sizeof(VMHD) = %d\n",sizeof(VMHD));
+	FMP4_DEBUG_LOG("sizeof(VMHD) = %d\n",sizeof(VMHD));
 	memcpy((unsigned char*)vmhd_item + 8,VMHD,sizeof(VMHD));
 
 	return vmhd_item;
@@ -748,7 +744,7 @@ vmhd_box* vmhd_box_init(void)
 
 smhd_box*	smhd_box_init(void)
 {
-	DEBUG_LOG("smhd_item malloc size(%d)\n",sizeof(smhd_box));
+	FMP4_DEBUG_LOG("smhd_item malloc size(%d)\n",sizeof(smhd_box));
 	smhd_box* smhd_item = (smhd_box*)malloc(sizeof(smhd_box));
 	if(NULL == smhd_item)
 		return NULL;
@@ -763,7 +759,7 @@ smhd_box*	smhd_box_init(void)
             							一般为0，-1.0表示全部左声道，1.0表示全部右声道+2位保留位
 									*/
         };
-	DEBUG_LOG("sizeof(SMHD) = %d\n",sizeof(SMHD));
+	FMP4_DEBUG_LOG("sizeof(SMHD) = %d\n",sizeof(SMHD));
 	memcpy((unsigned char *)smhd_item + 8,SMHD,sizeof(SMHD));
 
 	return smhd_item;
@@ -772,7 +768,7 @@ smhd_box*	smhd_box_init(void)
 
 dinf_box* dinf_box_init(unsigned int box_length)
 {
-	DEBUG_LOG("dinf_item malloc size(%d)\n",box_length);
+	FMP4_DEBUG_LOG("dinf_item malloc size(%d)\n",box_length);
 	dinf_box* dinf_item = (dinf_box*)malloc(box_length);
 	if(NULL == dinf_item)
 		return NULL;
@@ -788,11 +784,11 @@ dinf_box* dinf_box_init(unsigned int box_length)
 
 stbl_box*	stbl_box_init(unsigned int box_length)
 {
-	DEBUG_LOG("stbl_item malloc size(%d)\n",box_length);
+	FMP4_DEBUG_LOG("stbl_item malloc size(%d)\n",box_length);
 	stbl_box* stbl_item = (stbl_box*)malloc(box_length);
 	if(NULL == stbl_item)
 	{
-		ERROR_LOG("malloc failed !\n");
+		FMP4_ERROR_LOG("malloc failed !\n");
 		return NULL;
 	}
 		
@@ -817,7 +813,7 @@ dref_box* dref_box_init(void)
             0x00, 0x00, 0x00, 0x01 // version(0) + flags 当“url”或“urn”的box flag为1时，字符串均为空。
         	};
 	int box_length = sizeof(FullBoxHeader_t)-4 + sizeof(DREF);
-	DEBUG_LOG("dref_item malloc size(%d) sizeof(DREF) = %d\n",box_length,sizeof(DREF));
+	FMP4_DEBUG_LOG("dref_item malloc size(%d) sizeof(DREF) = %d\n",box_length,sizeof(DREF));
 	dref_box* dref_item = (dref_box*)malloc(box_length);
 	if(NULL == dref_item)
 		return NULL;
@@ -825,7 +821,7 @@ dref_box* dref_box_init(void)
 
 	dref_item->header.size = t_htonl(box_length);
 	strncpy(dref_item->header.type,"dref",4);
-	DEBUG_LOG("(unsigned char*)&dref_item->header.version - (unsigned char*)dref_item = %d\n",\
+	FMP4_DEBUG_LOG("(unsigned char*)&dref_item->header.version - (unsigned char*)dref_item = %d\n",\
 			   (unsigned char*)&dref_item->header.version - (unsigned char*)dref_item);
 	memcpy((unsigned char*)dref_item + 8,DREF,sizeof(DREF));
 
@@ -868,11 +864,11 @@ stsd_box*  AudioSampleEntry(unsigned char channelCount,unsigned short sampleRate
 
 	
 	unsigned int mp4a_length = sizeof(mp4a_box);
-	DEBUG_LOG("mp4a_item malloc size(%d) sizeof(mp4a[]) = %d\n",mp4a_length,sizeof(mp4a));
+	FMP4_DEBUG_LOG("mp4a_item malloc size(%d) sizeof(mp4a[]) = %d\n",mp4a_length,sizeof(mp4a));
 	mp4a_box* mp4a_item = (mp4a_box*)malloc(mp4a_length);
 	if(NULL == mp4a_item )
 	{
-		ERROR_LOG("malloc failed!\n");
+		FMP4_ERROR_LOG("malloc failed!\n");
 		return NULL;
 	}
 		
@@ -898,10 +894,10 @@ stsd_box*  AudioSampleEntry(unsigned char channelCount,unsigned short sampleRate
 	}
 	else
 	{
-		ERROR_LOG("sampleRate not support !\n");
+		FMP4_ERROR_LOG("sampleRate not support !\n");
 		return NULL;
 	}
-	DEBUG_LOG("sampleRate (%d)\n",sampleRate);
+	FMP4_DEBUG_LOG("sampleRate (%d)\n",sampleRate);
 			
 		const unsigned char esds[] = {
 		0x00, 0x00, 0x00, 0x00, // version 0 + flags
@@ -969,7 +965,7 @@ stsd_box*  AudioSampleEntry(unsigned char channelCount,unsigned short sampleRate
 		};
 
 	unsigned int esds_length = sizeof(esds_box);
-	DEBUG_LOG("esds_item malloc size(%d) sizeof(esds[]) = %d\n",esds_length,sizeof(esds));
+	FMP4_DEBUG_LOG("esds_item malloc size(%d) sizeof(esds[]) = %d\n",esds_length,sizeof(esds));
 	esds_box*esds_item = (esds_box*)malloc(esds_length);
 	if(NULL == esds_item)
 	{
@@ -983,9 +979,9 @@ stsd_box*  AudioSampleEntry(unsigned char channelCount,unsigned short sampleRate
 	memcpy((unsigned char*)esds_item + 8,esds,sizeof(esds));
 
 	//构造 stsd box
-	//DEBUG_LOG("sizeof(stsd_box) = %d\n",sizeof(stsd_box));
+	//FMP4_DEBUG_LOG("sizeof(stsd_box) = %d\n",sizeof(stsd_box));
 	int stsd_box_size = sizeof(stsd_box) + mp4a_length + esds_length; 
-	DEBUG_LOG("stsd_item malloc size(%d)\n",stsd_box_size);
+	FMP4_DEBUG_LOG("stsd_item malloc size(%d)\n",stsd_box_size);
 	stsd_box* stsd_item = (stsd_box*)malloc(stsd_box_size);
 	if(NULL == stsd_item)
 	{
@@ -1003,7 +999,7 @@ stsd_box*  AudioSampleEntry(unsigned char channelCount,unsigned short sampleRate
 	memcpy((unsigned char*)stsd_item + offset,mp4a_item,mp4a_length);
 	offset += mp4a_length;
 	unsigned int tmp = (unsigned char*)stsd_item + sizeof(stsd_box) + mp4a_length + esds_length - (unsigned char*)stsd_item;
-	DEBUG_LOG("tmp = %d\n",tmp);
+	FMP4_DEBUG_LOG("tmp = %d\n",tmp);
 	
 	//拷贝 esds
 	memcpy((unsigned char*)stsd_item + offset ,esds_item,esds_length);
@@ -1064,13 +1060,13 @@ stsd_box* VideoSampleEntry(unsigned short width,unsigned short height)
 	avcc_box_info_t *avcc_item  = &avcc_box_info;
 	if(NULL == avcc_item->avcc_buf)
 	{
-		ERROR_LOG("avcc_box_info not init !\n");
+		FMP4_ERROR_LOG("avcc_box_info not init !\n");
 		return NULL;
 	}
 	if(avcc_item->buf_length != t_ntohl(avcc_item->avcc_buf->header.size))
 	{
 		free(avcc_item->avcc_buf);
-		ERROR_LOG("avcc_item buf err! avcc_item->buf_length(%d) t_ntohl(avcc_item->avcc_buf->header.size)(%d)\n",\
+		FMP4_ERROR_LOG("avcc_item buf err! avcc_item->buf_length(%d) t_ntohl(avcc_item->avcc_buf->header.size)(%d)\n",\
 					avcc_item->buf_length,t_ntohl(avcc_item->avcc_buf->header.size));
 		return NULL;
 	}
@@ -1079,22 +1075,22 @@ stsd_box* VideoSampleEntry(unsigned short width,unsigned short height)
 	unsigned int box_length = 0;//申请的内存长度
 	unsigned int write_len = 0;//实际写入的长度，用于安全校验
 	//---avc1----------------------------------------------
-	DEBUG_LOG("sizeof(avc1_box) = %d t_ntohl(avcc_item->avcc_buf->header.size)= %d\n",sizeof(avc1_box),t_ntohl(avcc_item->avcc_buf->header.size));
+	FMP4_DEBUG_LOG("sizeof(avc1_box) = %d t_ntohl(avcc_item->avcc_buf->header.size)= %d\n",sizeof(avc1_box),t_ntohl(avcc_item->avcc_buf->header.size));
 	box_length = sizeof(avc1_box)-2 + t_ntohl(avcc_item->avcc_buf->header.size);//pasp box暂未实现	//-2 为了配合解析器，结构体对齐时会补全2字节
 	avc1_box*avc1_item = (avc1_box*)malloc(box_length);
 	if(NULL == avc1_item)
 	{
-		ERROR_LOG("malloc failed !\n");
+		FMP4_ERROR_LOG("malloc failed !\n");
 		free(avcc_item->avcc_buf);
 		return NULL;
 	}
 	memset(avc1_item,0,box_length);
 	
 	avc1_item->sample_entry.header.size = t_htonl(box_length);
-	DEBUG_LOG("avc1_item->sample_entry.header.size  = %x  sizeof(avc1_box) = %d\n",avc1_item->sample_entry.header.size,sizeof(avc1_box));
+	FMP4_DEBUG_LOG("avc1_item->sample_entry.header.size  = %x  sizeof(avc1_box) = %d\n",avc1_item->sample_entry.header.size,sizeof(avc1_box));
 	strncpy(avc1_item->sample_entry.header.type,"avc1",4);
 	//拷贝AVC1数组
-	DEBUG_LOG("sizeof(avc1_item->sample_entry) = %d",sizeof(avc1_item->sample_entry.header));
+	FMP4_DEBUG_LOG("sizeof(avc1_item->sample_entry) = %d",sizeof(avc1_item->sample_entry.header));
 	memcpy((unsigned char*)avc1_item + sizeof(avc1_item->sample_entry.header),AVC1,sizeof(AVC1));
 
 	//拷贝 avcc box
@@ -1104,7 +1100,7 @@ stsd_box* VideoSampleEntry(unsigned short width,unsigned short height)
 	write_len = sizeof(avc1_box)-2 + avcc_item->buf_length;//-2 为了配合解析器
 	if(box_length != write_len)
 	{
-		ERROR_LOG("avc1_item malloc size(%d) but write sizeof(%d)\n",box_length,write_len);
+		FMP4_ERROR_LOG("avc1_item malloc size(%d) but write sizeof(%d)\n",box_length,write_len);
 		free(avcc_item->avcc_buf);
 		free(avc1_item);
 		return NULL;
@@ -1115,13 +1111,13 @@ stsd_box* VideoSampleEntry(unsigned short width,unsigned short height)
 
 	//---stsd----------------------------------------------
 	box_length += sizeof(stsd_box);
-	DEBUG_LOG("stsd_item malloc size(%d)\n",box_length);				 
+	FMP4_DEBUG_LOG("stsd_item malloc size(%d)\n",box_length);				 
 	stsd_box* stsd_item  = (stsd_box*)malloc(box_length);
 	if(NULL == stsd_item)
 	{
 		free(avcc_item->avcc_buf);
 		free(avc1_item);
-		ERROR_LOG("malloc failed!\n");
+		FMP4_ERROR_LOG("malloc failed!\n");
 		return NULL;
 	}
 		
@@ -1139,7 +1135,7 @@ stsd_box* VideoSampleEntry(unsigned short width,unsigned short height)
 
 	//偏移到avc1的位置
 	offset = sizeof(stsd_box);
-	DEBUG_LOG("sizeof(stsd_box) = %d offset = %d\n",sizeof(stsd_box),offset);
+	FMP4_DEBUG_LOG("sizeof(stsd_box) = %d offset = %d\n",sizeof(stsd_box),offset);
 	//填充AVC1 box (已经包含了avcc box)
 	memcpy((unsigned char*)stsd_item + offset,avc1_item,t_ntohl(avc1_item->sample_entry.header.size));
 	write_len = offset + t_ntohl(avc1_item->sample_entry.header.size);
@@ -1148,7 +1144,7 @@ stsd_box* VideoSampleEntry(unsigned short width,unsigned short height)
 		free(avc1_item);
 		free(stsd_item);
 	
-		ERROR_LOG("stsd_item malloc size(%d) but write sizeof(%d)\n",box_length,write_len);
+		FMP4_ERROR_LOG("stsd_item malloc size(%d) but write sizeof(%d)\n",box_length,write_len);
 		return NULL;
 	}
 	//DEBUG***************************************
@@ -1207,11 +1203,11 @@ stts_box*	stts_box_init(void)
             0x00, 0x00, 0x00, 0x00 // entry_count     0个索引
         	};
 	unsigned int box_length = sizeof(STTS)+sizeof(FullBoxHeader_t)-4;//-4:减去 version(0) + flags
-	DEBUG_LOG("stts_item malloc size(%d) sizeof(STTS) = %d\n",box_length,sizeof(STTS));
+	FMP4_DEBUG_LOG("stts_item malloc size(%d) sizeof(STTS) = %d\n",box_length,sizeof(STTS));
 	stts_box* stts_item = (stts_box*)malloc(box_length);
 	if(NULL == stts_item)
 	{
-		ERROR_LOG("malloc failed!\n");
+		FMP4_ERROR_LOG("malloc failed!\n");
 		return NULL;
 	}
 	memset(stts_item,0,box_length);
@@ -1231,7 +1227,7 @@ stsc_box*	stsc_box_init(void)
 	stsc_box *stsc_item = (stsc_box *)stts_box_init();
 	if(NULL == stsc_item)
 	{
-		ERROR_LOG("stsc box init failed!\n");
+		FMP4_ERROR_LOG("stsc box init failed!\n");
 		return NULL;
 	}
 	strncpy(stsc_item->header.type,"stsc",4);
@@ -1248,11 +1244,11 @@ stsz_box* stsz_box_init(void)
         	};
 			
 	unsigned int box_length = sizeof(STSZ)+sizeof(FullBoxHeader_t)-4;//-4:减去 version(0) + flags
-	DEBUG_LOG("stsz_item malloc size(%d) sizeof(STSZ) = %d\n",box_length,sizeof(STSZ));
+	FMP4_DEBUG_LOG("stsz_item malloc size(%d) sizeof(STSZ) = %d\n",box_length,sizeof(STSZ));
 	stsz_box* stsz_item = (stsz_box*)malloc(box_length);
 	if(NULL == stsz_item)
 	{
-		ERROR_LOG("malloc failed!\n");
+		FMP4_ERROR_LOG("malloc failed!\n");
 		return NULL;
 	}
 	memset(stsz_item,0,box_length);
@@ -1271,7 +1267,7 @@ stco_box*	stco_box_init(void)
 	stco_box *stco_item = (stco_box *) stts_box_init();
 	if(NULL == stco_item)
 	{
-		ERROR_LOG("stsc box init failed!\n");
+		FMP4_ERROR_LOG("stsc box init failed!\n");
 		return NULL;
 	}
 	strncpy(stco_item->header.type,"stco",4);
@@ -1320,17 +1316,17 @@ int FrameType(unsigned char* naluData)
     if(naluData[0]==0 && naluData[1]==0 && naluData[2]==0 && naluData[3]==1 && naluData[4]==0x67)
     {
         index = NALU_SPS;
-        printf("---NALU_SPS---\n");
+        //printf("---NALU_SPS---\n");
     }
 	else if(naluData[0]==0 && naluData[1]==0 && naluData[2]==0 && naluData[3]==1 && naluData[4]==0x68)
     {
         index = NALU_PPS;
-        printf("---NALU_PPS---\n");
+        //printf("---NALU_PPS---\n");
     }
     else if(naluData[0]==0 && naluData[1]==0 && naluData[2]==0 && naluData[3]==1 && naluData[4]==0x65)
     {
         index = NALU_I;
-        printf("---NALU_I---\n");
+        //printf("---NALU_I---\n");
     }
     else if(naluData[0]==0 && naluData[1]==0 && naluData[2]==0 && naluData[3]==1 && naluData[4]==0x61)
     {
@@ -1340,11 +1336,11 @@ int FrameType(unsigned char* naluData)
     else if(naluData[0]==0 && naluData[1]==0 && naluData[2]==0 && naluData[3]==1 && naluData[4]==0x6)
     {
         index = NALU_SET;
-       printf("---NALU_SET---\n");
+        //printf("---NALU_SET---\n");
     }
 	else
 	{
-		printf("---NALU_unknow!!---\n");
+		FMP4_ERROR_LOG("---NALU_unknow!!---\n");
 	}
 
 	return index;
@@ -1365,7 +1361,7 @@ int set_sps(char* data,int len)
 	PPS_SPS_info.SPS = (char*)malloc(len);
 	if(NULL == PPS_SPS_info.SPS)
 	{
-		ERROR_LOG("malloc failed\n");
+		FMP4_ERROR_LOG("malloc failed\n");
 		return -1;
 	}
 	memcpy(PPS_SPS_info.SPS,data,len);
@@ -1379,7 +1375,7 @@ int get_sps(char**data,int *len)
 		return -1;
 	if(PPS_SPS_info.SPS == NULL)
 	{
-		ERROR_LOG("SPS not inited !\n");
+		FMP4_ERROR_LOG("SPS not inited !\n");
 		return -1;
 	}
 
@@ -1396,7 +1392,7 @@ int set_pps(char* data,int len)
 	PPS_SPS_info.PPS = (char*)malloc(len);
 	if(NULL == PPS_SPS_info.PPS)
 	{
-		ERROR_LOG("malloc failed\n");
+		FMP4_ERROR_LOG("malloc failed\n");
 		return -1;
 	}
 	memcpy(PPS_SPS_info.PPS,data,len);
@@ -1411,7 +1407,7 @@ int get_pps( char**data, int *len)
 
 	if(PPS_SPS_info.PPS == NULL)
 	{
-		ERROR_LOG("PPS not inited !\n");
+		FMP4_ERROR_LOG("PPS not inited !\n");
 		return -1;
 	}
 
@@ -1464,12 +1460,12 @@ int init_SPS_PPS(void *IDR_frame , unsigned int frame_length)
 {
 	if(init_SPS_PPS_done)
 	{
-		ERROR_LOG("SPS PPS already inited!\n");
+		FMP4_ERROR_LOG("SPS PPS already inited!\n");
 		return -1;
 	}
 	if(NULL == IDR_frame)
 	{
-		ERROR_LOG("Illegal parameter !\n");
+		FMP4_ERROR_LOG("Illegal parameter !\n");
 		return -1;
 	}
 	
@@ -1502,19 +1498,19 @@ int init_SPS_PPS(void *IDR_frame , unsigned int frame_length)
 	
 	if(i >= frame_length)
 	{
-		ERROR_LOG("find SPS PPS SEI I NALU failed!\n ");
+		FMP4_ERROR_LOG("find SPS PPS SEI I NALU failed!\n ");
 		return -1;
 	}
 	//注意此次设置进去的NALU 包含了起始头 0x 0001
 	if(set_sps(sps_start + 4, pps_start - sps_start - 4) < 0)  //4：NALU 的起始码 0x 0001
 	{	
-		ERROR_LOG("set_sps failed !\n");
+		FMP4_ERROR_LOG("set_sps failed !\n");
 		return -1;
 	}
 	
 	if(set_pps(pps_start + 4, sei_start - pps_start - 4) < 0)
 	{
-		ERROR_LOG("set_pps failed !\n");
+		FMP4_ERROR_LOG("set_pps failed !\n");
 		return -1;
 	}
 	init_SPS_PPS_done = 1;
@@ -1575,7 +1571,7 @@ avcc_box_info_t *	avcc_box_init(void *IDR_frame,unsigned int IDR_len)
 	int ret,len;
 	
 	//计算 PPS的数据长度
-	DEBUG_LOG("start avcc_box_init..\n");
+	FMP4_DEBUG_LOG("start avcc_box_init..\n");
 	unsigned char * my_SPS = NULL;					//记录 sps数据的起始位置
 	unsigned int SPS_len = 0;						//	记录SPS的实际长度
 	
@@ -1586,24 +1582,24 @@ avcc_box_info_t *	avcc_box_init(void *IDR_frame,unsigned int IDR_len)
 	ret = init_SPS_PPS(IDR_frame,IDR_len); 
 	if(ret < 0)
 	{
-		ERROR_LOG("init_SPS_PPS failed !\n");
+		FMP4_ERROR_LOG("init_SPS_PPS failed !\n");
 		return NULL;
 	}
 	/*-------------------------------------------------------------*/
 	if( get_sps((char**)&my_SPS, (int*)&SPS_len) < 0)
 	{
-		ERROR_LOG("get_sps failed !\n");
+		FMP4_ERROR_LOG("get_sps failed !\n");
 		return NULL;
 	}
-	DEBUG_LOG("SPS_len =  %d\n",SPS_len);
+	FMP4_DEBUG_LOG("SPS_len =  %d\n",SPS_len);
 	print_char_array("SPS NALU :", (unsigned char*)my_SPS , 10);
 	
 	if( get_pps((char**)&my_PPS, (int*)&PPS_len) < 0)
 	{
-		ERROR_LOG("get_sps failed !\n");
+		FMP4_ERROR_LOG("get_sps failed !\n");
 		return NULL;
 	}
-	DEBUG_LOG("PPS_len =  %d\n",PPS_len);
+	FMP4_DEBUG_LOG("PPS_len =  %d\n",PPS_len);
 	print_char_array("PPS NALU :", (unsigned char*)my_PPS , 10);
 	
 
@@ -1628,11 +1624,11 @@ avcc_box_info_t *	avcc_box_init(void *IDR_frame,unsigned int IDR_len)
 	unsigned char reserved3 = 0xe0;//二进制：1110 0000
 	unsigned char spsCount = 1;
 	unsigned char reserved_3_numOfSequenceParameterSets_5 = reserved3|spsCount;  
-	DEBUG_LOG("start avcc_box_init..02\n");
+	FMP4_DEBUG_LOG("start avcc_box_init..02\n");
 	
 	if (spsCount == 0 || spsCount > 1) 
 	{
-		ERROR_LOG("Invalid H264 SPS count(%d)\n",spsCount);
+		FMP4_ERROR_LOG("Invalid H264 SPS count(%d)\n",spsCount);
         return NULL;
     }
 	
@@ -1652,11 +1648,11 @@ avcc_box_info_t *	avcc_box_init(void *IDR_frame,unsigned int IDR_len)
 		
 
 		unsigned int box_len =	sizeof(avcc_box)-1 + PPS_len + SPS_len;//-1用来修正字节对齐的填充字节，不算在box内
-		DEBUG_LOG("avcc_item malloc size(%d)\n",box_len);
+		FMP4_DEBUG_LOG("avcc_item malloc size(%d)\n",box_len);
 		avcc_box* avcc_item = (avcc_box*)malloc(box_len);
 		if(NULL == avcc_item)
 		{
-			ERROR_LOG("malloc failed !\n");
+			FMP4_ERROR_LOG("malloc failed !\n");
 			return NULL;
 		}
 		memset(avcc_item,0,box_len);
@@ -1681,7 +1677,7 @@ avcc_box_info_t *	avcc_box_init(void *IDR_frame,unsigned int IDR_len)
 		memcpy((unsigned char*)avcc_item->sequenceParameterSetNALUnit + SPS_len + 1 + 2,my_PPS,PPS_len);//PPS数据
 	
 #endif
-		DEBUG_LOG("start avcc_box_init..06\n");
+		FMP4_DEBUG_LOG("start avcc_box_init..06\n");
 		avcc_box_info.avcc_buf = avcc_item;
 		avcc_box_info.buf_length = box_len;
 	return &avcc_box_info;
@@ -1695,7 +1691,7 @@ avcc_box_info_t *	avcc_box_init(unsigned char* naluData, int naluSize)
 
 	if(NULL == naluData)
 	{
-		ERROR_LOG("Illegal parameter!\n");
+		FMP4_ERROR_LOG("Illegal parameter!\n");
 		return NULL;
 	}
 
@@ -1738,7 +1734,7 @@ avcc_box_info_t *	avcc_box_init(unsigned char* naluData, int naluSize)
 			
 			SPS_len = SPS_data_end_POS - SPS_data_start_POS;
 			PPS_len = PPS_data_end_POS - PPS_data_start_POS;
-			DEBUG_LOG("SPS PPS length calculate success!  SPS_len(%d) PPS_len(%d)\n ",SPS_len,PPS_len);
+			FMP4_DEBUG_LOG("SPS PPS length calculate success!  SPS_len(%d) PPS_len(%d)\n ",SPS_len,PPS_len);
 			break;
 		}
 		
@@ -1747,7 +1743,7 @@ avcc_box_info_t *	avcc_box_init(unsigned char* naluData, int naluSize)
 
 	if(i >= naluSize)//没有成功计算出 PPS的实际数据长度
 	{
-		ERROR_LOG("calculate PPS length failed!\n");
+		FMP4_ERROR_LOG("calculate PPS length failed!\n");
 		return NULL;
 	}
 
@@ -1774,7 +1770,7 @@ avcc_box_info_t *	avcc_box_init(unsigned char* naluData, int naluSize)
 	offset = offset + 6;
 	if (spsCount == 0 || spsCount > 1) 
 	{
-		ERROR_LOG("Invalid H264 SPS count(%d)\n",spsCount);
+		FMP4_ERROR_LOG("Invalid H264 SPS count(%d)\n",spsCount);
         return NULL;
     }
 
@@ -1789,13 +1785,13 @@ avcc_box_info_t *	avcc_box_init(unsigned char* naluData, int naluSize)
 		//sps内容
 		if(sps_len <= 0 )
 		{
-			ERROR_LOG("sps_len error!\n");
+			FMP4_ERROR_LOG("sps_len error!\n");
 			return NULL;
 		}
 		unsigned char *sps = (unsigned char*)malloc(sps_len);
 		if(NULL == sps)
 		{
-			ERROR_LOG("malloc failed!\n");
+			FMP4_ERROR_LOG("malloc failed!\n");
 			return NULL;
 		}
 		memset(sps,0,sps_len);
@@ -1867,7 +1863,7 @@ avcc_box_info_t *	avcc_box_init(unsigned char* naluData, int naluSize)
 		unsigned char numOfPictureParameterSets = ppsCount;
         if (ppsCount == 0 || ppsCount > 1) 
 		{
-			ERROR_LOG("Invalid H264 PPS count(%d)\n",ppsCount);
+			FMP4_ERROR_LOG("Invalid H264 PPS count(%d)\n",ppsCount);
             return NULL;
         }
 
@@ -1880,14 +1876,14 @@ avcc_box_info_t *	avcc_box_init(unsigned char* naluData, int naluSize)
 
 		if(pps_len <= 0)
 		{
-			ERROR_LOG("pps_len error!\n");
+			FMP4_ERROR_LOG("pps_len error!\n");
 			free(sps);
 			return NULL;
 		}
 		unsigned char* pps = (unsigned char*)malloc(pps_len);
 		if(NULL == pps)
 		{
-			ERROR_LOG("malloc failed !\n");
+			FMP4_ERROR_LOG("malloc failed !\n");
 			free(sps);
 			return NULL;
 		}
@@ -1903,7 +1899,7 @@ avcc_box_info_t *	avcc_box_init(unsigned char* naluData, int naluSize)
 		avcc_box* avcc_item = (avcc_box*)malloc(box_len);
 		if(NULL == avcc_item)
 		{
-			ERROR_LOG("malloc failed !\n");
+			FMP4_ERROR_LOG("malloc failed !\n");
 			free(sps);
 			free(pps);
 			return NULL;
@@ -1936,11 +1932,44 @@ avcc_box_info_t *	avcc_box_init(unsigned char* naluData, int naluSize)
 
 #endif
 
+/*******************************************************************************
+*@ Description    :全局变量重置函数，线程重入时保持复位状态
+*@ Input          :
+*@ Output         :
+*@ Return         :
+*@ attention      :如若以后有新增的全局变量，要考虑线程重入时要不要初始化
+*******************************************************************************/
+void Box_global_variable_reset(void)
+{
+	if(avcc_box_info.avcc_buf) free(avcc_box_info.avcc_buf);	
+	memset(&avcc_box_info,0,sizeof(avcc_box_info));
+	
+	if(tfra_video.tfraBox) free(tfra_video.tfraBox);
+	memset(&tfra_video,0,sizeof(tfra_video));
+	
+	if(tfra_audio.tfraBox) free(tfra_audio.tfraBox);
+	memset(&tfra_audio,0,sizeof(tfra_audio));
+
+	if(PPS_SPS_info.SPS) free(PPS_SPS_info.SPS);
+	if(PPS_SPS_info.PPS) free(PPS_SPS_info.PPS);
+	memset(&PPS_SPS_info,0,sizeof(PPS_SPS_info));
+	
+	I_start_offset = 0;
+	init_SPS_PPS_done = 0;
+	
+}
 
 
 /***一般mp4文件部分********************************************************************************
 专门针对普通mp4文件部分
 *********************************************************************************************************/
+
+
+
+
+
+
+
 
 
 

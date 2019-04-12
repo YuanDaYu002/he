@@ -20,7 +20,6 @@
 
 #include "typeport.h"
 #include "encoder.h"
-#include "fmp4_interface.h"
 #include "fmp4_encode.h"
 
  
@@ -520,8 +519,6 @@ void print_array(unsigned char* box_name,unsigned char*start,unsigned int length
 #define RECODE_STREAM_ID 0     //进行录像的流id       ： 0或者1
 #define VIDEO_RECORD_TIME 15   //录像时长 单位：S    
 #define FIND_IDR_MAX_NUM  200  //为了寻找IDR的的最大循环次数
-//#define FMP4_FILE  "/jffs0/fmp4.mp4"
-#define FMP4_FILE  "/ramfs/fmp4.mp4"
 
 #define AUDIO_SAMPLING_RATE (16000) //音频的原始采样率（PCM）
 #define V_FRAME_RATE  (15)  //视频帧帧率
@@ -537,30 +534,16 @@ void print_array(unsigned char* box_name,unsigned char*start,unsigned int length
     倍速效果（不推荐），但8KHZ下比较正常。
 ----------------------------------------------------------------*/
 #define A_FRAME_RATE  (14)  //aac音频数据帧率
-
-#define OUT_FILE_BUF_SIZE (4*1024*1024) //初始化 3M大小空间（30S音视频）
-
-extern HLE_S32  connected_client_num;
-extern int  client_stream_id;
-
-void* fmp4_record(void* args)
+//#define OUT_FILE_BUF_SIZE (4*1024*1024) //初始化 3M大小空间（30S音视频）
+//void* fmp4_record(void* args)
+fmp4_out_info_t* fmp4_record(fmp4_out_info_t* info)
 {
-
+    printf("\n\n******start fmp4_record************************************************************************\n");
     pthread_detach(pthread_self()); 
     DEBUG_LOG("start fmp4_record..... \n");  
 
-    sleep(5); //如若刚开机，不要太快开始录像
-    /*init fmp4 encoder*/
-    fmp4_out_info_t info = {0};
-    info.buf_mode.buf_size = OUT_FILE_BUF_SIZE; 
-    info.buf_mode.buf_start = (unsigned char*)malloc(OUT_FILE_BUF_SIZE);
-    if(NULL ==  info.buf_mode.buf_start)
-    {
-        ERROR_LOG("malloc failed !\n");
-        return NULL;
-    }
-    info.buf_mode.w_offset = 0;
-        
+    //sleep(5); //如若刚开机，不要太快开始录像
+ 
     unsigned int skip_len = 0;
     unsigned int frame_len = 0;
     struct timeval start_record_time = {0};
@@ -595,7 +578,7 @@ void* fmp4_record(void* args)
     frame_len = pack->length - skip_len;   
     char * IDR_frame = (char*)pack->data + skip_len;
     DEBUG_LOG("IDR_frame[]= %x %x %x %x %x %x\n",IDR_frame[0],IDR_frame[1],IDR_frame[2],IDR_frame[3],IDR_frame[4],IDR_frame[5]);           
-    int ret = Fmp4_encode_init(&info,IDR_frame , frame_len ,V_FRAME_RATE, A_FRAME_RATE , AUDIO_SAMPLING_RATE);
+    int ret = Fmp4_encode_init(info,IDR_frame , frame_len ,V_FRAME_RATE, A_FRAME_RATE , AUDIO_SAMPLING_RATE);
     if(ret < 0)
     {
         ERROR_LOG("fmp4 encode init failed!\n");
@@ -635,6 +618,7 @@ void* fmp4_record(void* args)
     IFRAME_INFO * start_info = (IFRAME_INFO*)(pack->data + sizeof(FRAME_HDR));
     unsigned long long int start_time = start_info->pts_msec;
     unsigned long long int cur_time = start_time;
+    printf("start_time = (%llu) cur_time = (%llu)\n",start_time,cur_time);
      struct timeval audio_time_start = {0};
      struct timeval video_time_start = {0};
      struct timeval audio_time_current = {0};
@@ -645,6 +629,7 @@ void* fmp4_record(void* args)
    while(1)//录制的时长用视频帧的帧头时间来进行计时比较准确
     {
         //找到IDR帧，开始录制
+        
          gettimeofday(&audio_time_current,NULL);
         if(audio_time_current.tv_sec - audio_time_start.tv_sec >=1)//1s 打印一次
         {
@@ -659,6 +644,7 @@ void* fmp4_record(void* args)
             memcpy(&video_time_start,&video_time_current,sizeof(struct timeval));
             V_count = 0;
         }
+        
          if (header->type == 0xFA)//0xFA-音频帧
         {
             A_count ++;
@@ -721,28 +707,64 @@ void* fmp4_record(void* args)
         GET_PACK:
         pack = encoder_get_packet(stream_id);
         header = (FRAME_HDR *) pack->data;
-
-        if(cur_time - start_time >= VIDEO_RECORD_TIME*1000) break; //录制完成
+        printf("cur_time(%llu)  start_time(%llu)\n",cur_time,start_time);
+        if(cur_time - start_time >= /*VIDEO_RECORD_TIME*/ info->recode_time*1000) 
+        {
+            if(pack)  encoder_release_packet(pack);
+            break; //录制完成
+        }
             
         
     }
 
     DEBUG_LOG("End of recording time!\n");
 
+    DEBUG_LOG("The fmp4_record exit !\n");
+    encoder_free_stream(stream_id);
+    /* 手动命令行录制视频该操作需放在这进行
+    free(info.buf_mode.buf_start);
+    info.buf_mode.buf_start = NULL;
+    */
+    Fmp4_encode_exit();
+    printf("\n******END fmp4_record************************************************************************\n\n");
+    return info;
+    
 other_error:
     encoder_free_stream(stream_id);
- 
 InitFmp4Encoder_Failed:
     //encode part
     Fmp4_encode_exit();
+    
+    /* 手动命令行录制视频该操作需放在这进行
     free(info.buf_mode.buf_start);
     info.buf_mode.buf_start = NULL;
-    DEBUG_LOG("The fmp4_record exit !\n");  
-
+    */
+   
+    printf("\n******ERR fmp4_record !!!************************************************************************\n\n");
     return NULL;
 }
 
 
+void fmp4_record_exit(fmp4_out_info_t *info)
+{
+    if(info != NULL)
+    {
+        if(info->buf_mode.buf_start != NULL)
+        {
+            free(info->buf_mode.buf_start);
+            info->buf_mode.buf_start = NULL;
+        }
+
+        if(info->file_mode.file_name != NULL)
+        {
+            //没有申请内存
+        }
+    }
+
+    //free(info);
+    //info = NULL;
+    
+}
 
 
 

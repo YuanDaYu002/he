@@ -783,6 +783,7 @@ void cmd_wpa_scan(int argc, char *argv[])
     }
 }
 
+extern int wpa_cli_channel_scan(int channel);
 void cmd_wpa_channel_scan(int argc, char *argv[])
 {
     int l_ret = 0;
@@ -1401,4 +1402,5 @@ void hisi_wifi_shell_cmd_register(void)
         }
     #endif
 #endif
+
 

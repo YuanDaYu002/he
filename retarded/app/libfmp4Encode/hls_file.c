@@ -16,7 +16,7 @@
 #include <time.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <curl/curl.h>
+//#include <curl/curl.h>
 #include "string.h"
 /*#include "httpd.h"
 #include "http_config.h"
@@ -30,6 +30,8 @@
 
 #include "hls_file.h"
 #include "mod_conf.h"
+#include "typeport.h"
+
 
 //#define DISABLE_CACHE
 //apr_pool_t* server_pool = NULL;
@@ -110,36 +112,94 @@ typedef struct os_file_handler_t{
 } os_file_handler_t;
 
 int file_os_open(file_source_t* src, file_handle_t* handler, char* filename, int flags){
-	os_file_handler_t* ofh = (os_file_handler_t*)handler;
-	ofh->f = fopen(filename, "rb");
-	return ofh->f ? 1 : 0;
+	if(get_run_mode()==HLS_FILE_MODE)
+	{
+		os_file_handler_t* ofh = (os_file_handler_t*)handler;
+		ofh->f = fopen(filename, "rb");
+		return ofh->f ? 1 : 0;
+	}
+	else if(get_run_mode()==HLS_MEMO_MODE)
+	{
+		return 1;
+	}
+	else
+	{
+		return 0;//失败
+	}
+
 }
 
-int file_os_read(file_handle_t* handler, void* output_buffer, int data_size, int offset_from_file_start, int flags){
-	os_file_handler_t* ofh = (os_file_handler_t*)handler;
-	FILE* f = ofh->f;
-	fseek(f, offset_from_file_start, SEEK_SET);
-	return fread(output_buffer,1 , data_size, f);
+int file_os_read(FILE_info_t* mp4_file,file_handle_t* handler, void* output_buffer, 
+						int data_size, int offset_from_file_start, int flags)
+{
+	if(get_run_mode()==HLS_FILE_MODE)
+	{
+		os_file_handler_t* ofh = (os_file_handler_t*)handler;
+		FILE* f = ofh->f;
+		fseek(f, offset_from_file_start, SEEK_SET);
+		return fread(output_buffer,1 , data_size, f);
+	}
+	else if(get_run_mode()==HLS_MEMO_MODE)
+	{
+		if(offset_from_file_start > mp4_file->file_size) //超出文件大小范围
+		{
+			return -1;
+		}
+		memcpy(output_buffer,(char*)mp4_file->file_buf + offset_from_file_start,data_size);
+		return data_size;
+	}
+	else
+	{
+		//模式异常
+		return -1;
+	}
+
 }
 
-int file_os_get_file_size(file_handle_t* handler, int flags){
-	os_file_handler_t* ofh = (os_file_handler_t*)handler;
-	FILE* f = ofh->f;
-	int cp = ftell(f);
-	int result;
-	fseek(f, 0, SEEK_END);
-	result = ftell(f);
-	fseek(f, cp, SEEK_SET);
-	return result;
+int file_os_get_file_size(FILE_info_t* mp4_file,file_handle_t* handler, int flags)
+{
+	DEBUG_LOG("into file_os_get_file_size!\n");
+	if(get_run_mode()==HLS_FILE_MODE)
+	{
+		os_file_handler_t* ofh = (os_file_handler_t*)handler;
+		FILE* f = ofh->f;
+		int cp = ftell(f);
+		int result;
+		fseek(f, 0, SEEK_END);
+		result = ftell(f);
+		fseek(f, cp, SEEK_SET);
+		return result;
+	}
+	else if(get_run_mode()==HLS_MEMO_MODE)
+	{
+		DEBUG_LOG("mp4_file->file_size = %d\n",mp4_file->file_size);
+		return mp4_file->file_size;
+	}
+	else
+	{
+
+	}
+
+	return -1;
+	
 }
 
-int file_os_close(file_handle_t* handler, int flags){
-	os_file_handler_t* ofh = (os_file_handler_t*)handler;
-	FILE* f = ofh->f;
-	if (f)
-		fclose(f);
-	ofh->f = NULL;
-	return 0;
+int file_os_close(file_handle_t* handler, int flags)
+{
+	if(get_run_mode()==HLS_FILE_MODE)
+	{
+		os_file_handler_t* ofh = (os_file_handler_t*)handler;
+		FILE* f = ofh->f;
+		if (f)
+			fclose(f);
+		ofh->f = NULL;
+	}
+	else //if(get_run_mode()==HLS_MEMO_MODE)
+	{
+		//do nothing
+		return 0;
+	}
+
 }
 
 #ifndef TEST_APP
@@ -451,9 +511,14 @@ int http_close(file_handle_t* handler, int flags){
 }
 #endif
 
-/*
-获取文件打开、读写、关闭的函数句柄
-*/
+
+/*******************************************************************************
+*@ Description    :获取文件打开、读写、关闭的函数句柄
+*@ Input          :
+*@ Output         :
+*@ Return         :成功：大于0的数 ；失败：0
+*@ attention      :
+*******************************************************************************/
 int get_file_source(void* context, char* filename, file_source_t* buffer, int buffer_size)
 {
 	int len = strlen(filename);
@@ -475,13 +540,16 @@ int get_file_source(void* context, char* filename, file_source_t* buffer, int bu
 	{
 
 		#ifndef TEST_APP
-			if (buffer && buffer_size >= sizeof(file_source_t)){
+			if (buffer && buffer_size >= sizeof(file_source_t))
+			{
+				/* 暂时不支持
 				buffer->handler_size 	= sizeof(http_file_handler_t);
 				buffer->get_file_size 	= http_get_file_size;
 				buffer->open			= http_open;
 				buffer->read			= http_read;
 				buffer->close			= http_close;
 				buffer->context			= context;
+				*/
 			}
 		#endif
 
@@ -494,13 +562,17 @@ int get_file_source(void* context, char* filename, file_source_t* buffer, int bu
 			memset(buffer, 0, buffer_size);
 			if (context != NULL)
 			{
+				/*暂时不支持
 				buffer->handler_size 	= sizeof(apache_file_handler_t);
 				buffer->get_file_size 	= file_apache_get_file_size;
 				buffer->open			= file_apache_open;
 				buffer->read			= file_apache_read;
 				buffer->close			= file_apache_close;
+				*/
+				ERROR_LOG("not support apache !\n");
+				return 0;
 			}
-			else  //使用操作系统的文件操作函数
+			else  //使用操作系统的文件操作函数，正常应进该分支，内存操作也只对该部分函数进行修改
 			{
 				buffer->handler_size 	= sizeof(os_file_handler_t);
 				buffer->get_file_size 	= file_os_get_file_size;
@@ -514,6 +586,24 @@ int get_file_source(void* context, char* filename, file_source_t* buffer, int bu
 		return sizeof(file_source_t);
 	}
 }
+
+/*---# TS切片程序运行的模式------------------------------------------------------------*/
+static hls_mode_e run_mode = HLS_FILE_MODE; 
+hls_mode_e get_run_mode(void)
+{
+	return run_mode;
+}
+
+void set_run_mode(hls_mode_e mode)
+{
+	run_mode = mode;
+}
+
+
+
+
+
+
 
 
 

@@ -17,6 +17,8 @@
 #define __HLS_MEDIA__
 
 #include "hls_file.h"
+#include "hls_main.h"
+
 
 
 //this is values for codec member of track_t
@@ -68,12 +70,15 @@ typedef struct media_data_t{
 }media_data_t;
 
 typedef struct media_handler_t{
-	int (*get_media_stats)(void* context, file_handle_t* handle, file_source_t* file, media_stats_t* output_buffer, int output_buffer_size );
-	int (*get_media_data)(void* context, file_handle_t* handle, file_source_t* file, media_stats_t* stats, int piece, media_data_t* output_buffer, int output_buffer_size );
+	int (*get_media_stats)(FILE_info_t* mp4_file,void* context, file_handle_t* handle, file_source_t* file, media_stats_t* output_buffer, int output_buffer_size );
+	int (*get_media_data)(FILE_info_t* mp4_file, void* context, file_handle_t* handle, file_source_t* file, media_stats_t* stats, int piece, media_data_t* output_buffer, int output_buffer_size );
 } media_handler_t;
 
 media_handler_t* get_media_handler(char* filename);
 
+
 #endif
+
+
 
 

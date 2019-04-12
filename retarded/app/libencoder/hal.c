@@ -30,6 +30,9 @@
 #include "hi_comm_aio.h"
 #include "fmp4_encode.h"
 #include "itfEncoder.h"
+#include "amazon_S3.h"
+#include "hls_main.h"
+#include "fmp4_interface.h"
 
 
 
@@ -577,10 +580,192 @@ int media_server_module_init(void)
 }
 
 
+int file_size(char* filename)  
+{  
+    FILE *fp=fopen(filename,"r");  
+    if(!fp) return -1;  
+    fseek(fp,0L,SEEK_END);  
+    int size=ftell(fp);  
+    fclose(fp);  
+      
+    return size;  
+}  
+
+extern void fmp4_record_exit(fmp4_out_info_t *info);
+/*******************************************************************************
+*@ Description    :  MD 告警响应函数（fmp4录像 + TS切片 + 推送amazon云）
+*@ Input          :
+*@ Output         :
+*@ Return         :
+*******************************************************************************/
+int recode_mp4_done = 1; //标记 mp4 文件录制是否结束 (0:没结束 1：结束)
+pthread_mutex_t MD_func_mut; //MD 告警 响应线程 锁 
+#define OUT_FILE_BUF_SIZE (2*1024*1024) //初始化 3M大小空间（15S音视频）
+#define MD_ALARM_RECODE_TIME  15  //MD告警录制时长
+void* MD_alarm_response_func(void* args) //文件模式 版本
+{
+    /*---#目前支持的有: 15s录制视频切片上传------------------------------------------------------------*/
+    
+    printf("\n\n=======start MD_alarm_response_func==================================================================\n");
+    pthread_detach(pthread_self());
+    /*---# MP4 文件录制------------------------------------------------------------*/
+    //recode_mp4_done = 0;
+    fmp4_out_info_t out_mp4_info = {0};
+    out_mp4_info.recode_time = MD_ALARM_RECODE_TIME;
+    /*---#配置 buf存储 模式-----*/
+    out_mp4_info.buf_mode.buf_start = (char*)calloc(OUT_FILE_BUF_SIZE,sizeof(char));
+    if(NULL == out_mp4_info.buf_mode.buf_start)
+    {
+        ERROR_LOG("calloc failed!\n");
+         pthread_exit(NULL);
+    }
+    out_mp4_info.buf_mode.buf_size = OUT_FILE_BUF_SIZE;
+    out_mp4_info.buf_mode.w_offset = 0;
+    
+    /*---#配置 文件存储 模式（延时太大，不采用）-----*/
+    //out_mp4_info.file_mode.file_name = "/jffs0/fmp4.mp4"; //采用文件模式（录制的MP4视频写成文件）
+    
+    /*---#开始录制--------------*/
+    if(NULL == fmp4_record(&out_mp4_info))
+    {
+        ERROR_LOG("call fmp4_record failed!\n");
+        fmp4_record_exit(&out_mp4_info);
+        pthread_exit(NULL);
+    }
+
+    //DEBUG!!!!!!
+    fmp4_record_exit(&out_mp4_info); //在这里释放，为了节省内存空间，内存可能不够
+    
+    /*---# TS 切片------------------------------------------------------------*/
+    #if 0
+    FILE_info_t FILE_info = {0};
+    memset(FILE_info.file_name,0,sizeof(FILE_info.file_name));
+    FILE_info.segment_duration = MD_ALARM_RECODE_TIME;
+    FILE_info.file_buf = out_mp4_info.buf_mode.buf_start;
+    FILE_info.file_size = out_mp4_info.buf_mode.w_offset;
+    DEBUG_LOG("out_mp4_info.buf_mode.w_offset = %d\n",out_mp4_info.buf_mode.w_offset);
+    hls_out_info_t * out_ts_info = hls_main(&FILE_info);
+    if(NULL == out_ts_info) //成功，释放输入的源fmp4文件
+    {
+        ERROR_LOG("TS slice failed !\n");
+        goto ERR;
+    }
+    fmp4_record_exit(&out_mp4_info); //在这里释放，为了节省内存空间，内存可能不够
+    
+    /*---# 推送到 amazon 云---------------------------------------------------*/
+    int i= 0;
+    #if 0
+    while(1 != is_amazon_info_update()) //该处逻辑还是欠妥，后续改进
+    {
+        DEBUG_LOG("wait g_amazon_info update .....\n");
+        sleep(2);
+    }
+    #endif
+    
+    for(i = 0 ; i < out_ts_info->ts_num ; i++)
+    {
+    #if 0
+        put_file_info_t file_info = {0};
+        file_info.mode = 2; //缓存buf模式
+        file_info.file_tlen = MD_ALARM_RECODE_TIME;
+        file_info.file_type = TYPE_TS;
+        file_info.ts_flag = TS_FLAG_ONE;  //目前按照只有一个15 s TS文件的方案去实现？？？？？15S内发生了二次告警就接着录制，但内存很可能不够，后续考虑
+        strcpy(file_info.file_name,out_ts_info.ts_array[i].ts_name);
+        file_info.file_buf = out_ts_info.ts_array[i].ts_buf;
+        file_info.file_buf_len = out_ts_info.ts_array[i].ts_buf_size;
+        strcpy(file_info.m3u8name,out_ts_info.m3u_name);
+        
+        time_t timer = time(NULL);
+        //struct tm *lctv = localtime(&timer);
+        memcpy(&file_info.datetime,&timer,sizeof(timer));
+        amazon_put_even_thread(&file_info);//临时调试放在这，调试好后放到该放的地方去
+       
+    #endif
+        #if 0  //DEBUG 写到本地端
+            int fd = -1;
+            int ret = 0;
+            if(0 == i)
+            {   printf("out_ts_info->m3u_name = %s\n",out_ts_info->m3u_name);
+                fd = open(out_ts_info->m3u_name , O_CREAT | O_WRONLY | O_TRUNC, 0664);
+                ret = write(fd, out_ts_info->m3u_buf, out_ts_info->m3u_buf_size);
+                if(ret != out_ts_info->m3u_buf_size)
+                {
+                    ERROR_LOG("write error!\n");
+                    close(fd);
+                    goto ERR;
+                }
+                close(fd);
+            }
+            printf("out_ts_info->ts_array[%d].ts_name = %s\n",i,out_ts_info->ts_array[i].ts_name);
+            fd = open(out_ts_info->ts_array[i].ts_name , O_CREAT | O_WRONLY | O_TRUNC, 0664);
+            ret = write(fd, out_ts_info->ts_array[i].ts_buf, out_ts_info->ts_array[i].ts_buf_size);
+            if(ret != out_ts_info->ts_array[i].ts_buf_size)
+            {
+                ERROR_LOG("write error!\n");
+                close(fd);
+                goto ERR;
+            }
+            close(fd);
+            printf("****write file success!****************************************************\n");
+        #endif
+    }
+    
+    #endif
+    
+ERR:
+    //if(out_ts_info) hls_main_exit(out_ts_info);    
+    if(out_mp4_info.buf_mode.buf_start) fmp4_record_exit(&out_mp4_info);
+    recode_mp4_done = 1;//标记结束
+    printf("=======END MD_alarm_response_func==================================================================\n");
+    pthread_exit(NULL);
+    
+}
+
+
+extern int is_amazon_info_update(void);
+//该函数只供单独测试 amazon 用，不需要启动 sample 主线程
+int test_amazon(int argc, char *argv[])
+{
+    #if 1  //amazon 云服务部分
+       amazon_S3_req_thread(); //"设备图片视频上传接口" 信息更新线程
+
+       put_file_info_t file_info = {0};
+       char* file_name = "/jffs0/fmp4_1.ts";
+       char* m3u8_name = "/jffs0/fmp4_m3u8.m3u8";
+      DEBUG_LOG("file_name = %s \n",file_name);
+      DEBUG_LOG("m3u8_name = %s \n",m3u8_name);
+      
+       file_info.file_tlen = 6;    //6S时长
+       file_info.file_type = TYPE_TS;
+       file_info.ts_flag = TS_FLAG_6S;
+       printf("sizeof(file_info.ts_flag) = %d\n",sizeof(file_info.ts_flag));//4
+       strncpy(file_info.file_name,file_name,strlen(file_name));
+       strncpy(file_info.m3u8name,m3u8_name,strlen(m3u8_name)); 
+       time_t timer = time(NULL);
+       //struct tm *lctv = localtime(&timer);
+       memcpy(&file_info.datetime,&timer,sizeof(timer));
+       while(1 != is_amazon_info_update())
+       {
+            printf("wait g_amazon_info update .....\n");
+            sleep(2);
+       }
+      
+       amazon_put_even_thread(&file_info);//临时调试放在这，调试好后放到该放的地方去
+
+      
+        sleep(5);//等待线程退出，不然 file_name等栈空间会被释放
+        DEBUG_LOG("test_amazon exit!\n");
+       
+       return 0;
+   #endif
+
+
+}
+
+
 
 
 #if 1
-extern HLE_S32 connected_client_num; 
 //#define USE_AI_AENC_BIND  1   // 打开该宏 ：AI绑定到AENC          注释该宏：AI直接输出到AO  
 extern int AI_to_AO_start;
 int app_main(int argc, char *argv[])
@@ -595,19 +780,22 @@ int app_main(int argc, char *argv[])
     }
     
 
-    #if 1
+    #if 0 //P2P 媒体服务程序部分
+        ret = media_server_module_init();
+        if (HLE_RET_OK != ret) {
+            ERROR_LOG("media_server_module_init fail!\n");
+            return -1;
+        }
+        
+        ret = media_server_start_thread();
+        if (HLE_RET_OK != ret) {
+            ERROR_LOG("media_server_start_thread fail!\n");
+            return -1;
+        }
+    #endif
 
-    ret = media_server_module_init();
-    if (HLE_RET_OK != ret) {
-        ERROR_LOG("media_server_module_init fail!\n");
-        return -1;
-    }
-    
-    ret = media_server_start_thread();
-    if (HLE_RET_OK != ret) {
-        ERROR_LOG("media_server_start_thread fail!\n");
-        return -1;
-    }
+    #if 0  //start amazon info update thread
+        amazon_S3_req_thread(); 
     #endif
 
     
@@ -615,8 +803,6 @@ int app_main(int argc, char *argv[])
     int id[STREAMS_PER_CHN];
     int fd[STREAMS_PER_CHN];
     int aud;
-
-
 
     for (i = 0; i < STREAMS_PER_CHN; ++i) 
     {
@@ -672,7 +858,7 @@ int app_main(int argc, char *argv[])
     int skip_len = 0;
     int snap_count = 2;//定义抓拍保存的图片数量
 
-    #if 0
+    #if 0  //debug
     pthread_t threadID_Idle;
     HLE_S32 err = pthread_create(&threadID_Idle, NULL, &fmp4_record, NULL);
     if (0 != err) 
@@ -682,7 +868,7 @@ int app_main(int argc, char *argv[])
     }   
     DEBUG_LOG("fmp4_record start success!\n");
     #endif
-
+    
 
     for (;;) 
     {
@@ -692,8 +878,7 @@ int app_main(int argc, char *argv[])
             ENC_STREAM_PACK *pack = encoder_get_packet(id[i]);
             FRAME_HDR *header = (FRAME_HDR *) pack->data;
             if (header->sync_code[0] != 0 || header->sync_code[1] != 0\
-            || header->sync_code[2] != 1) 
-            {
+            || header->sync_code[2] != 1) {
                 printf("------BUG------\n");
                 continue;
             }
@@ -708,28 +893,42 @@ int app_main(int argc, char *argv[])
                 skip_len = sizeof (FRAME_HDR) + sizeof (PFRAME_INFO);
                 //write(fd[i], pack->data + skip_len, pack->length - skip_len);
             }
-            
             //0xFA-音频帧
-            else if (header->type == 0xFA)
-            {
+            else if (header->type == 0xFA){
                  skip_len = sizeof (FRAME_HDR) + sizeof (AFRAME_INFO);
                 //写音频文件放到了开始音频编码的线程了
             }
-            else 
-            {
+            else {
                 printf("------BUG------\n");
                 continue;
             }
-
             
-        
             encoder_release_packet(pack);
             //spm_pack_print_ref(pack);
     
         }
      
-  
+        /*---# MD告警录视频制 + 上传到 amazon云 部分----------------------*/
         #if 1
+            int motion = 0;
+            motion_detect_get_state(&motion);
+            if(motion && recode_mp4_done)//有告警产生 + 上一次录像已经结束
+            {
+                recode_mp4_done = 0;//标记开始
+                DEBUG_LOG("---Alarm---------------------------------------------------------!\n");
+                pthread_t threadID;
+                HLE_S32 err = pthread_create(&threadID, NULL, &MD_alarm_response_func, NULL);
+                if (0 != err) 
+                {
+                    ERROR_LOG("create media_server_start failed!\n");
+                    continue;
+                } 
+            }
+            
+        #endif
+        /*---#------------------------------------------------------------*/
+  
+        #if 0
             ++snap;
             if ((snap % 30) == 0) 
             {
@@ -756,19 +955,15 @@ int app_main(int argc, char *argv[])
 
     }
 
-  
     for (i = 0; i < STREAMS_PER_CHN; ++i) {
         encoder_free_stream(id[i]);
         close(fd[i]);
     }
- 
     
     hal_exit();
-    
-
-    
     return 0;
 }
+
 //simple test, disable it if not needed, don't remove it
 #else //原来调试通过的代码
 int app_main(int argc, char *argv[])
@@ -881,6 +1076,9 @@ int app_main(int argc, char *argv[])
 }
 
 #endif
+
+
+
 
 
 

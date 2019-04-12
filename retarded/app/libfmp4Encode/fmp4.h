@@ -4,7 +4,7 @@
 #ifndef _FMP4_H
 #define _FMP4_H
 #include "Box.h"
-
+//#include "fmp4_interface.h"
 
 #define OUT  //标记为输出参数
 #define IN	 //标记为输入参数
@@ -24,30 +24,6 @@ typedef enum
 	SAVE_IN_FILE = 2	//保存到文件
 }file_mode_e;
 
-
-//"内存存储模式"描述信息
-typedef struct _buf_mode_t
-{
-	unsigned char	*buf_start; //最终存储内存的起始地址
-	unsigned int 	buf_size;
-	unsigned int 	w_offset;	//写指针的偏移量，最终值就是实际文件的长度
-}buf_mode_t;
-
-//"文件存储模式"描述信息
-typedef struct _file_mode_t
-{
-	char * file_name; //最终存储文件的名字
-}file_mode_t;
-/********************************************************
-采用"内存存储模式" 请初始化 buf_mode ，将file_mode置为NULL
-采用"文件存储模式" 请初始化 file_mode，将buf_mode置为NULL
-注意：至少初始化一个，两个都初始化默认采用 buf_mode
-********************************************************/
-typedef struct _fmp4_out_info_t
-{
-	buf_mode_t 		buf_mode; 		//"内存存储模式"
-	file_mode_t		file_mode;		//"文件存储模式"
-}fmp4_out_info_t;
 
 
 
@@ -167,13 +143,13 @@ fmp4_file_lable_t fmp4_file_lable = {0};
 	}\
 	else\
 	{\
-		if(out_info.buf_mode.w_offset + size*nmemb > out_info.buf_mode.buf_size)\
+		if(out_info->buf_mode.w_offset + size*nmemb > out_info->buf_mode.buf_size)\
 		{\
 			ERROR_LOG("over write! fmp4 out put file memory is pool!\n");\
 			return -1;\
 		}\
-		memcpy(out_info.buf_mode.buf_start + out_info.buf_mode.w_offset,(unsigned char*)ptr,size*nmemb);\
-		out_info.buf_mode.w_offset += size*nmemb;\
+		memcpy(out_info->buf_mode.buf_start + out_info->buf_mode.w_offset,(unsigned char*)ptr,size*nmemb);\
+		out_info->buf_mode.w_offset += size*nmemb;\
 		ret = size*nmemb;\
 	}\
 	free(ptr);\
@@ -318,6 +294,10 @@ int sps_pps_parameter_set(void *IDR_frame,unsigned int IDR_len);
 
 
  #endif
+
+
+
+
 
 
 

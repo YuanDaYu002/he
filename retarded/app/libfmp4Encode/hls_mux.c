@@ -515,11 +515,19 @@ int get_number_of_pieces(media_stats_t* stats, float* max_piece_len, int recomme
 
 }
 
-/*
-m3u8文件的生成函数，输出到output_buffer
-返回：output_buffer 的使用量（偏移量）
-*/
-int generate_playlist(media_stats_t* stats, char* filename_template, char* output_buffer, int output_buffer_size, char* url, int** numberofchunks)
+/*******************************************************************************
+*@ Description    :m3u8文件的生成函数，输出到output_buffer
+*@ Input          :<stats>记录媒体的状态（音视频轨道的描述信息，mp4_media_get_stats 获得）
+					<filename_template>文件名（无绝对路径）
+					<output_buffer_size>m3u8文件缓存BUF的总大小
+					
+*@ Output         :<output_buffer>m3u8文件的内容输出到缓存BUF
+					<numberofchunks> 文件的可切片的总个数（TS文件总个数）
+*@ Return         :output_buffer 的使用量（偏移量）
+*@ attention      :
+*******************************************************************************/
+int generate_playlist(media_stats_t* stats, char* filename_template, char* output_buffer, 
+								int output_buffer_size, char* url, int** numberofchunks)
 {
 	float csp = 0; //current segment pos
 
@@ -636,6 +644,13 @@ int generate_playlist(media_stats_t* stats, char* filename_template, char* outpu
 	return ci;
 }
 
+/*******************************************************************************
+*@ Description    :放入TS文件 TS层中的 PAT 表
+*@ Input          :
+*@ Output         :
+*@ Return         :188（TS包的固定大小）
+*@ attention      :
+*******************************************************************************/
 int put_pat(char* buf, media_stats_t* stats, int* pat_cc)
 {
 	PutBitContext bs;
@@ -671,7 +686,7 @@ int put_pat(char* buf, media_stats_t* stats, int* pat_cc)
 	put_bits(&bs, 32, t_htonl (crc(crc_get_table(CRC_32_IEEE), -1, (const uint8_t*)(&tmp[0]) + 1,  put_bits_count(&bs)/8 - 1) ));
 
 	pat_size = put_bits_count(&bs)/8;
-	memset(&tmp[pat_size], 0xff, 188-pat_size);
+	memset(&tmp[pat_size], 0xff, 188-pat_size);//不够的长度直接补0xff
 
 	header_size = generate_ts_header(buf, 188, pat_cc[0], 1, 0, 0, 0, 0, 184);
 	memcpy(buf + header_size, tmp, 184);
@@ -679,6 +694,13 @@ int put_pat(char* buf, media_stats_t* stats, int* pat_cc)
 	return 188;
 }
 
+/*******************************************************************************
+*@ Description    : 放入TS文件 TS层中的 PMT 表
+*@ Input          :
+*@ Output         :
+*@ Return         :188（TS包的固定大小）
+*@ attention      :
+*******************************************************************************/
 int put_pmt(char* buf, media_stats_t* stats, int* pmt_cc, int pcr_track){
 	PutBitContext bs;
 	int pos;
@@ -724,7 +746,7 @@ int put_pmt(char* buf, media_stats_t* stats, int* pmt_cc, int pcr_track){
 
 	pmt_size = put_bits_count(&bs)/8;
 
-	memset(&tmp[pmt_size], 0xff, 188- pmt_size);
+	memset(&tmp[pmt_size], 0xff, 188- pmt_size);//不够的长度直接补0xff
 
 	header_size = generate_ts_header(buf, 188, pmt_cc[0], 1, 0, 0, PID_PMT, 0, 184);
 	memcpy(buf + header_size, tmp, 184);
@@ -780,15 +802,24 @@ int find_video_track(media_stats_t* stats){
 	return -1;
 }
 
-int select_current_track(media_stats_t* stats, media_data_t* data){
+/*******************************************************************************
+*@ Description    :
+*@ Input          :<stats>媒体音视频轨道信息
+					<data>一个TS文件对应从trak中取出帧数据的描述信息
+*@ Output         :
+*@ Return         :
+*@ attention      :
+*******************************************************************************/
+int select_current_track(media_stats_t* stats, media_data_t* data)
+{
 	int ct = -1;
 	float min_time = 1000000000.0;
 	int  i;
 
 	for(i = 0; i < stats->n_tracks; ++i)
 	{
-		track_data_t* td = data->track_data[i];
-		track_t* ts = stats->track[i];
+		track_data_t* td = data->track_data[i]; //当前TS文件 音/视频 trak 对应源数据帧的描述信息 
+		track_t* ts = stats->track[i];//源 
 		float* pts = ts->dts;
 		if ( !pts )
 			pts = ts->pts;
@@ -806,7 +837,15 @@ int select_current_track(media_stats_t* stats, media_data_t* data){
 	return ct;
 }
 
-
+/*******************************************************************************
+*@ Description    :
+*@ Input          :<stats> 媒体数据描述信息
+					<data> 一个TS文件对应从trak中取出帧数据的描述信息
+*@ Output         :<output_buffer>混合后的 TS文件输出buf
+					<output_buffer_size> TS文件输出数据总大小
+*@ Return         :
+*@ attention      :
+*******************************************************************************/
 int mux_to_ts(media_stats_t* stats, media_data_t* data, char* output_buffer, int output_buffer_size)
 {
 	int i;
@@ -827,10 +866,11 @@ int mux_to_ts(media_stats_t* stats, media_data_t* data, char* output_buffer, int
 		{
 			for(j = 0; j < data->track_data[i]->n_frames; ++j)
 			{
-				size += data->track_data[i]->size[j];
+				size += data->track_data[i]->size[j];//只计算了音视频帧的总大小
 			}
 		}
-		return size * 4.0 + 20000; //we estimate transport stream overhead 20% and should add buffer if data amount too low
+		//return size * 4.0 + 20000; //we estimate transport stream overhead 20% and should add buffer if data amount too low
+		return size + 20000; //上边是什么操作，为什么要这么多内存？？？？？？？
 	}
 	/*-----------------------------------------------------------------*/
 
@@ -880,6 +920,8 @@ int mux_to_ts(media_stats_t* stats, media_data_t* data, char* output_buffer, int
 
 	return pos;
 }
+
+
 
 
 

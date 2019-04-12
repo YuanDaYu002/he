@@ -85,7 +85,7 @@ int motion_detect_data_proc(MOTION_CONTEX* ctx)
 	
 	HLE_S32 lvl = area * 100 / detect_region.total_area;//将百分比小数转换成整数
 	
-	//printf("*sensitive_level(%d) actual_lvl(%d), area = %d\n ",sensitive_level[ctx->usr_config_level], lvl,area);
+	//printf("*sensitive_level(%d) actual_lvl(%d), count area = %d\n ",sensitive_level[ctx->usr_config_level], lvl,area);
 	if (lvl >= sensitive_level[ctx->usr_config_level]) //检测结果连续大于阈值的次数统计
 	{
 		if (ctx->count < 25) ctx->count++;
@@ -102,7 +102,7 @@ int motion_detect_data_proc(MOTION_CONTEX* ctx)
 	}
 
 	/***MD告警触发     结果判断******************/
-	if (ctx->count >= 3) 
+	if (ctx->count >= 2) //3 
 	{
 		motion_detect_val |= (1 << ctx->chn);//触发成功：标志位置位
 		DEBUG_LOG("MD alarm !!!!!!!!!!!!!!!!!!!!!!!!!!!\n");
@@ -740,6 +740,7 @@ int motion_detect_write_cfg(void)
 
 	return motion_detect_config(0, &g_motion_detect_artr);
 }
+
 
 
 

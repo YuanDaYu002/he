@@ -9,6 +9,12 @@
 #ifndef _AMAZON_S3_H_
 #define _AMAZON_S3_H_
 
+#define MP4_FILE_PATH 	"/jffs0/"   //MP4文件的缓冲绝对路径
+#define M3U8_FILE_PATH 	"/jffs0/"   //m3u8文件的缓冲绝对路径
+#define TS_FILE_PATH 	"/jffs0/"   //TS文件的缓冲绝对路径
+#define JPG_FILE_PATH 	"/jffs0/"   //JPEG文件的缓冲绝对路径
+
+
 
 
 typedef struct
@@ -50,11 +56,14 @@ typedef enum _ts_flag_e
 /*---# amazon 云推送文件之信息结构----------*/
 typedef struct _put_file_info_t
 {
+	int 		mode;						//传输模式（1：直接open文件的方式 ；2：直接使用文件缓存buf的模式）
 	int 		file_tlen; 					//文件的时长	
 	file_type_e file_type; 					//文件类型： 6s预录TS/jpeg/告警视频TS 
 	ts_flag_e 	ts_flag;					//ts文件的flag标志（详见 ts_flag_e 枚举变量）
 	char		file_name[62];				//文件名
-	char 		m3u8name[64];				//对应的m3u8文件名(内容由S3程序自动生成)
+	char*		file_buf;					//mod == 2专用，文件的缓存位置（若 mode == 1,该参数置NULL）
+	int			file_buf_len;				//file_buf的长度，同上
+	char 		m3u8name[64];				//对应的m3u8文件名(内容由S3程序自动生成，这里只需要提供文件名字即可)
 	char 		datetime[24];				//时间信息
 	
 }put_file_info_t;
@@ -77,7 +86,11 @@ void amazon_S3_req_thread(void);
 void amazon_put_even_thread(put_file_info_t *put_file);
 
 
+int is_amazon_info_update(void);
+
+
 #endif
+
 
 
 

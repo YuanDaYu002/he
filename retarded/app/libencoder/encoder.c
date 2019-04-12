@@ -532,7 +532,7 @@ static ENC_STREAM_PACK *video_stream_to_pack(int encChn, VENC_STREAM_S *stream)
         }
         iframe_info->pic_width = width;
         iframe_info->pic_height = height;
-        iframe_info->pts_msec = (stream->pstPack->u64PTS / 1000);
+        iframe_info->pts_msec = (stream->pstPack->u64PTS / 1000);//u64PTS:时间戳。单位：us。
         HLE_U8 wday;
         hal_get_time(&iframe_info->rtc_time, 1, &wday);
         iframe_info->length = frame_data_len;
@@ -542,7 +542,7 @@ static ENC_STREAM_PACK *video_stream_to_pack(int encChn, VENC_STREAM_S *stream)
     }
     else {
         PFRAME_INFO *pframe_info = (PFRAME_INFO *) (head_buf + sizeof (FRAME_HDR));
-        pframe_info->pts_msec =  (stream->pstPack->u64PTS / 1000);
+        pframe_info->pts_msec =  (stream->pstPack->u64PTS / 1000);//u64PTS:时间戳。单位：us。
         pframe_info->length = frame_data_len;
 
         frame_hdr->type = 0xF9;
@@ -610,6 +610,7 @@ int add_to_talkback_fifo(void *data, int size);
 void * venc_get_stream_proc(void *arg)
 {
     DEBUG_LOG("pid = %d\n", getpid());
+    pthread_detach(pthread_self());
     prctl(PR_SET_NAME, "hal_stream", 0, 0, 0);
     
     /***venc fd init*******************/
@@ -654,7 +655,6 @@ void * venc_get_stream_proc(void *arg)
             
             FD_ZERO(&video_read_fds);
             FD_SET(venc_fd[i], &video_read_fds);
-            
             if (chn_ctx->state == ENC_STATE_RUNING) 
             {
 
@@ -673,11 +673,11 @@ void * venc_get_stream_proc(void *arg)
                 }
                 else if (ret == 0) 
                 {
-                    ERROR_LOG("video select time out, exit thread\n");
+                    ERROR_LOG("video select time out!!\n");
                     continue;
                 }
                 else
-                {
+                {  
                     if(FD_ISSET(venc_fd[i], &video_read_fds))
                     {
                         memset(&venc_stream, 0, sizeof(venc_stream));
@@ -701,16 +701,15 @@ void * venc_get_stream_proc(void *arg)
                             continue;
                         }
                         
-                         pthread_mutex_lock(&chn_ctx->lock);
+                        pthread_mutex_lock(&chn_ctx->lock);
                         /* 申请pack并拷贝 stream 数据到pack */
-                        ENC_STREAM_PACK *pack = video_stream_to_pack(i, &venc_stream);
-                        pthread_mutex_unlock(&chn_ctx->lock);
-                        
+                        ENC_STREAM_PACK *pack = video_stream_to_pack(i, &venc_stream);  
+						pthread_mutex_unlock(&chn_ctx->lock);
+						
                         HI_MPI_VENC_ReleaseStream(i, &venc_stream);
 
                         //释放空间
-                        free(venc_stream.pstPack);
-                        venc_stream.pstPack = NULL;
+                        if(venc_stream.pstPack) {free(venc_stream.pstPack);venc_stream.pstPack = NULL;}
                         
                         /*一定要在调用sdp_enqueue之前释放锁，否则有可能死锁*/
                         if (pack)
@@ -741,6 +740,7 @@ extern int AI_to_AO_start;
 void * Aenc_get_stream_proc(void *arg)
 {
     DEBUG_LOG("pid = %d\n", getpid());
+    pthread_detach(pthread_self());
     prctl(PR_SET_NAME, "hal_stream", 0, 0, 0);
 
     /***Aenc fd init*******************/
@@ -897,23 +897,20 @@ void * AAC_get_stream_proc(void *arg)
             for (i = 0; i < STREAMS_PER_CHN; i++) 
             {
                 ENC_CHN_CONTEX *chn_ctx = enc_ctx.encChn + i;
-                pthread_mutex_lock(&chn_ctx->lock);
+               
                 if (chn_ctx->state == ENC_STATE_RUNING\
                     && chn_ctx->enc_attr.hasaudio) /* 是否把音频放进数据流里 */ 
                  {
+                 	pthread_mutex_lock(&chn_ctx->lock);
                     /* 申请pack并拷贝 stream 数据到pack */
                     ENC_STREAM_PACK *pack = audio_stream_to_pack(i, &stream);
                     //debug
                     //printf("put one Audio pack into queue! stream_id(%d)\n",i);
-                    
                     pthread_mutex_unlock(&chn_ctx->lock);
+					
                     /*一定要在调用sdp_enqueue之前释放锁，否则有可能死锁*/
                     if (pack)
                         sdp_enqueue(i, pack);
-                }
-                else
-                {
-                    pthread_mutex_unlock(&chn_ctx->lock);
                 }
                   
             }
@@ -3352,6 +3349,9 @@ void hal_encoder_exit(void)
 
     
 }
+
+
+
 
 
 

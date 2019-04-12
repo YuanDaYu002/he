@@ -140,6 +140,8 @@ void progress_bar(long cur_size, long total_size, double speed)
         printf("\n");
 }
 
+extern unsigned long get_file_size(const char *path);
+/*
 unsigned long get_file_size(const char *filename)
 {
     //通过系统调用直接得到文件的大小
@@ -148,7 +150,7 @@ unsigned long get_file_size(const char *filename)
         return 0;
     return (unsigned long) buf.st_size;
 }
-
+*/
 void download(int client_socket, char *file_name, long content_length)
 {
     /*下载文件函数*/
@@ -467,10 +469,10 @@ char* http_post(char *host_url)
     printf("str2 = %s\n",str2);
 
     len = strlen(str2);
-	#if 1
-		snprintf(str,10 ,"%d", len);
-	#else
-    	sprintf(str, "%d", len);
+    #if 1
+        snprintf(str,10 ,"%d", len);
+    #else
+        sprintf(str, "%d", len);
     #endif
     
     char tmp_buf[1024] = {0};
@@ -558,7 +560,8 @@ char* http_post(char *host_url)
 *返回值 ：      成功：0 
             失败：-1
 *****************************************************************/
-#include "media_server_cJSON.h"
+//#include "media_server_cJSON.h"
+#include "cJSON.h"
 int prase_POST_BAK(const char* response,updateInfo_t*upgradeInfo)
 {
     if(NULL == response)

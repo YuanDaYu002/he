@@ -17,6 +17,7 @@
 #ifndef _DRIVER_HISI_LIB_API_H_
 #define _DRIVER_HISI_LIB_API_H_
 
+#include "lwip/netif.h"
 
 
 
@@ -813,3 +814,4 @@ do{ \
 #endif /* __cplusplus */
 
 #endif    /*_DRIVER_HISI_LIB_API_H_*/
+

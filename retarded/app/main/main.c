@@ -197,6 +197,7 @@ void app_sample(int argc, char **argv )
 
 }
 
+/*
 void fmp4_record_(int argc, char **argv )
 {
     int i = 0, ret = 0;
@@ -249,61 +250,11 @@ void fmp4_record_(int argc, char **argv )
 
 }
 
-void hls_main_(int argc, char **argv )
-{
-    int i = 0, ret = 0;
-    int len = 0;
-    char *pch = NULL;
-    TSK_INIT_PARAM_S stappTask;
-
-
-    if (taskid != -1) {
-        dprintf("There's a hls_main task existed.\n");
-    }
-    args_buf_t = zalloc(ARG_BUF_LEN_T);
-    memset(&stappTask, 0, sizeof(TSK_INIT_PARAM_S));
-    pch = args_buf_t;
-    for(i=0; i<ARGS_SIZE_T; i++) {
-        ptask_args[i] = NULL;
-    }
-    argc++;
-    ptask_args[0] = "hls_main";
-
-    for(i = 1; i < argc; i++)
-    {
-        len =  strlen(argv[i-1]);
-        memcpy(pch , argv[i-1], len);
-        ptask_args[i] = pch;
-        //keep a '\0' at the end of a string.
-        pch = pch + len + 1;
-        if (pch >= args_buf_t +ARG_BUF_LEN_T) {
-            dprintf("args out of range!\n");
-            break;
-        }
-    }
-    memset(&stappTask, 0, sizeof(TSK_INIT_PARAM_S));
-    stappTask.pfnTaskEntry = (TSK_ENTRY_FUNC)hls_main;
-    stappTask.uwStackSize = 0x60000;
-    stappTask.pcName = "sample";
-    stappTask.usTaskPrio = 8;//10;
-    stappTask.uwResved   = LOS_TASK_STATUS_DETACHED;
-    stappTask.auwArgs[0] = argc;
-    stappTask.auwArgs[1] = (UINT32)ptask_args;
-    ret = LOS_TaskCreate((UINT32 *)&taskid, &stappTask);
-    if (LOS_OK != ret)
-    {
-        dprintf("LOS_TaskCreate err, ret:%d\n", ret);
-    }
-    else
-    {
-        dprintf("hls_main_Task %d\n", taskid);
-        printf("hls_main_Task %d\n", taskid);
-    }
-
-}
+*/
 
 extern int url_dowload_file(int argc, char * argv [ ]);
 //extern int hls_main (int argc, char* argv[]);
+extern int test_amazon(int argc, char* argv[]);
 void sample_command(void)
 {
     osCmdReg(CMD_TYPE_EX, "sample", 0, (CMD_CBK_FUNC)app_sample);
@@ -313,9 +264,11 @@ void sample_command(void)
     
     //osCmdReg(CMD_TYPE_EX, "httpPost",2, (CMD_CBK_FUNC)http_post);
     //osCmdReg(CMD_TYPE_EX, "httpDowloadFile",1, (CMD_CBK_FUNC)http_dowload_file);
-    osCmdReg(CMD_TYPE_EX, "fmp4_record_",0, (CMD_CBK_FUNC)fmp4_record_);    
+    //osCmdReg(CMD_TYPE_EX, "fmp4_record_",0, (CMD_CBK_FUNC)fmp4_record_);    
     osCmdReg(CMD_TYPE_EX, "dow_upd_file",1, (CMD_CBK_FUNC)dowload_upadte_file);
-    osCmdReg(CMD_TYPE_EX, "hls_main",0, (CMD_CBK_FUNC)hls_main);
+    //osCmdReg(CMD_TYPE_EX, "hls_main",0, (CMD_CBK_FUNC)hls_main);
+    
+    osCmdReg(CMD_TYPE_EX, "test_amazon",0, (CMD_CBK_FUNC)test_amazon);
     
 
 }
@@ -374,7 +327,12 @@ void board_config(void)
 }
 
 
-
+extern void hisi_wifi_shell_cmd_register(void);
+extern int SD_MMC_Host_init(void);
+extern int i2c_dev_init(void);
+extern void hi1131s_init(void);
+extern void cmd_wpa_start(int argc, char *argv[]);
+extern void cmd_wpa_connect(int argc, char *argv[]);
 void app_init(void)
 {
     dprintf("random init ...\n");
@@ -397,7 +355,7 @@ void app_init(void)
         mount("/dev/spinorblk0", "/jffs0", "jffs", 0, NULL);
     }
     
-    /*挂载ramfs 文件系统,实测不稳定，写的文件一大就报没空间，且延时上秒级别，华为官方也不建议用*/
+    /*挂载ramfs 文件系统,实测在写大一点的文件时（大于等于1M）延时较大，*/
     #if 1
     int swRet=0;
     swRet = mount((const char *)NULL, "/ramfs", "ramfs", 0, NULL);
@@ -473,6 +431,18 @@ void app_init(void)
     SDK_init();
     sample_command();
 
+    /*默认连接一个wifi,方便调试*/
+    #if 1
+    int argc = 2;
+    char* argv[2] = {"wlan0", "hisi"};
+    cmd_wpa_start(argc,argv);
+
+    sleep(1);
+    int argc1 = 4;
+    char* argv1[4] = {"0", "hle666","wpa2","lanhe666"};
+    cmd_wpa_connect(argc1,argv1);
+    #endif
+    
     tools_cmd_register();
     
    // app_sample(1,NULL);//自动调用APP
@@ -481,6 +451,10 @@ void app_init(void)
 }
 
 /* EOF kthread1.c */
+
+
+
+
 
 
 

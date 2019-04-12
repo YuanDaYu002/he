@@ -14,18 +14,24 @@
 #include <unistd.h>
 #include <errno.h>
 #include <ctype.h> 
+#include <sys/types.h>
+#include <fcntl.h>
+
 
 #include <openssl/ossl_typ.h>
 #include <openssl/hmac.h>  
-#include <openssl/sha.h>  
+#include <openssl/sha.h> 
+
+
 
 
 
 #include "dlfcn.h"
-#include "curl/curl.h"
+//#include "curl/curl.h"
 #include "cJSON/cJSON.h"
 #include "amazon_S3.h"
 #include "typeport.h"
+#include "gh_http.h"
 
 
 #define A_PUT_SUCCESS 1		//发送成功
@@ -53,7 +59,10 @@ static char aws_TimeStamp[20];
 
 /*---#获取设备的uiid------------------------------------------------------------*/
 //extern char *ipc_get_tutk_guid(void);
-char*uuid = "12345678";
+//XZ1T6R2RBRP7PH7P111A  ##190
+//WA1AY666S6YWG9NZ111A  ##网关 
+char*uuid = "XZ1T6R2RBRP7PH7P111A";
+
 char *ipc_get_tutk_guid(void)
 {
 	return uuid;
@@ -467,11 +476,11 @@ int amazon_curl_send(char *filename, ts_flag_e tsflag, file_type_e type)
 {	
 	DEBUG_LOG("1000000013 ,filename(%s), tsflag(%d) type(%d)\n",filename,tsflag,type);
 	char filetype[16]; //http put 头部分的文件类型
-	char sub_dir[16];  // amazon 云端目标路径中的子项目录（不同文件类型推送路径不一样）
-	char *str = (char *)calloc(1024*20, sizeof(char));
+	char sub_dir[16];  // amazon 云端目标路径中的子项目录（不同文件类型推送路径不一样）	
 	char path[256];
 	char http_url[512];	
-	int timeout; 
+	int timeout;
+
 
 	/*---构造应答的时间戳，年月日，时分秒---------*/
 	time_t timer=time(NULL); 
@@ -498,7 +507,7 @@ int amazon_curl_send(char *filename, ts_flag_e tsflag, file_type_e type)
 	}
 	else if(tsflag == TS_FLAG_ONE)
 	{
-		return -1;
+		goto ERR;
 	}
 	else//ts文件属于告警录像文件
 	{
@@ -512,20 +521,6 @@ int amazon_curl_send(char *filename, ts_flag_e tsflag, file_type_e type)
 	
 	/*---构造完整 amazon 云 文件推送的 url 字符串---------------*/
 	amazon_info_complet(path, http_url, sub_dir, filename);
-
-	/*printf("1000011filename=%s,type=%s,path=%s\n url=%s\n%s,id=%s,key=%s\n",filename,sub_dir, path, http_url,
-	 	filetype,g_amazon_info.aws_access_keyid,g_amazon_info.secret_aceess_keyid,http_url);
-	printf("host:%s\n url:%s\n",g_amazon_info.host,http_url);
-	*/
-	
-	FILE *fp = fopen(filename, "r"); 
-	if (fp == NULL)
-	{
-		//remove(filename);	
-		ERROR_LOG("open path : %s fail,%d\n",filename,errno);
-		return -1;
-	}
-	
 	unsigned long fsize = get_file_size(filename);
 	
 	////////////////////////////////////////////////////////////////aws
@@ -582,35 +577,64 @@ int amazon_curl_send(char *filename, ts_flag_e tsflag, file_type_e type)
 	DEBUG_LOG("Authorization////////////////////\n%s\n///////////\n", Authorization);
 
 	/*--- https 设置请求头------------------------------*/
-	char append[128];
-	strcpy(append, "Content-Type: ");
-	strcat(append,filetype);	
-	struct curl_slist *headers = NULL;//字符串单链表
-	headers = curl_slist_append(headers, append);//"Content-Type: image/jpeg")
+	char * headers = (char*)malloc(1024*3);
+	if(NULL == headers)
+	{
+		ERROR_LOG("malloc failed!\n");
+		goto ERR;
+	}
+	memset(headers,0,1024*3);
 
+	char content_type[128] = {0};
+	snprintf(content_type,sizeof(content_type),"Content-Type: %s",filetype);
+	strcat(headers,content_type);
+	strcat(headers,"\r\n");
+	
 	char contentlen[64];
 	snprintf(contentlen,64,"Content-Length: %ld", fsize);
-	headers = curl_slist_append(headers, g_amazon_info.host);//"s3.amazonaws.com"); //bucket-1-20180131.s3.cn-northwest-1.amazonaws.com.cn
-	//printf("host...................%s\n",g_amazon_info.host);
+	strcat(headers,contentlen);
+	strcat(headers,"\r\n");
+	
+	char host[128];
+	snprintf(host,sizeof(host),"Host: %s",g_amazon_info.host);
+	strcat(headers,host);
+	strcat(headers,"\r\n");
 
-
-	char time_str1[64];
-	strcpy(time_str1,"Date: ");
-	strcat(time_str1,time_str);
-	headers = curl_slist_append(headers, time_str1);
+	
+	char time_str1[64];	
+	snprintf(time_str1,sizeof(time_str1),"Date: %s",time_str);
+	strcat(headers,time_str1);
+	strcat(headers,"\r\n");
 	
 	char aws_date[64];
-	strcpy(aws_date,"X-Amz-Date: ");//X-Amz-Date: 20150830T123600Z
-	strcat(aws_date,aws_TimeStamp);
-	headers = curl_slist_append(headers, aws_date);
+	snprintf(aws_date,sizeof(aws_date),"X-Amz-Date: %s",aws_TimeStamp);//X-Amz-Date: 20150830T123600Z
+	strcat(headers,aws_date);
+	strcat(headers,"\r\n");
 	
-	headers = curl_slist_append(headers, "x-amz-acl: public-read");
-	headers = curl_slist_append(headers, "x-amz-content-sha256: UNSIGNED-PAYLOAD");
-	//headers = curl_slist_append(headers, Authorization); 
+	strcat(headers,"x-amz-acl: public-read");
+	strcat(headers,"\r\n");
+	
+	strcat(headers,"x-amz-content-sha256: UNSIGNED-PAYLOAD");
+	strcat(headers,"\r\n");
+	
+	strcat(headers,Authorization);
+	strcat(headers,"\r\n");
+	
+	strcat(headers,"Connection: Keep-Alive");
+	strcat(headers,"\r\n");
+	
+	strcat(headers,"Expect: 100-continue");
+	strcat(headers,"\r\n");
 
-	headers = curl_slist_append(headers, "Connection: Keep-Alive");
-	headers = curl_slist_append(headers, "Expect: 100-continue");
-
+	char* response = http_upload_file(http_url,headers,content_type,filename);
+	if(NULL == response)
+	{
+		ERROR_LOG("http_upload_file failed !\n");
+		goto ERR;
+	}
+	DEBUG_LOG(" ---push local file = %s ---servers respone:%s---\n",filename, response);
+	
+#if 0
 	/*---初始化 curl 的 handle ,设置curl选项----------------------------------*/
 	CURL *curl = curl_easy_init();
 	curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);   
@@ -642,12 +666,15 @@ int amazon_curl_send(char *filename, ts_flag_e tsflag, file_type_e type)
 	/*-----执行设置好的curl_easy_setopt选项------------*/
 	int ret= curl_easy_perform(curl);
 	curl_easy_cleanup(curl); //释放curl的 handle
+#endif
 
-	fclose(fp); 
-	DEBUG_LOG("==return:%d  ==file=%s ==str:%s==\n", ret,filename, str);
-	free(str);
-
+	if(response) free(response);
+	if(headers) free(headers);
 	return 0;	
+ERR:
+	if(response) free(response);
+	if(headers) free(headers);
+	return -1;	
 }
 
 
@@ -666,7 +693,6 @@ int amazon_curl_send_am(char *filename, char tsflag, char type)
 	DEBUG_LOG("1000000013 ,%s, %d\n",filename,tsflag);
 	char filetype[16]; 
 	char sub_dir[16]; //文件对应的子目录
-	char *str = (char *)calloc(1024*100, sizeof(char));//用于接收服务器的返回信息
 	char path[256];
 	char url[512];	
 	int timeout;
@@ -756,27 +782,65 @@ int amazon_curl_send_am(char *filename, char tsflag, char type)
 	DEBUG_LOG("len=%d   %s\n",strlen(Authorization),Authorization);
 
 	/*---#设置请求头------------------------------------------------------------*/
-	char append[128]; 
-	strcpy(append, "Content-Type: ");
-	strcat(append,filetype);	
-	struct curl_slist *headers = NULL;
-	headers = curl_slist_append(headers, append);//"Content-Type: image/jpeg")
+	char * headers = (char*)calloc(1024*3,sizeof(char));
+	if(NULL == headers)
+	{
+		ERROR_LOG("malloc failed!\n");
+		goto ERR;
+	}
+	//struct curl_slist *headers = NULL;
+		
+	char content_type[128]; 
+	strcpy(content_type, "Content-Type: ");
+	strcat(content_type,filetype);
+
+	strcat(headers,content_type);
+	strcat(headers,"\r\n");
+
 
 	char contentlen[64];
-	snprintf(contentlen,64,"Content-Length: %ld", fsize);
-	headers = curl_slist_append(headers, g_amazon_info.host);//"s3.amazonaws.com"); //bucket-1-20180131.s3.cn-northwest-1.amazonaws.com.cn
+	snprintf(contentlen,sizeof(contentlen),"Content-Length: %ld", fsize);
+	strcat(headers,contentlen);
+	strcat(headers,"\r\n");
+
+	char host[128];
+	snprintf(host,sizeof(host),"Host: %s",g_amazon_info.host);
+	strcat(headers,host);
+	strcat(headers,"\r\n");
+	//strcat(headers,g_amazon_info.host); //"s3.amazonaws.com"); //bucket-1-20180131.s3.cn-northwest-1.amazonaws.com.cn
 	DEBUG_LOG("host...................%s\n",g_amazon_info.host);
 	
 	char time_str1[64];
 	strcpy(time_str1,"Date: ");
 	strcat(time_str1,time_str);
-	headers = curl_slist_append(headers, time_str1);
-	headers = curl_slist_append(headers, Authorization); 
-	
-	if(type==2)headers = curl_slist_append(headers, "x-amz-acl: public-read");
-	headers = curl_slist_append(headers, "Connection: Keep-Alive");
-	headers = curl_slist_append(headers, "Expect: 100-continue");
+	strcat(headers,time_str1);
+	strcat(headers,"\r\n");
 
+	strcat(headers,Authorization);
+	strcat(headers,"\r\n");
+
+	
+	if(type==TYPE_TS) 
+	{
+		strcat(headers,"x-amz-acl: public-read");
+		strcat(headers,"\r\n");
+	}
+		
+	strcat(headers,"Connection: Keep-Alive");
+	strcat(headers,"\r\n");
+	strcat(headers,"Expect: 100-continue");
+	strcat(headers,"\r\n");
+
+	char*response = http_upload_file(url,headers,content_type,filename); 
+	if(NULL == response)
+	{
+		ERROR_LOG("http_upload_file failed !\n");
+		goto ERR;
+	}
+	DEBUG_LOG(" ---push local file = %s ---servers response:%s---\n",filename, response);
+
+	
+	#if 0
 	/*---#初始化 + 设置选项------------------------------------------------------------*/
 	CURL *curl = curl_easy_init();
 	curl_easy_setopt(curl, CURLOPT_SSL_VERIFYPEER, 0L);//设定为不验证证书和host    
@@ -796,12 +860,18 @@ int amazon_curl_send_am(char *filename, char tsflag, char type)
 	/*---#请求 + 打印返回信息------------------------------------------------------------*/
 	int ret= curl_easy_perform(curl);
 	curl_easy_cleanup(curl); 
+	#endif
 
-	fclose(fp); 
-	DEBUG_LOG("==return:%d  str:%s\n", ret, str);
-	free(str);
-
+	
+	if(fp) fclose(fp); 
+	if(response) free(response);
+	if(headers) free(headers);
 	return 0;	
+ERR:
+	if(fp) fclose(fp); 
+	if(response) free(response);
+	if(headers) free(headers);
+	return -1;
 }
 
 
@@ -1027,6 +1097,7 @@ void amazon_send_even_info(put_file_info_t *info)//"/bucket-1-20180131/3db73d9c1
 	/*---#推送!!!------------------------------------------------------------*/
 	char *str = curl_get(jpush, url_add_info_interface[url_index]); 
 	cJSON_Delete(jpush);
+	free(str);
 	
 }
 
@@ -1150,36 +1221,48 @@ void amazon_put_even_thread(put_file_info_t *put_file)
 *@ Input          : <pushMsg> 推送的消息字符串（jason格式）
 					<url>云服务的目标 url
 *@ Output         :
-*@ Return         :amazon 云 的返回信息（字符串指针）
+*@ Return         :amazon 云 的返回信息（字符串指针）使用结束后需要free
 *******************************************************************************/
 char *curl_get(cJSON *pushMsg, char *url)
 {
 	char *postData = cJSON_Print(pushMsg);
-	printf("postData=%s;\n",postData);
-	printf("url = %s\n",url);
+	DEBUG_LOG("postData=%s;\n",postData);
+
+
 	
-	CURL *curl;
-	char *str = (char *)calloc(1024, sizeof(char));// amazon 云 返回信息的写缓存区（post操作）
+	int ret_code = 0;
+	char* ret_buf = NULL;
+	char* content_type = "Content-Type: application/json";
+	int ret = http_post_data(url,(char*)postData,content_type,&ret_code,&ret_buf);
+	if(ret < 0)
+	{
+		ERROR_LOG("http_post_data failed !\n");
+		return NULL;
+	}
 
-	struct curl_slist *headers = NULL;
-	headers = curl_slist_append(headers, "Content-Type: application/json");
+	#if 1  //DEBUG
+		int tmp_fd = open("/jffs0/amazon_reply.txt",O_RDWR|O_CREAT|O_TRUNC,0777);
+        if(tmp_fd < 0)
+        {
+            ERROR_LOG("open failed !\n");
+            return NULL;
+        };
+            
+        int tmp_ret = write(tmp_fd, ret_buf ,strlen(ret_buf));
+        if(tmp_ret != strlen(ret_buf))
+        {
+            ERROR_LOG("write error!\n");
+            close(tmp_fd);
+            return NULL;
+        }
+        close(tmp_fd);
+	#endif
+	
 
-	curl = curl_easy_init();
-	/*---#设置请求的url------------------------------------------------------------*/
-	curl_easy_setopt(curl, CURLOPT_URL, url);
-	curl_easy_setopt(curl, CURLOPT_TIMEOUT, 20);	
-	curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers); 
-	curl_easy_setopt(curl, CURLOPT_POSTFIELDS, postData);//Send a POST with this data 
-	curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, amazonWriteData);//设置回调函数（一旦检测到有需要接收的数据时，回调函数被调用） 
-	curl_easy_setopt(curl, CURLOPT_WRITEDATA, str);//设置上方回调函数中的void *userp（第四个参数）指针的来源。 
-	curl_easy_setopt(curl, CURLOPT_NOSIGNAL, 1L);
-	curl_easy_setopt(curl, CURLOPT_FOLLOWLOCATION, 1); 
-	/*---#推送，并打印返回信息------------------------------------------------------------*/
-	int ret = curl_easy_perform(curl); 	
-	curl_easy_cleanup(curl); 
-	printf("000 curl_get ret=(%d) str=%s\n",ret, str);
+	
+	DEBUG_LOG("ret_buf=%s\n", ret_buf);
 	 
-	return str;
+	return ret_buf;
 }
 
 
@@ -1223,7 +1306,7 @@ int amazon_info_parse(AMAZON_INFO *rinfo,  const char *str)
 	if(item->valueint != 200)
 	{ 
 		//rinfo->record_en = 1;
-		ERROR_LOG("amazon_info_parse fail,status=%d\n",item->valueint);
+		ERROR_LOG("status error!!! ,status=%d\n",item->valueint);
 		return -1;
 	}
 	
@@ -1284,7 +1367,7 @@ void* get_amazon_put_info(void *arg)
 	
 	if(0!=amazon_info_parse(&g_amazon_info, str))//解析亚马逊云的返回信息，解析到 g_amazon_info 变量
 	{
-		printf("amazon_info_parse fail!  %s\n",url_verify_up_interface[url_index]);
+		ERROR_LOG("amazon_info_parse fail!  %s\n",url_verify_up_interface[url_index]);
 		return (void *)-1;
 	}
 	g_amazon_info.today_req = 1;
@@ -1411,6 +1494,11 @@ void amazon_S3_req_thread(void)
 	}
 	pthread_detach(Thread_amazon_S3_req_ID);
 }
+
+
+
+
+
 
 
 

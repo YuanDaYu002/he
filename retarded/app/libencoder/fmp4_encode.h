@@ -1,7 +1,7 @@
 #ifndef _FMP4_ENCODER_H
 #define _FMP4_ENCODER_H
 #include <pthread.h>
-
+#include "fmp4_interface.h"
 
 typedef struct _fmp4_input_buffer_t
 {
@@ -16,10 +16,11 @@ typedef struct _fmp4_input_buffer_t
 	
 }fmp4_input_buffer_t;
 
-
+fmp4_out_info_t* fmp4_record(fmp4_out_info_t* info);
 
 
 #endif
+
 
 
 

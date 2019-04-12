@@ -9,6 +9,8 @@
 #ifndef DEFS_H
 #define DEFS_H
 
+#include "platform.h"
+
 #ifdef FALSE
 #undef FALSE
 #endif
@@ -17,9 +19,10 @@
 #endif
 typedef enum { FALSE = 0, TRUE = 1 } Boolean;
 
-#ifndef BIT
+/*#ifndef BIT
 #define BIT(x) (1 << (x))
 #endif
+*/
 
 #define WPA_CIPHER_NONE BIT(0)
 #define WPA_CIPHER_WEP40 BIT(1)
@@ -304,3 +307,4 @@ enum wpa_ctrl_req_type {
 #define EAP_MAX_METHODS 8
 
 #endif /* DEFS_H */
+
