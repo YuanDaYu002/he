@@ -707,7 +707,7 @@ fmp4_out_info_t* fmp4_record(fmp4_out_info_t* info)
         GET_PACK:
         pack = encoder_get_packet(stream_id);
         header = (FRAME_HDR *) pack->data;
-        printf("cur_time(%llu)  start_time(%llu)\n",cur_time,start_time);
+        //printf("cur_time(%llu)  start_time(%llu)\n",cur_time,start_time);
         if(cur_time - start_time >= /*VIDEO_RECORD_TIME*/ info->recode_time*1000) 
         {
             if(pack)  encoder_release_packet(pack);

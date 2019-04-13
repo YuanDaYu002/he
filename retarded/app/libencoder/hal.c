@@ -601,7 +601,7 @@ extern void fmp4_record_exit(fmp4_out_info_t *info);
 int recode_mp4_done = 1; //标记 mp4 文件录制是否结束 (0:没结束 1：结束)
 pthread_mutex_t MD_func_mut; //MD 告警 响应线程 锁 
 #define OUT_FILE_BUF_SIZE (2*1024*1024) //初始化 3M大小空间（15S音视频）
-#define MD_ALARM_RECODE_TIME  15  //MD告警录制时长
+#define MD_ALARM_RECODE_TIME  5  //MD告警录制时长
 void* MD_alarm_response_func(void* args) //文件模式 版本
 {
     /*---#目前支持的有: 15s录制视频切片上传------------------------------------------------------------*/
@@ -622,7 +622,7 @@ void* MD_alarm_response_func(void* args) //文件模式 版本
     out_mp4_info.buf_mode.buf_size = OUT_FILE_BUF_SIZE;
     out_mp4_info.buf_mode.w_offset = 0;
     
-    /*---#配置 文件存储 模式（延时太大，不采用）-----*/
+    /*---#配置 文件存储 模式（liteos 的 ramfs 延时太大，不采用）-----*/
     //out_mp4_info.file_mode.file_name = "/jffs0/fmp4.mp4"; //采用文件模式（录制的MP4视频写成文件）
     
     /*---#开始录制--------------*/
@@ -632,12 +632,13 @@ void* MD_alarm_response_func(void* args) //文件模式 版本
         fmp4_record_exit(&out_mp4_info);
         pthread_exit(NULL);
     }
-
-    //DEBUG!!!!!!
-    fmp4_record_exit(&out_mp4_info); //在这里释放，为了节省内存空间，内存可能不够
     
     /*---# TS 切片------------------------------------------------------------*/
-    #if 0
+    #if 1
+    struct timeval hls_time_start = {0};
+    struct timeval hls_time_end = {0};
+    gettimeofday(&hls_time_start,NULL);
+    
     FILE_info_t FILE_info = {0};
     memset(FILE_info.file_name,0,sizeof(FILE_info.file_name));
     FILE_info.segment_duration = MD_ALARM_RECODE_TIME;
@@ -645,12 +646,15 @@ void* MD_alarm_response_func(void* args) //文件模式 版本
     FILE_info.file_size = out_mp4_info.buf_mode.w_offset;
     DEBUG_LOG("out_mp4_info.buf_mode.w_offset = %d\n",out_mp4_info.buf_mode.w_offset);
     hls_out_info_t * out_ts_info = hls_main(&FILE_info);
-    if(NULL == out_ts_info) //成功，释放输入的源fmp4文件
+    if(NULL == out_ts_info) 
     {
         ERROR_LOG("TS slice failed !\n");
         goto ERR;
     }
-    fmp4_record_exit(&out_mp4_info); //在这里释放，为了节省内存空间，内存可能不够
+    fmp4_record_exit(&out_mp4_info); //在这里释放fmp4的源视频buf，为了节省内存空间，内存可能不够
+    DEBUG_LOG("out_ts_info->ts_num = %d\n",out_ts_info->ts_num);
+    gettimeofday(&hls_time_end,NULL);
+    printf("hls_time_end.tv_sec - hls_time_start.tv_sec = %d\n",hls_time_end.tv_sec - hls_time_start.tv_sec);
     
     /*---# 推送到 amazon 云---------------------------------------------------*/
     int i= 0;
@@ -681,9 +685,10 @@ void* MD_alarm_response_func(void* args) //文件模式 版本
         amazon_put_even_thread(&file_info);//临时调试放在这，调试好后放到该放的地方去
        
     #endif
-        #if 0  //DEBUG 写到本地端
+        #if 1  //DEBUG 写到本地端
             int fd = -1;
             int ret = 0;
+            /*
             if(0 == i)
             {   printf("out_ts_info->m3u_name = %s\n",out_ts_info->m3u_name);
                 fd = open(out_ts_info->m3u_name , O_CREAT | O_WRONLY | O_TRUNC, 0664);
@@ -696,6 +701,7 @@ void* MD_alarm_response_func(void* args) //文件模式 版本
                 }
                 close(fd);
             }
+            */
             printf("out_ts_info->ts_array[%d].ts_name = %s\n",i,out_ts_info->ts_array[i].ts_name);
             fd = open(out_ts_info->ts_array[i].ts_name , O_CREAT | O_WRONLY | O_TRUNC, 0664);
             ret = write(fd, out_ts_info->ts_array[i].ts_buf, out_ts_info->ts_array[i].ts_buf_size);
@@ -713,7 +719,7 @@ void* MD_alarm_response_func(void* args) //文件模式 版本
     #endif
     
 ERR:
-    //if(out_ts_info) hls_main_exit(out_ts_info);    
+    if(out_ts_info) hls_main_exit(out_ts_info); 
     if(out_mp4_info.buf_mode.buf_start) fmp4_record_exit(&out_mp4_info);
     recode_mp4_done = 1;//标记结束
     printf("=======END MD_alarm_response_func==================================================================\n");

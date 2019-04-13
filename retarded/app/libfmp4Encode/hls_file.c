@@ -514,9 +514,11 @@ int http_close(file_handle_t* handler, int flags){
 
 /*******************************************************************************
 *@ Description    :获取文件打开、读写、关闭的函数句柄
-*@ Input          :
+*@ Input          :<filename>文件名
+					<buffer>文件操作函数族描述结构（open read write ...）
+					<buffer_size>buf大小
 *@ Output         :
-*@ Return         :成功：大于0的数 ；失败：0
+*@ Return         :成功：sizeof(file_source_t) ; 失败：0
 *@ attention      :
 *******************************************************************************/
 int get_file_source(void* context, char* filename, file_source_t* buffer, int buffer_size)
@@ -597,6 +599,18 @@ hls_mode_e get_run_mode(void)
 void set_run_mode(hls_mode_e mode)
 {
 	run_mode = mode;
+}
+
+/*******************************************************************************
+*@ Description    :全局变量重置函数，线程重入时保持复位状态
+*@ Input          :
+*@ Output         :
+*@ Return         :
+*@ attention      :如若以后有新增的全局变量，要考虑线程重入时要不要初始化
+*******************************************************************************/
+void hls_file_global_variable_reset(void)
+{
+	run_mode = HLS_FILE_MODE; 
 }
 
 

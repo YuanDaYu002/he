@@ -28,6 +28,20 @@
 //#define MAX_NUM_SEGMENTS    50                      //最大允许存储多少个分片
 #define SEGMENT_DURATION    15                       //每个分片文件的裁剪时长  
 
+/*---# fmp4文件的状态信息描述结构------------------------------------------------------------*/
+typedef struct _media_stats_info_t
+{	
+	int 	stats_size;			//分配的内存大小
+	char*	stats_buffer;		//内存的起始地址
+}media_stats_info_t;
+
+/*---# 使用的文件操作函数族（open read writ。。。）描述结构----------------------------------*/
+typedef struct _file_source_info_t
+{
+	int 			source_size;
+	file_source_t*	source;
+}file_source_info_t;
+
 
 /*获取文件的名字，仅仅只要名字，不要路径*/
 static char* get_pure_filename(char* filename)
@@ -81,6 +95,7 @@ char* get_pure_pathname(char* filename)
     	pos2--;
     }
     char* str=(char*)malloc(sizeof(char)*(pos2+1));
+	if(str) memset(str,0,sizeof(char)*(pos2+1));
 	int bbb=0;
     for(bbb=0; bbb<=pos2; bbb++)
     	str[bbb]=filename[bbb];
@@ -97,6 +112,8 @@ char* get_pure_pathname(char* filename)
 *@ Return         :成功：0 ; 失败: -1
 *@ attention      :
 *******************************************************************************/
+static media_stats_info_t media_stats_info = {0};
+static file_source_info_t file_source_info = {0};
 int  generate_playlist_test(hls_out_info_t* hsl_out_info,FILE_info_t* mp4_file, char* playlist, int* numberofchunks)
 {
 	media_handler_t* 	media;			//媒体操作句柄（系列函数）
@@ -109,6 +126,7 @@ int  generate_playlist_test(hls_out_info_t* hsl_out_info,FILE_info_t* mp4_file, 
 	int 				source_size;
 	char*				pure_filename;
 	FILE* f;
+	int 				ret;
 	
 	char* filename = mp4_file->file_name;
 	
@@ -122,21 +140,27 @@ int  generate_playlist_test(hls_out_info_t* hsl_out_info,FILE_info_t* mp4_file, 
 		
 
 	//---获取文件操作的函数句柄-----------------------------
-	source_size = get_file_source(NULL, filename, NULL, 0);//return sizeof(file_source_t);
-	source 	= (file_source_t*)malloc(source_size);
-	if ( !source )
+	if(NULL == file_source_info.source)
 	{
-		ERROR_LOG("malloc failed!\n");
-		return -1;
-	}
-		
+		file_source_info.source_size = get_file_source(NULL, filename, NULL, 0);//return sizeof(file_source_t);
+		file_source_info.source 	= (file_source_t*)malloc(file_source_info.source_size);
+		if (!file_source_info.source)
+		{
+			ERROR_LOG("malloc failed!\n");
+			return -1;
+		}
 
-	source_size  = get_file_source(NULL, filename, source, source_size);
-	if ( source_size <= 0 )
-	{
-		ERROR_LOG("get_media_handler faile !\n");
-		goto ERR;
+		ret  = get_file_source(NULL, filename, file_source_info.source, file_source_info.source_size);
+		if ( ret !=  file_source_info.source_size)
+		{
+			ERROR_LOG("get_media_handler faile !\n");
+			goto ERR;
+		}
+	
 	}
+
+	source_size = file_source_info.source_size;
+	source = file_source_info.source;
 	
 	//---打开mp4文件--------------------------------------------
 	handle 	= (char*)malloc(source->handler_size);
@@ -153,18 +177,29 @@ int  generate_playlist_test(hls_out_info_t* hsl_out_info,FILE_info_t* mp4_file, 
 	}
 	
 	//---获取文件的状态信息--------------------------------------------
-	stats_size 			= media->get_media_stats(mp4_file,NULL, handle, source, NULL, 0);
-	stats_buffer		= (char*)malloc(stats_size);
-	if ( !stats_buffer )
+	if(NULL == media_stats_info.stats_buffer) //media_stats_info 没有被初始化,需要先初始化
 	{
-		source->close(handle, 0);
-		ERROR_LOG("malloc failed!\n");
-		goto ERR;
+		media_stats_info.stats_size = media->get_media_stats(mp4_file,NULL, handle, source, NULL, 0);
+		media_stats_info.stats_buffer		= (char*)malloc(media_stats_info.stats_size);
+		if ( !media_stats_info.stats_buffer )
+		{
+			ERROR_LOG("malloc failed!\n");
+			goto ERR;
+		}
+		memset(media_stats_info.stats_buffer,0,media_stats_info.stats_size);
+		
+		int size = media->get_media_stats(mp4_file,NULL, handle, source, (media_stats_t*)media_stats_info.stats_buffer,
+																							media_stats_info.stats_size);
+		if(size != media_stats_info.stats_size)
+		{
+			ERROR_LOG("get_media_stats failed !\n");
+			goto ERR;
+		}
 	}
-	memset(stats_buffer,0,stats_size);
-	
-	stats_size 	  = media->get_media_stats(mp4_file,NULL, handle, source, (media_stats_t*)stats_buffer, stats_size);
 
+	stats_size = media_stats_info.stats_size;
+	stats_buffer = media_stats_info.stats_buffer;
+	
 	//---生成m3u8文件--------------------------------------------
 	DEBUG_LOG("into position G\n");	
 	char* playlist_buffer = NULL;
@@ -176,7 +211,6 @@ int  generate_playlist_test(hls_out_info_t* hsl_out_info,FILE_info_t* mp4_file, 
 		playlist_buffer 	= (char*)malloc( playlist_size);//用于缓存 m3u8文件
 		if ( !playlist_buffer )
 		{
-			source->close(handle, 0);
 			ERROR_LOG("malloc failed!\n");
 			goto ERR;
 		}
@@ -185,7 +219,6 @@ int  generate_playlist_test(hls_out_info_t* hsl_out_info,FILE_info_t* mp4_file, 
 		playlist_size 			= generate_playlist((media_stats_t*)stats_buffer, pure_filename, playlist_buffer, playlist_size, NULL, &numberofchunks);
 		if (playlist_size <= 0)
 		{
-			source->close(handle, 0);
 			ERROR_LOG("generate_playlist failed!\n");
 			goto ERR;
 		}
@@ -219,15 +252,15 @@ int  generate_playlist_test(hls_out_info_t* hsl_out_info,FILE_info_t* mp4_file, 
 	{
 		if (playlist_buffer)	free(playlist_buffer);
 	}	
-	if (stats_buffer)		free(stats_buffer);
 	if (handle)				free(handle);
 	if (source)				free(source);
 	DEBUG_LOG("into position M\n"); 
 	return 0;
 ERR:
 	source->close(handle, 0);
+	if (media_stats_info.stats_buffer) free(media_stats_info.stats_buffer); 
+	if (file_source_info.source) free(file_source_info.source);
 	if (playlist_buffer)	free(playlist_buffer);
-	if (stats_buffer)		free(stats_buffer);
 	if (handle)				free(handle);
 	if (source)				free(source);
 	ERROR_LOG("into position M1\n"); 
@@ -235,8 +268,8 @@ ERR:
 	
 }
 
-char* buf_start = NULL;
-char* buf_end = NULL;
+char* buf_start = NULL;  //当前TS分片文件缓存 buf 的起始位置
+char* buf_end = NULL;	//当前TS分片文件缓存 buf 的结束位置
 
 
 /*******************************************************************************
@@ -276,10 +309,22 @@ int  generate_piece(hls_out_info_t* hsl_out_info,FILE_info_t* mp4_file, char* ou
 		return -1;
 	}
 		
+	DEBUG_LOG("into lllloooooo\n");
 	
 	//---获取文件操作句柄的大小（打开、读写、关闭系列函数）----------------------------------
+	if(file_source_info.source != NULL)
+	{
+		source_size = file_source_info.source_size;
+		source = file_source_info.source;
+		DEBUG_LOG("source_size = %d\n",source_size);
+	}
+	else
+	{
+		ERROR_LOG("file_source_info not init!\n");
+		goto ERR;
+	}
+	/*  old code
 	source_size = get_file_source(NULL, filename, NULL, 0);//此处相当于 sizeof(file_source_t)
-
 	source 	= (file_source_t*)malloc(source_size);
 	if ( !source )
 	{
@@ -293,28 +338,41 @@ int  generate_piece(hls_out_info_t* hsl_out_info,FILE_info_t* mp4_file, char* ou
 		ERROR_LOG("get_file_source error!\n");
 		goto ERR;
 	}
-		
+	*/
+	
 	//----------------------------------------------------------------------------------------
 
-	handle 	= (char*)malloc(source->handler_size);
+	handle 	= (char*)calloc(source->handler_size,sizeof(char));
 	if ( !handle )
 	{
 		ERROR_LOG("malloc failed !\n");
 		goto ERR;
 	}
 
-
+	DEBUG_LOG("into gg1\n");
 	if ( !source->open(source, handle, filename, FIRST_ACCESS) )
 	{
 		ERROR_LOG("open %s failed !\n",filename);
 		goto ERR;
 	}
+	DEBUG_LOG("into gg2\n");
 
 	//---获取输入媒体文件的信息-------------------------------------------------------------------
+	if(media_stats_info.stats_buffer != NULL)
+	{
+		stats_size = media_stats_info.stats_size;
+		stats_buffer = media_stats_info.stats_buffer;
+	}
+	else //media_stats_info 没有被初始化
+	{
+		ERROR_LOG("GET  media_stats_info failed!\n");
+		goto ERR;
+	}
+		
+	/*	old code
 	stats_size = media->get_media_stats(mp4_file,NULL, handle, source, NULL, 0);
 	if ( stats_size <= 0)
 	{
-		source->close(handle, 0);
 		ERROR_LOG("get_media_stats failed!\n");
 		goto ERR;
 	}
@@ -322,7 +380,6 @@ int  generate_piece(hls_out_info_t* hsl_out_info,FILE_info_t* mp4_file, char* ou
 	stats_buffer = (char*)malloc( stats_size);
 	if ( !stats_buffer )
 	{
-		source->close(handle, 0);
 		ERROR_LOG("malloc faield !\n");
 		goto ERR;
 	}
@@ -330,10 +387,10 @@ int  generate_piece(hls_out_info_t* hsl_out_info,FILE_info_t* mp4_file, char* ou
 	stats_size = media->get_media_stats(mp4_file,NULL, handle, source, (media_stats_t*)stats_buffer, stats_size);
 	if ( stats_size <= 0)
 	{
-		source->close(handle, 0);
 		ERROR_LOG("get_media_stats failed!\n");
 		goto ERR;
 	}
+	*/
 	//----------------------------------------------------------------------------------------------
 
 	//---获取输入媒体文件的数据-------------------------------------------------------------------
@@ -341,15 +398,13 @@ int  generate_piece(hls_out_info_t* hsl_out_info,FILE_info_t* mp4_file, char* ou
 	data_size = media->get_media_data(mp4_file,NULL, handle, source, (media_stats_t*)stats_buffer, piece, NULL, 0);
 	if (data_size <= 0)
 	{
-		source->close(handle, 0);
 		ERROR_LOG("get_media_data failed!\n");
 		goto ERR;
 	}
-
+	
 	data_buffer = (media_data_t*)malloc(data_size);
 	if ( !data_buffer )
 	{
-		source->close(handle, 0);
 		ERROR_LOG("malloc failed ! malloc size = %d\n",data_size);
 		goto ERR;
 	}	
@@ -357,7 +412,6 @@ int  generate_piece(hls_out_info_t* hsl_out_info,FILE_info_t* mp4_file, char* ou
 	
 	buf_start = (char*)data_buffer;
 	buf_end = (char*)data_buffer + data_size;
-	
 
 	DEBUG_LOG("============Buffer size(%d) start_pos = %x  end_pos = %x\n",data_size,buf_start,buf_end); 
 #if 1
@@ -370,7 +424,6 @@ int  generate_piece(hls_out_info_t* hsl_out_info,FILE_info_t* mp4_file, char* ou
 	data_size = media->get_media_data(mp4_file,NULL, handle, source, (media_stats_t*)stats_buffer, piece, data_buffer, data_size);
 	if (data_size <= 0)
 	{
-		source->close(handle, 0);
 		ERROR_LOG("get_media_data failed !\n");
 		goto ERR;
 	}
@@ -382,7 +435,6 @@ int  generate_piece(hls_out_info_t* hsl_out_info,FILE_info_t* mp4_file, char* ou
 	muxed_size = mux_to_ts((media_stats_t*)stats_buffer, data_buffer, NULL, 0);
 	if ( muxed_size <= 0 )
 	{
-		source->close(handle, 0);
 		ERROR_LOG("mux_to_ts failed !\n");
 		goto ERR;
 	}
@@ -390,17 +442,13 @@ int  generate_piece(hls_out_info_t* hsl_out_info,FILE_info_t* mp4_file, char* ou
 	muxed_buffer = (char*)malloc(muxed_size);
 	if ( !muxed_buffer )
 	{
-		source->close(handle, 0);
 		ERROR_LOG("malloc failed ! malloc_size(%d)\n",muxed_size);
 		goto ERR;
 	}
 	
-	DEBUG_LOG("into position L\n"); 
-
 	muxed_size = mux_to_ts((media_stats_t*)stats_buffer, data_buffer, muxed_buffer, muxed_size);
 	if ( muxed_size <= 0 )
 	{
-		source->close(handle, 0);
 		ERROR_LOG("mux_to_ts faile !\n");
 		goto ERR;
 	}
@@ -443,10 +491,8 @@ int  generate_piece(hls_out_info_t* hsl_out_info,FILE_info_t* mp4_file, char* ou
 	 */
 
 	//---释放资源----------------------------------------------------------------
-	source->close(handle, 0);
+	if (handle) 		{source->close(handle, 0); free(handle);}
 	if (source) 		free(source);
-	if (handle) 		free(handle);
-	if (stats_buffer) 	free(stats_buffer);
 	if (data_buffer) 	free(data_buffer);
 	if(get_run_mode() == HLS_FILE_MODE)
 	{
@@ -455,10 +501,8 @@ int  generate_piece(hls_out_info_t* hsl_out_info,FILE_info_t* mp4_file, char* ou
 	return 0;
 	
 ERR:
-	source->close(handle, 0);
+	if (handle) 		{source->close(handle, 0); free(handle);}
 	if (source) 		free(source);
-	if (handle) 		free(handle);
-	if (stats_buffer) 	free(stats_buffer);
 	if (data_buffer) 	free(data_buffer);
 	if (muxed_buffer)	free(muxed_buffer);
 	return -1;
@@ -857,11 +901,14 @@ int hex_to_int(char c){
 
 
 extern void hls_exit(void);
+
 /*******************************************************************************
-*@ Description    : fMP4文件 TS 切片主入口函数
+*@ Description    :fMP4文件 TS 切片主入口函数
 *@ Input          :<mp4_file> fmp4 源文件信息
 *@ Output         :
-*@ Return         :成功：out_ts_info_t* 指针 失败：NULL
+*@ Return         :成功：out_ts_info_t* 指针 
+					失败：NULL
+*@ attention      : 返回指针需要 free 才能释放内存
 *******************************************************************************/
 hls_out_info_t* hls_main (FILE_info_t* mp4_file)
 {
@@ -872,7 +919,8 @@ hls_out_info_t* hls_main (FILE_info_t* mp4_file)
 		return NULL;
 	}
 	
-
+	hls_main_global_variable_reset();
+	
 	hls_out_info_t* hsl_out_info = (hls_out_info_t*)malloc(sizeof(hls_out_info_t));
 	if(NULL == hsl_out_info)
 	{
@@ -922,17 +970,23 @@ hls_out_info_t* hls_main (FILE_info_t* mp4_file)
 		goto ERR;
 	}
 	
-	strncpy(hsl_out_info->m3u_name,path,32);
+	strncpy(hsl_out_info->m3u_name,path,sizeof(hsl_out_info->m3u_name));
 	hsl_out_info->ts_num = counterrr;
 	/*---生成TS切片文件------------------------------------------------------------------------*/
 	int i = 0;
-	
 	for(i = 0; i < counterrr; ++i) //循环一次生成一个TS切片文件 
 	{
-		DEBUG_LOG("into position O\n"); 
-		char tmp[64];//输出的TS文件名
-		snprintf(tmp,50, "%s%s_%d.ts",get_pure_pathname(URL_PREFIX),get_pure_filename_without_postfix(mp4_file->file_name), i);
-		strncpy(hsl_out_info->ts_array[i].ts_name,tmp,32);
+		DEBUG_LOG("into position O\n");
+		char* pure_pathname = get_pure_pathname(URL_PREFIX);
+		char* pure_file_name = get_pure_filename_without_postfix(mp4_file->file_name);
+		DEBUG_LOG("pure_pathname = %s pure_file_name = %s\n",pure_pathname,pure_file_name);
+		
+		char tmp[32];//输出的TS文件名
+		snprintf(tmp,sizeof(tmp), "%s%s_%d.ts",pure_pathname,pure_file_name, i);
+		if(pure_pathname) free(pure_pathname);
+		DEBUG_LOG("into llll sizeof(hsl_out_info->ts_array[i].ts_name) = %d\n",sizeof(hsl_out_info->ts_array[i].ts_name));
+		strncpy(hsl_out_info->ts_array[i].ts_name,tmp,sizeof(hsl_out_info->ts_array[i].ts_name));
+		DEBUG_LOG("into llll\n");
 		if(generate_piece(hsl_out_info,mp4_file, tmp, i) < 0)
 		{
 			ERROR_LOG("generate_piece %s i=%d error!\n",mp4_file->file_name,i);
@@ -971,9 +1025,42 @@ void hls_main_exit(hls_out_info_t* hls_info)
 			}
 				
 		}
+
+		free(hls_info); //最后才能释放 hls_info
 		
 	}
+
+	if(media_stats_info.stats_buffer) {free(media_stats_info.stats_buffer); media_stats_info.stats_buffer = NULL;}
+	if(file_source_info.source) {free(file_source_info.source);file_source_info.source = NULL;}
 }
+
+extern void hls_file_global_variable_reset(void);
+extern void hls_media_mp4_global_variable_reset(void);
+extern void mod_conf_global_variable_reset(void);
+
+/*******************************************************************************
+*@ Description    :全局变量重置函数，线程重入时保持复位状态
+*@ Input          :
+*@ Output         :
+*@ Return         :
+*@ attention      :如若以后有新增的全局变量，要考虑线程重入时要不要初始化
+*******************************************************************************/
+void hls_main_global_variable_reset(void)
+{
+	hls_file_global_variable_reset();
+	hls_media_mp4_global_variable_reset();
+	mod_conf_global_variable_reset();
+	
+	/*---# hls_main.c部分------------------------------------------------------------*/
+	memset(mp4_name,0,sizeof(mp4_name));
+	buf_start = NULL;
+	buf_end = NULL;
+
+	memset(&media_stats_info,0,sizeof(media_stats_info));
+	memset(&file_source_info,0,sizeof(file_source_info));
+
+}
+
 
 
 

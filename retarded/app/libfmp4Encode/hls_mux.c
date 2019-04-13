@@ -383,7 +383,6 @@ int get_frames_in_piece_for_track(media_stats_t* stats, int piece, int track, in
 	@recommended_length：设置的TS文件时长
 返回：区间下标之差
 */
-int flag = 0;
 int get_frames_in_piece(media_stats_t* stats, int piece, int track, int* sf, int* ef, int recommended_length)
 {
 

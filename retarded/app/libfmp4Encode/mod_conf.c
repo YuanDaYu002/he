@@ -134,4 +134,11 @@ void set_data_path(char* path){
 
 }
 
+void mod_conf_global_variable_reset(void)
+{
+
+	memset(&config,0,sizeof(config));
+}
+
+
 

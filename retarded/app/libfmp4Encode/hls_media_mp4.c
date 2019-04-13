@@ -1964,12 +1964,20 @@ int get_count_of_moof(void* context, file_handle_t* mp4, file_source_t* source, 
 }
 
 
-/*
-返回：
-	成功：trak的数量（音视频轨道）;并将（video/audio）trak的首节点指针放到参数 moov_traks 里边,构成trak节点数组
-	失败：-1
-*/
-int get_count_of_traks(FILE_info_t* mp4_file,void* context, file_handle_t* mp4, file_source_t* source, MP4_BOX* root, MP4_BOX*** moov_traks) 
+/*******************************************************************************
+*@ Description    :获取音视频 trak 的数量
+*@ Input          :<mp4_file> MP4源文件的描述信息（文件模式/buf模式）
+					<mp4>文件句柄（文件模式下有效）
+					<source>文件操作的函数族（open read write close 等）
+					<root>mp4文件box节点链表的根节点
+					
+*@ Output         :<moov_traks>记录（video/audio）trak的首节点指针,构成trak节点数组
+*@ Return         : 成功：trak 轨道条数（一般为2，即 video/audio各一条）
+					失败：-1
+*@ attention      :moov_traks指向的内存由该函数内部分配
+*******************************************************************************/
+int get_count_of_traks(FILE_info_t* mp4_file,void* context, file_handle_t* mp4, 
+							file_source_t* source, MP4_BOX* root, MP4_BOX*** moov_traks) 
 {
 	MP4_BOX* moov;
 	*moov_traks = (MP4_BOX**) HLS_MALLOC (context, sizeof(MP4_BOX*)*2);
@@ -2614,7 +2622,7 @@ void get_samplerate_and_nch(int DecoderSpecificInfo, int* sample_rate, int* n_ch
 *@ Output         :
 *@ Return         :失败：-1
 					成功：传入的m_stat_ptr==NULL，则返回该指针指向空间应分配内存大小值
-		  				  传入的m_stat_ptr!=NULL，则返回 传入的 output_buffer_size 的值
+		  				  传入的m_stat_ptr!=NULL，则返回 传入的 output_buffer_size 的值(就是上边返回的)
 *@ attention      :
 *******************************************************************************/
 int mp4_media_get_stats(FILE_info_t* mp4_file,void* context, file_handle_t* mp4, 
@@ -3719,6 +3727,8 @@ media_handler_t mp4_file_handler = {
 */
 media_handler_t* get_media_handler(char* filename)
 {
+	return &mp4_file_handler;
+	/*
 	int fn_len = strlen(filename);
 	if ( get_allow_wav() && fn_len > 3 && filename[fn_len-4] == '.' 
 		 && ((filename[fn_len - 3] == 'W' || filename[fn_len - 3] == 'w') 
@@ -3744,7 +3754,29 @@ media_handler_t* get_media_handler(char* filename)
 		return &mp4_file_handler;
 	}
 	return 0;
+	*/
 }
+
+
+/*******************************************************************************
+*@ Description    :全局变量重置函数，线程重入时保持复位状态
+*@ Input          :
+*@ Output         :
+*@ Return         :
+*@ attention      :如若以后有新增的全局变量，要考虑线程重入时要不要初始化
+*******************************************************************************/
+void hls_media_mp4_global_variable_reset(void)
+{
+	memset(&frame_info,0,sizeof(frame_info));
+	MP4_file_type = 0;
+	audio_trak_id = -1;
+	video_trak_id = -1;
+	memset(&sample_size,0,sizeof(sample_size));
+	memset(&sample_offset,0,sizeof(sample_offset));
+	
+}
+
+
 
 
 

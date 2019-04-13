@@ -39,12 +39,14 @@ typedef struct _FILE_info_t
 
 hls_out_info_t* hls_main (FILE_info_t* mp4_file);
 void hls_main_exit(hls_out_info_t* hls_info);
-
+void hls_main_global_variable_reset(void);
 
 
 
 
 #endif
+
+
 
 
 
