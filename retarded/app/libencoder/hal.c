@@ -685,7 +685,7 @@ void* MD_alarm_response_func(void* args) //文件模式 版本
         amazon_put_even_thread(&file_info);//临时调试放在这，调试好后放到该放的地方去
        
     #endif
-        #if 1  //DEBUG 写到本地端
+        #if 0  //DEBUG 写到本地端
             int fd = -1;
             int ret = 0;
             /*

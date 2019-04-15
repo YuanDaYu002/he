@@ -21,6 +21,7 @@
 #include "mod_conf.h"
 #include <stdlib.h>
 #include <stdio.h>
+#include <unistd.h>
 #include "my_inet.h"
 #include "typeport.h"
  
@@ -456,8 +457,9 @@ int get_frames_in_piece(media_stats_t* stats, int piece, int track, int* sf, int
 		{
 			*ef = i;
 		}
+		usleep(5);
 	}
-	DEBUG_LOG("at position 410 *ef - *sf = %d\n",*ef - *sf);
+	DEBUG_LOG("Frame interval: *ef - *sf = %d\n",*ef - *sf);
 	return *ef - *sf;
 }
 
@@ -841,8 +843,9 @@ int select_current_track(media_stats_t* stats, media_data_t* data)
 *@ Input          :<stats> 媒体数据描述信息
 					<data> 一个TS文件对应从trak中取出帧数据的描述信息
 *@ Output         :<output_buffer>混合后的 TS文件输出buf
-					<output_buffer_size> TS文件输出数据总大小
-*@ Return         :
+					<output_buffer_size> TS文件输出BUF总大小（要保证长度足够）
+*@ Return         :成功：当output_buffer == NULL:返回应该分配的buf大小(用于存TS文件数据) 
+						 当output_buffer !=  NULL:返回实际写入buf数据的长度（pos偏移量表示）
 *@ attention      :
 *******************************************************************************/
 int mux_to_ts(media_stats_t* stats, media_data_t* data, char* output_buffer, int output_buffer_size)
@@ -869,7 +872,7 @@ int mux_to_ts(media_stats_t* stats, media_data_t* data, char* output_buffer, int
 			}
 		}
 		//return size * 4.0 + 20000; //we estimate transport stream overhead 20% and should add buffer if data amount too low
-		return size + 20000; //上边是什么操作，为什么要这么多内存？？？？？？？
+		return size + 1024*30; //这个大小是预估的，因为事先并不知道实际数据会有多大，只能给经验值。
 	}
 	/*-----------------------------------------------------------------*/
 
@@ -887,7 +890,7 @@ int mux_to_ts(media_stats_t* stats, media_data_t* data, char* output_buffer, int
 	//put video frame
 	if (video_track >= 0)
 	{
-		DEBUG_LOG("into position K3\n");	
+		DEBUG_LOG("put pat/pmt + video frame\n");	
 		pos += put_pat(output_buffer + pos, stats, &pat_cc);
 		pos += put_pmt(output_buffer + pos, stats, &pmt_cc, lead_track);
 
@@ -900,7 +903,7 @@ int mux_to_ts(media_stats_t* stats, media_data_t* data, char* output_buffer, int
 	//put other frames
 	while(1)
 	{
-		DEBUG_LOG("into position K4\n");	
+		DEBUG_LOG("put other frames\n");	
 		int ct = select_current_track(stats, data);
 		if (ct < 0)
 			break;
@@ -914,6 +917,11 @@ int mux_to_ts(media_stats_t* stats, media_data_t* data, char* output_buffer, int
 //		}
 
 		pos += put_data_frame(output_buffer + pos, stats, data, ct, lead_track, ct != video_track ? 6 : 1);
+		if(output_buffer_size - pos <= 500 )//剩余空间不够500字节，提醒分配的空间太少
+		{
+			ERROR_LOG("warning!!: output_buffer size is already very small,You should give more memory for security\n");
+		}
+		usleep(5);
 	}
 	DEBUG_LOG("into position K5\n"); 
 

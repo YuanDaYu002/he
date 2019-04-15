@@ -149,7 +149,8 @@ int  generate_playlist_test(hls_out_info_t* hsl_out_info,FILE_info_t* mp4_file, 
 			ERROR_LOG("malloc failed!\n");
 			return -1;
 		}
-
+		memset(file_source_info.source,0,file_source_info.source_size);
+		DEBUG_LOG("file_source_info.source = %#x\n",file_source_info.source);
 		ret  = get_file_source(NULL, filename, file_source_info.source, file_source_info.source_size);
 		if ( ret !=  file_source_info.source_size)
 		{
@@ -161,6 +162,7 @@ int  generate_playlist_test(hls_out_info_t* hsl_out_info,FILE_info_t* mp4_file, 
 
 	source_size = file_source_info.source_size;
 	source = file_source_info.source;
+	ERROR_LOG("file_source_info.source->handler_size(%d)\n",file_source_info.source->handler_size);
 	
 	//---打开mp4文件--------------------------------------------
 	handle 	= (char*)malloc(source->handler_size);
@@ -253,7 +255,7 @@ int  generate_playlist_test(hls_out_info_t* hsl_out_info,FILE_info_t* mp4_file, 
 		if (playlist_buffer)	free(playlist_buffer);
 	}	
 	if (handle)				free(handle);
-	if (source)				free(source);
+	//if (source)				free(source);//不能释放
 	DEBUG_LOG("into position M\n"); 
 	return 0;
 ERR:
@@ -295,8 +297,8 @@ int  generate_piece(hls_out_info_t* hsl_out_info,FILE_info_t* mp4_file, char* ou
 	char*				pure_filename;
 	int 				data_size;
 	media_data_t* 		data_buffer; //一个 TS文件对应从trak中取出帧数据的描述信息
-	int 				muxed_size;
-	char* 				muxed_buffer;
+	int 				muxed_size;	 //实际TS输出文件数据长度（应 <= muxed_buffer长度）
+	char* 				muxed_buffer;//实际TS输出文件数据buf
 	FILE* f;
 
 	char* filename = mp4_file->file_name;
@@ -316,7 +318,8 @@ int  generate_piece(hls_out_info_t* hsl_out_info,FILE_info_t* mp4_file, char* ou
 	{
 		source_size = file_source_info.source_size;
 		source = file_source_info.source;
-		DEBUG_LOG("source_size = %d\n",source_size);
+		DEBUG_LOG("source_size = %d source = %#x\n",source_size,source);
+		ERROR_LOG("source->handler_size(%d)\n",source->handler_size);
 	}
 	else
 	{
@@ -341,15 +344,18 @@ int  generate_piece(hls_out_info_t* hsl_out_info,FILE_info_t* mp4_file, char* ou
 	*/
 	
 	//----------------------------------------------------------------------------------------
-
+	DEBUG_LOG("file_source_info.source->handler_size(%d)\n",file_source_info.source->handler_size);
+	ERROR_LOG("source->handler_size(%d)\n",source->handler_size);
 	handle 	= (char*)calloc(source->handler_size,sizeof(char));
 	if ( !handle )
 	{
-		ERROR_LOG("malloc failed !\n");
+		ERROR_LOG("calloc  failed ! source->handler_size(%d)\n",source->handler_size);
+		DEBUG_LOG("file_source_info.source->handler_size(%d)\n",file_source_info.source->handler_size);
 		goto ERR;
 	}
 
 	DEBUG_LOG("into gg1\n");
+	
 	if ( !source->open(source, handle, filename, FIRST_ACCESS) )
 	{
 		ERROR_LOG("open %s failed !\n",filename);
@@ -492,7 +498,7 @@ int  generate_piece(hls_out_info_t* hsl_out_info,FILE_info_t* mp4_file, char* ou
 
 	//---释放资源----------------------------------------------------------------
 	if (handle) 		{source->close(handle, 0); free(handle);}
-	if (source) 		free(source);
+	//if (source) 		free(source); //不能在这释放
 	if (data_buffer) 	free(data_buffer);
 	if(get_run_mode() == HLS_FILE_MODE)
 	{
@@ -969,6 +975,7 @@ hls_out_info_t* hls_main (FILE_info_t* mp4_file)
 		ERROR_LOG("generate_playlist_test failed !\n");
 		goto ERR;
 	}
+	DEBUG_LOG("file_source_info.source->handler_size(%d)\n",file_source_info.source->handler_size);
 	
 	strncpy(hsl_out_info->m3u_name,path,sizeof(hsl_out_info->m3u_name));
 	hsl_out_info->ts_num = counterrr;

@@ -24,6 +24,7 @@
 #include <string.h>
 #include <arpa/inet.h>
 #include <math.h>
+#include <unistd.h>
 #include "Box.h"
 #include "my_inet.h"
 
@@ -810,7 +811,7 @@ int get_fmp4_sample_size_and_flags(FILE_info_t* mp4_file,void* context, file_han
 				flags_array_tmp[i] = t_ntohl(flags_array_tmp[i]);			
 			}
 			DEBUG_LOG("flags_array_tmp[%d] = %u\n",i,flags_array_tmp[i]);
-			
+			usleep(5);
 		}
 
 		if(flag & E_sample_size)
@@ -2282,7 +2283,7 @@ int get_fmp4_video_sample_duration(FILE_info_t* mp4_file,void* context, file_han
 			source->read(mp4_file,mp4, &duration_array_tmp[i], 4 , first_duration_offset + i*Duration_offset , 0);
 			duration_array_tmp[i] = t_ntohl(duration_array_tmp[i]);
 			DEBUG_LOG("duration_array_tmp[%d] = %d\n",i,duration_array_tmp[i]);
-			
+			usleep(5);
 		}
 
 		*duration_array = duration_array_tmp;
@@ -2450,6 +2451,7 @@ int get_video_dts(FILE_info_t* mp4_file,void* context, file_handle_t* mp4, file_
 		real_dts += (double)delta[i-1]/timescale;
 		dts[i]=(float)real_dts;
 		DEBUG_LOG("real_dts = %f dts[%d] = %f\n",real_dts,i,dts[i]);
+		usleep(5);
 	}
 	HLS_FREE(delta);
 	DEBUG_LOG("dts[0] = %f  dts[nframes-1] = %f\n",dts[0],dts[nframes-1]);
@@ -2938,6 +2940,7 @@ int mp4_media_get_stats(FILE_info_t* mp4_file,void* context, file_handle_t* mp4,
 						cur_track->flags[i] = 0;	//非关键帧
 
 					DEBUG_LOG("video V_flags_array[%d] = %u flags[%d] = %u\n",i,sample_size.V_flags_array[i],i,cur_track->flags[i]);
+					usleep(5);
 				}
 			}
 			else
@@ -3045,10 +3048,10 @@ int  convert_to_annexb(void* context, char* ptr, int NALlensize, int* frame_size
 	return 0;
 }
 
-void print_V_size_array(int NO)
+void print_V_size_array(int number)
 {
 	DEBUG_LOG("%d sample_size.V_size_array[0] = %d sample_size.V_size_array[1] = %d sample_size.V_size_array[2] = %d\n",
-								NO,sample_size.V_size_array[0],sample_size.V_size_array[1],sample_size.V_size_array[2]);
+								number,sample_size.V_size_array[0],sample_size.V_size_array[1],sample_size.V_size_array[2]);
 }
 
 /* 
@@ -3173,8 +3176,8 @@ int mp4_media_get_data(FILE_info_t* mp4_file,void* context, file_handle_t* mp4, 
 				for(j=tmp_sf ; j<tmp_ef; j++)
 				{
 					tmp_buffer_size += stsz_data[j]+7; // 7 - adts header size
-					DEBUG_LOG("stsz_data[%d] = %d  tmp_buffer_size(%d) \n",j,stsz_data[j],tmp_buffer_size);
-
+					DEBUG_LOG("soun stsz_data[%d] = %d  tmp_buffer_size(%d) \n",j,stsz_data[j],tmp_buffer_size);
+					usleep(5);
 				}
 					
 			}
@@ -3184,8 +3187,8 @@ int mp4_media_get_data(FILE_info_t* mp4_file,void* context, file_handle_t* mp4, 
 				for(j = tmp_sf ; j < tmp_ef ; j++)
 				{
 					tmp_buffer_size += stsz_data[j]; //不加AUD头部分？
-					DEBUG_LOG("stsz_data[%d] = %d  tmp_buffer_size(%d) \n",j,stsz_data[j],tmp_buffer_size);
-
+					DEBUG_LOG("vide stsz_data[%d] = %d  tmp_buffer_size(%d) \n",j,stsz_data[j],tmp_buffer_size);
+					usleep(10);
 				}
 					
 				char* temp_AVCDecInfo=NULL;
@@ -3385,7 +3388,7 @@ int mp4_media_get_data(FILE_info_t* mp4_file,void* context, file_handle_t* mp4, 
 				cur_track_data->offset[k] = cur_track_data->buffer_size;
 				cur_track_data->buffer_size += cur_track_data->size[k];
 				++k;
-
+				usleep(5);
 				
 			}
 		
@@ -3452,6 +3455,7 @@ int mp4_media_get_data(FILE_info_t* mp4_file,void* context, file_handle_t* mp4, 
 							mp4_sample_offset[mp4_sample_offset_counter]=mp4_sample_offset[mp4_sample_offset_counter-1]+stsz_data[mp4_sample_offset_counter-1];
 							mp4_sample_offset_counter++;
 						}
+						usleep(5);
 					}
 				}
 			}
@@ -3476,7 +3480,7 @@ int mp4_media_get_data(FILE_info_t* mp4_file,void* context, file_handle_t* mp4, 
 				}
 				//mp4_sample_offset = sample_offset.A_offset_array;
 				memcpy(mp4_sample_offset , sample_offset.A_offset_array , sizeof(int)*tmp_sample_count);
-				DEBUG_LOG("mp4_sample_offset[0] = %d mp4_sample_offset[1] = %d mp4_sample_offset[2] = %d\n",
+				DEBUG_LOG("soun: mp4_sample_offset[0] = %d mp4_sample_offset[1] = %d mp4_sample_offset[2] = %d\n",
 						mp4_sample_offset[0],mp4_sample_offset[1],mp4_sample_offset[2]);
 			}
 			
@@ -3491,7 +3495,7 @@ int mp4_media_get_data(FILE_info_t* mp4_file,void* context, file_handle_t* mp4, 
 				}
 				//mp4_sample_offset = sample_offset.V_offset_array;
 				memcpy(mp4_sample_offset , sample_offset.V_offset_array , sizeof(int)*tmp_sample_count);
-				DEBUG_LOG("mp4_sample_offset[0] = %d mp4_sample_offset[1] = %d mp4_sample_offset[2] = %d\n",
+				DEBUG_LOG("video: mp4_sample_offset[0] = %d mp4_sample_offset[1] = %d mp4_sample_offset[2] = %d\n",
 						mp4_sample_offset[0],mp4_sample_offset[1],mp4_sample_offset[2]);
 
 			}
@@ -3553,6 +3557,8 @@ int mp4_media_get_data(FILE_info_t* mp4_file,void* context, file_handle_t* mp4, 
 								mp4_sample_offset[z], 
 								0
 							);
+				DEBUG_LOG("put audio frame data\n");
+				//usleep(5);
 			}
 
 		}
@@ -3649,13 +3655,14 @@ int mp4_media_get_data(FILE_info_t* mp4_file,void* context, file_handle_t* mp4, 
 						{
 							ERROR_LOG("convert_to_annexb error !\n");
 							HLS_FREE(AVCDecInfo);
-							goto ERR;
+							goto ERR; 
 						}
 						
 						
 						if(z - cur_track_data->first_frame + 1 < cur_track_data->n_frames)//计算后一个帧的偏移量 offset
 							cur_track_data->offset[z - cur_track_data->first_frame + 1] = cur_track_data->offset[ z - cur_track_data->first_frame] + cur_track_data->size[ z - cur_track_data->first_frame];
-						DEBUG_LOG("into position I11--B--out \n");
+						DEBUG_LOG("put video frame data\n");
+						//usleep(5);
 					}
 				}
 				HLS_FREE(AVCDecInfo);
