@@ -1501,7 +1501,7 @@ int init_SPS_PPS(void *IDR_frame , unsigned int frame_length)
 		FMP4_ERROR_LOG("find SPS PPS SEI I NALU failed!\n ");
 		return -1;
 	}
-	//注意此次设置进去的NALU 包含了起始头 0x 0001
+	//注意此次设置进去的NALU 去掉了起始头 0x 0001
 	if(set_sps(sps_start + 4, pps_start - sps_start - 4) < 0)  //4：NALU 的起始码 0x 0001
 	{	
 		FMP4_ERROR_LOG("set_sps failed !\n");
@@ -1963,6 +1963,7 @@ void Box_global_variable_reset(void)
 /***一般mp4文件部分********************************************************************************
 专门针对普通mp4文件部分
 *********************************************************************************************************/
+
 
 
 

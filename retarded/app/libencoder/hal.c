@@ -33,6 +33,7 @@
 #include "amazon_S3.h"
 #include "hls_main.h"
 #include "fmp4_interface.h"
+#include "ts_encode.h"
 
 
 
@@ -591,6 +592,8 @@ int file_size(char* filename)
     return size;  
 }  
 
+
+
 extern void fmp4_record_exit(fmp4_out_info_t *info);
 /*******************************************************************************
 *@ Description    :  MD 告警响应函数（fmp4录像 + TS切片 + 推送amazon云）
@@ -602,98 +605,123 @@ int recode_mp4_done = 1; //标记 mp4 文件录制是否结束 (0:没结束 1：
 pthread_mutex_t MD_func_mut; //MD 告警 响应线程 锁 
 #define OUT_FILE_BUF_SIZE (2*1024*1024) //初始化 3M大小空间（15S音视频）
 #define MD_ALARM_RECODE_TIME  5  //MD告警录制时长
+/*---# m3u索引文件类型------------------------------------------------------------*/
+#define M3U_TS_FILE     1
+#define M3U_FMP4_FILE   2
+#define M3U_INDEX_FILE_TYPE  M3U_TS_FILE
 void* MD_alarm_response_func(void* args) //文件模式 版本
 {
     /*---#目前支持的有: 15s录制视频切片上传------------------------------------------------------------*/
     
     printf("\n\n=======start MD_alarm_response_func==================================================================\n");
     pthread_detach(pthread_self());
-    /*---# MP4 文件录制------------------------------------------------------------*/
-    //recode_mp4_done = 0;
+    
+    void *  recode_data  = NULL; //最终录制的文件数据buf
+    unsigned int  recode_data_len = 0; //最终录制的文件数据buf长度 
     fmp4_out_info_t out_mp4_info = {0};
-    out_mp4_info.recode_time = MD_ALARM_RECODE_TIME;
-    /*---#配置 buf存储 模式-----*/
-    out_mp4_info.buf_mode.buf_start = (char*)calloc(OUT_FILE_BUF_SIZE,sizeof(char));
-    if(NULL == out_mp4_info.buf_mode.buf_start)
+    
+    if(M3U_INDEX_FILE_TYPE == M3U_TS_FILE)
     {
-        ERROR_LOG("calloc failed!\n");
-         pthread_exit(NULL);
+        void* out_buf = NULL;
+        int out_len = 0;
+        if(ts_record(&out_buf,&out_len,MD_ALARM_RECODE_TIME) < 0)
+        {
+            ERROR_LOG("ts_record failed!\n");
+            pthread_exit(NULL);
+        }
+        recode_data = out_buf;
+        recode_data_len = (int)out_len;
+
+        #if 1
+            int fd = 0;
+            int ret = 0;
+            fd = open("/jffs0/MD_alarm_20190419.ts" , O_CREAT | O_WRONLY | O_TRUNC, 0664);
+            ret = write(fd, recode_data, recode_data_len);
+            if(ret != recode_data_len)
+            {
+                ERROR_LOG("write error!\n");
+                close(fd);
+                goto ERR;
+            }
+            close(fd);
+            printf("-----write file success!---------------------------------------\n");
+        #endif
+        
+        if(recode_data) {free(recode_data);recode_data = NULL;}
+        
     }
-    out_mp4_info.buf_mode.buf_size = OUT_FILE_BUF_SIZE;
-    out_mp4_info.buf_mode.w_offset = 0;
-    
-    /*---#配置 文件存储 模式（liteos 的 ramfs 延时太大，不采用）-----*/
-    //out_mp4_info.file_mode.file_name = "/jffs0/fmp4.mp4"; //采用文件模式（录制的MP4视频写成文件）
-    
-    /*---#开始录制--------------*/
-    if(NULL == fmp4_record(&out_mp4_info))
+    else //if(M3U_INDEX_FILE_TYPE == M3U_FMP4_FILE)
     {
-        ERROR_LOG("call fmp4_record failed!\n");
-        fmp4_record_exit(&out_mp4_info);
-        pthread_exit(NULL);
+        /*---# MP4 文件录制--------------------------------------------------*/
+        out_mp4_info.recode_time = MD_ALARM_RECODE_TIME;
+        /*---#配置 buf存储 模式-----*/
+        out_mp4_info.buf_mode.buf_start = (char*)calloc(OUT_FILE_BUF_SIZE,sizeof(char));
+        if(NULL == out_mp4_info.buf_mode.buf_start)
+        {
+            ERROR_LOG("calloc failed!\n");
+             pthread_exit(NULL);
+        }
+        out_mp4_info.buf_mode.buf_size = OUT_FILE_BUF_SIZE;
+        out_mp4_info.buf_mode.w_offset = 0;
+        out_mp4_info.file_mode.file_name = NULL; //不采用 文件模式 liteos 的 ramfs 延时太大
+        
+        /*---#开始录制------------*/
+        if(NULL == fmp4_record(&out_mp4_info))
+        {
+            ERROR_LOG("call fmp4_record failed!\n");
+            fmp4_record_exit(&out_mp4_info);
+            pthread_exit(NULL);
+        }
+        recode_data = out_mp4_info.buf_mode.buf_start;
+        recode_data_len = out_mp4_info.buf_mode.w_offset;
+        /*---# END------------------------------------------------------------*/
     }
     
-    /*---# TS 切片------------------------------------------------------------*/
-    #if 1
-    struct timeval hls_time_start = {0};
-    struct timeval hls_time_end = {0};
-    gettimeofday(&hls_time_start,NULL);
     
-    FILE_info_t FILE_info = {0};
-    memset(FILE_info.file_name,0,sizeof(FILE_info.file_name));
-    FILE_info.segment_duration = MD_ALARM_RECODE_TIME;
-    FILE_info.file_buf = out_mp4_info.buf_mode.buf_start;
-    FILE_info.file_size = out_mp4_info.buf_mode.w_offset;
-    DEBUG_LOG("out_mp4_info.buf_mode.w_offset = %d\n",out_mp4_info.buf_mode.w_offset);
-    hls_out_info_t * out_ts_info = hls_main(&FILE_info);
-    if(NULL == out_ts_info) 
-    {
-        ERROR_LOG("TS slice failed !\n");
-        goto ERR;
-    }
-    fmp4_record_exit(&out_mp4_info); //在这里释放fmp4的源视频buf，为了节省内存空间，内存可能不够
-    DEBUG_LOG("out_ts_info->ts_num = %d\n",out_ts_info->ts_num);
-    gettimeofday(&hls_time_end,NULL);
-    printf("hls_time_end.tv_sec - hls_time_start.tv_sec = %d\n",hls_time_end.tv_sec - hls_time_start.tv_sec);
     
     /*---# 推送到 amazon 云---------------------------------------------------*/
+    #if 0
+        #if 0
+        while(1 != is_amazon_info_update()) //该处逻辑还是欠妥，后续改进
+        {
+            DEBUG_LOG("wait g_amazon_info update .....\n");
+            sleep(2);
+        }
+        #endif
     int i= 0;
-    #if 0
-    while(1 != is_amazon_info_update()) //该处逻辑还是欠妥，后续改进
+    for(i = 0 ; i < tmp_info->ts_num ; i++)
     {
-        DEBUG_LOG("wait g_amazon_info update .....\n");
-        sleep(2);
-    }
-    #endif
-    
-    for(i = 0 ; i < out_ts_info->ts_num ; i++)
-    {
-    #if 0
+        #if 1
         put_file_info_t file_info = {0};
         file_info.mode = 2; //缓存buf模式
         file_info.file_tlen = MD_ALARM_RECODE_TIME;
-        file_info.file_type = TYPE_TS;
+        if(M3U_INDEX_FILE_TYPE == M3U_TS_FILE) 
+            file_info.file_type = TYPE_TS;
+        else //if(M3U_INDEX_FILE_TYPE == M3U_FMP4_FILE) //内部传输逻辑和 TS 一样
+            file_info.file_type = TYPE_TS;  
+        
         file_info.ts_flag = TS_FLAG_ONE;  //目前按照只有一个15 s TS文件的方案去实现？？？？？15S内发生了二次告警就接着录制，但内存很可能不够，后续考虑
-        strcpy(file_info.file_name,out_ts_info.ts_array[i].ts_name);
-        file_info.file_buf = out_ts_info.ts_array[i].ts_buf;
-        file_info.file_buf_len = out_ts_info.ts_array[i].ts_buf_size;
-        strcpy(file_info.m3u8name,out_ts_info.m3u_name);
+        strcpy(file_info.file_name,tmp_info->ts_array[i].ts_name);
+        file_info.file_buf = tmp_info->ts_array[i].ts_buf;
+        file_info.file_buf_len = tmp_info->ts_array[i].ts_buf_size;
+        strcpy(file_info.m3u8name,tmp_info->m3u_name);
         
         time_t timer = time(NULL);
         //struct tm *lctv = localtime(&timer);
         memcpy(&file_info.datetime,&timer,sizeof(timer));
-        amazon_put_even_thread(&file_info);//临时调试放在这，调试好后放到该放的地方去
+        amazon_put_even_thread(&file_info);
        
-    #endif
+        #endif
+        
         #if 0  //DEBUG 写到本地端
             int fd = -1;
             int ret = 0;
             /*
             if(0 == i)
-            {   printf("out_ts_info->m3u_name = %s\n",out_ts_info->m3u_name);
-                fd = open(out_ts_info->m3u_name , O_CREAT | O_WRONLY | O_TRUNC, 0664);
-                ret = write(fd, out_ts_info->m3u_buf, out_ts_info->m3u_buf_size);
-                if(ret != out_ts_info->m3u_buf_size)
+            {   printf("out_ts_info->m3u_name = %s\n",ts_info->m3u_name);
+                fd = open(ts_info->m3u_name , O_CREAT | O_WRONLY | O_TRUNC, 0664);
+                ret = write(fd, ts_info->m3u_buf, ts_info->m3u_buf_size);
+                if(ret != ts_info->m3u_buf_size)
                 {
                     ERROR_LOG("write error!\n");
                     close(fd);
@@ -702,10 +730,10 @@ void* MD_alarm_response_func(void* args) //文件模式 版本
                 close(fd);
             }
             */
-            printf("out_ts_info->ts_array[%d].ts_name = %s\n",i,out_ts_info->ts_array[i].ts_name);
-            fd = open(out_ts_info->ts_array[i].ts_name , O_CREAT | O_WRONLY | O_TRUNC, 0664);
-            ret = write(fd, out_ts_info->ts_array[i].ts_buf, out_ts_info->ts_array[i].ts_buf_size);
-            if(ret != out_ts_info->ts_array[i].ts_buf_size)
+            printf("out_ts_info->ts_array[%d].ts_name = %s\n",i,tmp_info->ts_array[i].ts_name);
+            fd = open(tmp_info->ts_array[i].ts_name , O_CREAT | O_WRONLY | O_TRUNC, 0664);
+            ret = write(fd, tmp_info->ts_array[i].ts_buf, tmp_info->ts_array[i].ts_buf_size);
+            if(ret != tmp_info->ts_array[i].ts_buf_size)
             {
                 ERROR_LOG("write error!\n");
                 close(fd);
@@ -719,7 +747,7 @@ void* MD_alarm_response_func(void* args) //文件模式 版本
     #endif
     
 ERR:
-    if(out_ts_info) hls_main_exit(out_ts_info); 
+    if(recode_data) {free(recode_data);recode_data = NULL;}
     if(out_mp4_info.buf_mode.buf_start) fmp4_record_exit(&out_mp4_info);
     recode_mp4_done = 1;//标记结束
     printf("=======END MD_alarm_response_func==================================================================\n");
@@ -1082,6 +1110,7 @@ int app_main(int argc, char *argv[])
 }
 
 #endif
+
 
 
 

@@ -900,10 +900,23 @@ int  m3u8_file_write(put_file_info_t *info, char sendok)
 	else if(info->ts_flag == TS_FLAG_6S) strcpy(sub_dir,A_VIDEO6s_DIR);
 	else strcpy(sub_dir,A_VIDEO_DIR);
 
+	int name_offset = 0;
+	if(!strncmp(info->file_name,"/jffs0/",7))
+		name_offset = 7;
+	else if(!strncmp(info->file_name,"/ramfs/",7))
+		name_offset = 7;
+	else if(!strncmp(info->file_name,"/tmp/",5))
+		name_offset = 5;
+	else
+	{
+		ERROR_LOG("unknown file path!\n");
+		return -1;
+	}
+	
 	if(url_index != AMAZON_PRODUCE)//非线上（非美国）模式
-		snprintf(tsurl,256,"https://%s/%s/%s/%s/%s/%s",g_amazon_info.host,g_amazon_info.bucket,g_amazon_info.deviceid,g_amazon_info.date,sub_dir,info->file_name + strlen("/ramfs/"));
+		snprintf(tsurl,256,"https://%s/%s/%s/%s/%s/%s",g_amazon_info.host,g_amazon_info.bucket,g_amazon_info.deviceid,g_amazon_info.date,sub_dir,info->file_name + name_offset);
 	else //线上（美国）模式
-		snprintf(tsurl,256,"%s/%s/%s/%s/%s",AMAZON_QIANMIN,g_amazon_info.deviceid,g_amazon_info.date,sub_dir,info->file_name + strlen(TS_FILE_PATH));
+		snprintf(tsurl,256,"%s/%s/%s/%s/%s",AMAZON_QIANMIN,g_amazon_info.deviceid,g_amazon_info.date,sub_dir,info->file_name + name_offset);
 	DEBUG_LOG("....ts_url = %s\n", tsurl);
 	
 
@@ -1076,18 +1089,29 @@ void amazon_send_even_info(put_file_info_t *info)//"/bucket-1-20180131/3db73d9c1
 	/*---#文件存储桶------------------------------------------------------------*/
 	cJSON_AddStringToObject(jpush, "bucket", g_amazon_info.bucket);
 	
+	int name_offset = 0;
+	if(!strncmp(info->file_name,"/jffs0/",7)) name_offset = 7;
+	else if(!strncmp(info->file_name,"/ramfs/",7)) name_offset = 7;
+	else if(!strncmp(info->file_name,"/tmp/",5)) name_offset = 5;
+	else
+	{
+		ERROR_LOG("unknown file path!\n");
+		return;
+	}
+		
+			
 	/*---#缩略图上传路径------------------------------------------------------------*/
-	snprintf(picpath,128,"%s/%s/%s/picture/%s",g_amazon_info.bucket, g_amazon_info.deviceid, g_amazon_info.date,info->file_name + 5);
+	snprintf(picpath,128,"%s/%s/%s/picture/%s",g_amazon_info.bucket, g_amazon_info.deviceid, g_amazon_info.date,info->file_name + name_offset);
 	cJSON_AddStringToObject(jpush, "picturePath", picpath);
 	
 	/*---#6秒视频索引文件上传路径------------------------------------------------------------*/
-	snprintf(vid6spath,128,"%s/%s/%s/video6s/%s",g_amazon_info.bucket, g_amazon_info.deviceid, g_amazon_info.date,info->file_name+5);
+	snprintf(vid6spath,128,"%s/%s/%s/video6s/%s",g_amazon_info.bucket, g_amazon_info.deviceid, g_amazon_info.date,info->file_name + name_offset);
 	cJSON_AddStringToObject(jpush, "video6sPath", vid6spath);
 
 	if(strstr(info->file_name+5, "m3u8"))
 	{
 		/*---#完整视频索引文件上传路径------------------------------------------------------------*/
-		snprintf(vidpath,128,"%s/%s/%s/video/%s",g_amazon_info.bucket, g_amazon_info.deviceid, g_amazon_info.date,info->file_name+5);
+		snprintf(vidpath,128,"%s/%s/%s/video/%s",g_amazon_info.bucket, g_amazon_info.deviceid, g_amazon_info.date,info->file_name + name_offset);
 		cJSON_AddStringToObject(jpush, "videoPath", vidpath);
 	}
 	
@@ -1494,6 +1518,8 @@ void amazon_S3_req_thread(void)
 	}
 	pthread_detach(Thread_amazon_S3_req_ID);
 }
+
+
 
 
 

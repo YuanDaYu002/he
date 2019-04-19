@@ -63,7 +63,7 @@ typedef struct _put_file_info_t
 	char		file_name[62];				//文件名
 	char*		file_buf;					//mod == 2专用，文件的缓存位置（若 mode == 1,该参数置NULL）
 	int			file_buf_len;				//file_buf的长度，同上
-	char 		m3u8name[64];				//对应的m3u8文件名(内容由S3程序自动生成，这里只需要提供文件名字即可)
+	char 		m3u8name[64];				//绝对m3u8文件名(内容由S3程序自动生成，这里只需要提供文件名字即可)
 	char 		datetime[24];				//时间信息
 	
 }put_file_info_t;
@@ -90,6 +90,7 @@ int is_amazon_info_update(void);
 
 
 #endif
+
 
 
 

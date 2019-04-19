@@ -124,8 +124,22 @@ static int generate_ts_header(char* out_buf, int out_buf_size, int cont_count, i
 	return put_bits_count(&bs)/8;
 }
 
-
-static int generate_pes_header(char* out_buf, int out_buf_size, int data_size, double fpts, double fdts, int es_id){
+/*******************************************************************************
+*@ Description    :生成 pes 头
+*@ Input          :<out_buf> 生成头存储的buf
+					<out_buf_size>生成头存储的buf大小
+					<data_size>数据部分的大小
+					<fpts>
+					<fdts>
+					<es_id>音频取值（0xc0-0xdf），通常为0xc0
+							视频取值（0xe0-0xef），通常为0xe0
+					
+*@ Output         :
+*@ Return         :返回字节长度
+*@ attention      :
+*******************************************************************************/
+static int generate_pes_header(char* out_buf, int out_buf_size, int data_size, double fpts, double fdts, int es_id)
+{
 	PutBitContext bs;
 
 	init_put_bits(&bs, out_buf, out_buf_size);
@@ -139,25 +153,26 @@ static int generate_pes_header(char* out_buf, int out_buf_size, int data_size, d
 	if (abs(pts-dts) > 10)
 		pts_dts_length += 5;
 
-	//pes packet start
+	/*---# pes packet start------------------------------------------------------------*/
 	put_bits(&bs, 24,0x0000001);// pes packet start code
 
-	put_bits(&bs, 8,	es_id);					// stream id
+	put_bits(&bs, 8,	es_id);// stream id 音频取值（0xc0-0xdf），通常为0xc0 视频取值（0xe0-0xef），通常为0xe0
 	if (es_id >= 0xE0)
-		put_bits(&bs, 16,	0);	// pes packet length
+		put_bits(&bs, 16,	0);	// pes packet length 后面pes数据的长度，0表示长度不限制，只有视频数据长度会超过0xffff
 	else
-		put_bits(&bs, 16,	data_size + 3 + pts_dts_length);	// pes packet length
+		put_bits(&bs, 16,	data_size + 3 + pts_dts_length);// pes packet length
 
-
+	/*---#第一个 flag（1Byte） 分解------------------------------------------------------------*/
 	put_bits(&bs, 2, 0x02);			// have to be '10b'
 	put_bits(&bs, 2, 0x00);			// pes scrambling control
 	put_bits(&bs, 1, 0x00);			// pes priority
 	put_bits(&bs, 1, 0x01);			// data alignment
 	put_bits(&bs, 1, 0x00);			// copyright
 	put_bits(&bs, 1, 0x00);			// original or copy
-
+	
+	/*---#第二个 flag（1Byte） 分解------------------------------------------------------------*/
 	if (pts_dts_length > 5){
-		put_bits(&bs, 2, 0x03);			// pts/dts flags we have only pts
+		put_bits(&bs, 2, 0x03);		// pts/dts flags we have only pts
 	}else{
 		put_bits(&bs, 2, 0x02);
 	}
@@ -167,9 +182,11 @@ static int generate_pes_header(char* out_buf, int out_buf_size, int data_size, d
 	put_bits(&bs, 1, 0x00);			// additional copy info flag
 	put_bits(&bs, 1, 0x00);			// pes crc flag
 	put_bits(&bs, 1, 0x00);			// pes extention flag
-	put_bits(&bs, 8, pts_dts_length);			// pes headder data length
+	
+	put_bits(&bs, 8, pts_dts_length);// pes headder data length（pes data length）后面数据的长度，取值5或10
 
-	if (pts_dts_length > 5){
+	if (pts_dts_length > 5)
+	{
 		put_bits(&bs, 4,  0x03);// have to be '0011b'
 		put_bits(&bs, 3,  (pts >> 30) & 0x7);// pts[32..30]
 		put_bits(&bs, 1,  0x01);// marker bit
@@ -186,7 +203,9 @@ static int generate_pes_header(char* out_buf, int out_buf_size, int data_size, d
 		put_bits(&bs, 15, dts & 0x7FFF);// pts[14..0]
 		put_bits(&bs, 1,  0x01);// marker bit
 
-	}else{
+	}
+	else
+	{
 		put_bits(&bs, 4,  0x02);// have to be '0010b'
 
 		put_bits(&bs, 3,  (pts >> 30) & 0x7);// pts[32..30]
@@ -211,7 +230,25 @@ void pack_pcr(char* ts_buf, int* frame_count, int* cc, double start_time, int pi
 	++cc[0];
 }
 
-void pack_data(char* ts_buf, int* frame_count, int* cc, double pts, double dts, int es_id, int pid, char* data, int frame_size, int pcr_pid)
+/*******************************************************************************
+*@ Description    :对一块（可为多帧）帧数据进行打包
+*@ Input          :<ts_buf>TS文件的输出buf
+					<frame_count>打包成TS包的包（帧）总数（ts包大小固定为188字节）
+					<cc>未知，但值为0
+					<pts>
+					<dts>
+					<es_id> video track：0xE0;  否则：0xC0
+					<pid>
+					<data>要打包的帧数据
+					<frame_size>要打包的帧数据的总大小
+					<pcr_pid> video track（lead track）：1 否则:0 
+					
+*@ Output         :
+*@ Return         :
+*@ attention      :
+*******************************************************************************/
+void pack_data(char* ts_buf, int* frame_count, int* cc, double pts, double dts,
+					int es_id, int pid, char* data, int frame_size, int pcr_pid)
 {
 	char pes_header_buffer[128];
 	char ts_header_buffer[188];
@@ -231,9 +268,11 @@ void pack_data(char* ts_buf, int* frame_count, int* cc, double pts, double dts, 
 		ts_header_size = generate_ts_header(ts_header_buffer, sizeof(ts_header_buffer), cc[0], 1,
 												0, 0, pid, 0, frame_size + pes_header_size);
 	}
-
+	/*---# ts 层------------------------------------------------------------*/
 	memcpy(ts_buf + 188 * frame_count[0], ts_header_buffer, ts_header_size);
+	/*---# pes 层------------------------------------------------------------*/
 	memcpy(ts_buf + 188 * frame_count[0] + ts_header_size, pes_header_buffer, pes_header_size);
+	/*---# es 层------------------------------------------------------------*/
 	memcpy(ts_buf + 188 * frame_count[0] + ts_header_size + pes_header_size, data, 188 - ts_header_size - pes_header_size);
 
 	++frame_count[0];
@@ -241,7 +280,8 @@ void pack_data(char* ts_buf, int* frame_count, int* cc, double pts, double dts, 
 
 	pos += 188 - ts_header_size - pes_header_size;
 
-	while (pos < frame_size){
+	while (pos < frame_size)
+	{
 
 //		ts_header_size = generate_ts_header(ts_header_buffer, sizeof(ts_header_buffer), cc[0],
 	//										0, 1, start_time + pos / 8000.0, pid, 0, frame_size - pos);
@@ -755,14 +795,27 @@ int put_pmt(char* buf, media_stats_t* stats, int* pmt_cc, int pcr_track){
 	return 188;
 }
 
-int put_data_frame(char* buf, media_stats_t* stats, media_data_t* data, int track, int lead_track, int num_of_frames)
+/*******************************************************************************
+*@ Description    :填充音视频帧数据
+*@ Input          :<buf> TS文件的输出buf
+					<stats>媒体状态信息
+					<data>一个TS文件对应从trak中取出帧数据的描述信息
+					<track> 当前track的标号
+					<lead_track>lead track 的标号
+					<num_of_frames>buf中的帧总数
+*@ Output         :
+*@ Return         :
+*@ attention      :
+*******************************************************************************/
+int put_data_frame(char* buf, media_stats_t* stats, media_data_t* data, 
+						int track, int lead_track, int num_of_frames)
 {
 
 	int fc =  0;
-	int first_frame = data->track_data[track]->first_frame;
-	int fn = data->track_data[track]->frames_written;
-	char* data_buf = data->track_data[track]->buffer + data->track_data[track]->offset[fn];
-	int data_buf_size = 0;
+	int first_frame = data->track_data[track]->first_frame;//当前TS分片对应帧区间第一帧的位置（在整个mp4文件video帧中的下标值）
+	int fn = data->track_data[track]->frames_written;//记录已经写入到TS文件（缓冲区）的帧数
+	char* data_buf = data->track_data[track]->buffer + data->track_data[track]->offset[fn];//下一个写入的帧数据位置
+	int data_buf_size = 0;//帧数据总大小
 	int i;
 	double pts;
 	double dts;
@@ -804,7 +857,7 @@ int find_video_track(media_stats_t* stats){
 }
 
 /*******************************************************************************
-*@ Description    :
+*@ Description    :返回当前需要写数据的 track 数组下标
 *@ Input          :<stats>媒体音视频轨道信息
 					<data>一个TS文件对应从trak中取出帧数据的描述信息
 *@ Output         :
@@ -820,8 +873,8 @@ int select_current_track(media_stats_t* stats, media_data_t* data)
 	for(i = 0; i < stats->n_tracks; ++i)
 	{
 		track_data_t* td = data->track_data[i]; //当前TS文件 音/视频 trak 对应源数据帧的描述信息 
-		track_t* ts = stats->track[i];//源 
-		float* pts = ts->dts;
+		track_t* ts = stats->track[i];
+		float* pts = ts->dts;//优先设置成pts = dts，如果一个视频没有B帧，则pts永远和dts相同
 		if ( !pts )
 			pts = ts->pts;
 
@@ -888,7 +941,7 @@ int mux_to_ts(media_stats_t* stats, media_data_t* data, char* output_buffer, int
 
 	//put pat/pmt
 	//put video frame
-	if (video_track >= 0)
+	if (video_track >= 0)//存在 video track，保证先放 video 的数据，且优先将 video track 作为 lead track
 	{
 		DEBUG_LOG("put pat/pmt + video frame\n");	
 		pos += put_pat(output_buffer + pos, stats, &pat_cc);
@@ -927,6 +980,7 @@ int mux_to_ts(media_stats_t* stats, media_data_t* data, char* output_buffer, int
 
 	return pos;
 }
+
 
 
 

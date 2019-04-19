@@ -12,6 +12,8 @@
  * at the top of the source tree.
  *
  */
+#include <string.h>
+
 
 typedef struct PutBitContext {
     unsigned int bit_pos;
@@ -27,6 +29,7 @@ static inline void init_put_bits(PutBitContext *s, unsigned char *buffer, int bu
     memset(s->buf, 0, s->size);
 }
 
+//统计写了多少个比特数
 static inline int put_bits_count(PutBitContext *s)
 {
     return (s->bit_pos);
@@ -65,3 +68,4 @@ static inline void put_bits64(PutBitContext *s, int n, unsigned long long value)
 		put_bit(s, (value >> (n - i - 1)) & 1);
 	}
 }
+

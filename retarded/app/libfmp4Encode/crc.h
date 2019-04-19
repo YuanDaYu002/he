@@ -207,10 +207,25 @@ static const uint32_t crc_table[CRC_MAX][257] = {
     },
 };
 
+/*******************************************************************************
+*@ Description    :依据 crc_id 选取不同的CRC码表数组
+*@ Input          :
+*@ Output         :
+*@ Return         :对应的数组名
+*@ attention      :
+*******************************************************************************/
 const uint32_t *crc_get_table(CRCId crc_id){
     return crc_table[crc_id];
 }
-
+/*******************************************************************************
+*@ Description    :求取CRC校验值
+*@ Input          :<ctx> 所选择s的的CRC码表的子表数组名（一维数组）
+					<buffer>输入buf
+					<length>buf长度
+*@ Output         :<crc>接收生成的CRC校验码（函数内部变量，只是传值，上层勿使用）
+*@ Return         :32位的 CRC校验码（上层使用该返回值）
+*@ attention      :
+*******************************************************************************/
 uint32_t crc(const uint32_t *ctx, uint32_t crc, const uint8_t *buffer, size_t length){
     const uint8_t *end= buffer+length;
 
@@ -219,3 +234,4 @@ uint32_t crc(const uint32_t *ctx, uint32_t crc, const uint8_t *buffer, size_t le
 
     return crc;
 }
+

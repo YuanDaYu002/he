@@ -2,6 +2,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/time.h>
+
 
 //#include "curl/curl.h"
 
@@ -15,6 +17,9 @@
 
 
 //#include "lame/lame.h"
+
+struct timeval time_start = {0};
+struct timeval time_end = {0};
 
 
 #define SERVER_TEST			//服务端测试开关
@@ -181,7 +186,12 @@ int  generate_playlist_test(hls_out_info_t* hsl_out_info,FILE_info_t* mp4_file, 
 	//---获取文件的状态信息--------------------------------------------
 	if(NULL == media_stats_info.stats_buffer) //media_stats_info 没有被初始化,需要先初始化
 	{
+        gettimeofday(&time_start,NULL);
+		
 		media_stats_info.stats_size = media->get_media_stats(mp4_file,NULL, handle, source, NULL, 0);
+		gettimeofday(&time_end,NULL);
+		ERROR_LOG("time_end.tv_sec - time_start.tv_sec = %d\n",time_end.tv_sec - time_start.tv_sec);
+		
 		media_stats_info.stats_buffer		= (char*)malloc(media_stats_info.stats_size);
 		if ( !media_stats_info.stats_buffer )
 		{
@@ -189,7 +199,7 @@ int  generate_playlist_test(hls_out_info_t* hsl_out_info,FILE_info_t* mp4_file, 
 			goto ERR;
 		}
 		memset(media_stats_info.stats_buffer,0,media_stats_info.stats_size);
-		
+		gettimeofday(&time_start,NULL);
 		int size = media->get_media_stats(mp4_file,NULL, handle, source, (media_stats_t*)media_stats_info.stats_buffer,
 																							media_stats_info.stats_size);
 		if(size != media_stats_info.stats_size)
@@ -197,6 +207,9 @@ int  generate_playlist_test(hls_out_info_t* hsl_out_info,FILE_info_t* mp4_file, 
 			ERROR_LOG("get_media_stats failed !\n");
 			goto ERR;
 		}
+		
+		gettimeofday(&time_end,NULL);
+		ERROR_LOG("time_end.tv_sec - time_start.tv_sec = %d\n",time_end.tv_sec - time_start.tv_sec);
 	}
 
 	stats_size = media_stats_info.stats_size;
@@ -208,6 +221,7 @@ int  generate_playlist_test(hls_out_info_t* hsl_out_info,FILE_info_t* mp4_file, 
 	pure_filename = get_pure_filename_without_postfix(filename); //get only filename without any directory info
 	if (pure_filename)
 	{
+		gettimeofday(&time_start,NULL);		
 		DEBUG_LOG("into position G1\n");	
 		int playlist_size 		= generate_playlist((media_stats_t*)stats_buffer, pure_filename, NULL, 0, NULL, &numberofchunks);
 		playlist_buffer 	= (char*)malloc( playlist_size);//用于缓存 m3u8文件
@@ -243,7 +257,9 @@ int  generate_playlist_test(hls_out_info_t* hsl_out_info,FILE_info_t* mp4_file, 
 			hsl_out_info->m3u_buf = playlist_buffer;
 			hsl_out_info->m3u_buf_size = playlist_size;
 		}
-		
+
+		gettimeofday(&time_end,NULL);
+		ERROR_LOG("time_end.tv_sec - time_start.tv_sec = %d\n",time_end.tv_sec - time_start.tv_sec);
 		
 		DEBUG_LOG("into position L\n"); 
 
@@ -401,6 +417,7 @@ int  generate_piece(hls_out_info_t* hsl_out_info,FILE_info_t* mp4_file, char* ou
 
 	//---获取输入媒体文件的数据-------------------------------------------------------------------
 	DEBUG_LOG("into position I\n");	
+	gettimeofday(&time_start,NULL);
 	data_size = media->get_media_data(mp4_file,NULL, handle, source, (media_stats_t*)stats_buffer, piece, NULL, 0);
 	if (data_size <= 0)
 	{
@@ -433,11 +450,14 @@ int  generate_piece(hls_out_info_t* hsl_out_info,FILE_info_t* mp4_file, char* ou
 		ERROR_LOG("get_media_data failed !\n");
 		goto ERR;
 	}
+	gettimeofday(&time_end,NULL);
+		ERROR_LOG("time_end.tv_sec - time_start.tv_sec = %d\n",time_end.tv_sec - time_start.tv_sec);
 	//----------------------------------------------------------------------------------------------
 
 	//----生成TS文件--------------------------------------------------------------------------------
 	DEBUG_LOG("into position K\n");
-	
+
+	gettimeofday(&time_start,NULL);
 	muxed_size = mux_to_ts((media_stats_t*)stats_buffer, data_buffer, NULL, 0);
 	if ( muxed_size <= 0 )
 	{
@@ -458,6 +478,8 @@ int  generate_piece(hls_out_info_t* hsl_out_info,FILE_info_t* mp4_file, char* ou
 		ERROR_LOG("mux_to_ts faile !\n");
 		goto ERR;
 	}
+	gettimeofday(&time_end,NULL);
+		ERROR_LOG("time_end.tv_sec - time_start.tv_sec = %d\n",time_end.tv_sec - time_start.tv_sec);
 	//----------------------------------------------------------------------------------------------
 
 	//----写入输出的TS文件------------------------------------------------------------------------------------------
