@@ -58,11 +58,11 @@ extern ts_audio_init_t ts_audio_init_info;
 *@ attention      :
 *******************************************************************************/
 static int generate_ts_header(char* out_buf, int out_buf_size, int cont_count, int payload_unit_start, 
-								int need_pcr, double fpcr, int pid, int discontiniuty, int payload_size)
+								int need_pcr, long long fpcr, int pid, int discontiniuty, int payload_size)
 {
 	PutBitContext bs;
 	int pos;
-	long long pcr;
+	long long pcr; // timescale 标准下的 整数时间戳
 	int stuffing_size = 0;
 	int i;
 	/*是否包含自适应区:
@@ -96,7 +96,11 @@ static int generate_ts_header(char* out_buf, int out_buf_size, int cont_count, i
 	put_bits(&bs, 2, 0x00); //transport_scrambling_control
 	put_bits(&bs, 2, adaptation_field); //adaptation_field_control
 	put_bits(&bs, 4, cont_count & 0x0F); //continiuty counter
-
+	
+	/*---#------------------------------------------------------------
+	打包ts流时PAT和PMT表是没有adaptation field的，不够的长度直接补0xff即可。
+	视频流和音频流都需要加adaptation field，通常加在一个帧的第一个ts包和最后一个ts包里，中间的ts包不加。
+	---#------------------------------------------------------------*/
 	if (adaptation_field == 2 || adaptation_field == 3)//包含自适应区域
 	{
 		int adaptation_field_length = 0;
@@ -124,10 +128,19 @@ static int generate_ts_header(char* out_buf, int out_buf_size, int cont_count, i
 			put_bits(&bs, 1,0x00);//adaptation field extention flag
 			if (need_pcr)
 			{
-				pcr = fpcr * 27000000LL;
+				/*pcr是节目时钟参考，pcr、dts、pts都是对同一个系统时钟的采样值，pcr是递增的，
+				因此可以将其设置为dts值，音频数据不需要pcr。如果没有字段，ipad是可以播放的，
+				但vlc无法播放。*/
+				#if 1 //fpcr是 timescale（video：90000）标准下的整数
+					pcr = fpcr * 300LL; //为什么是乘300？
+				#else//fpcr 为 double 型的浮点数（已经是正常生活中的时间秒数了）				
+					pcr = fpcr * 27000000LL;//90000 * 300 = 27000000 ，为什么还要乘300？
+				#endif
+				
 				put_bits64(&bs, 33,(pcr / 300LL) & 0x01FFFFFFFFLL);//program clock reference base
 				put_bits(&bs, 6,0x3F);//reserved
 				put_bits(&bs, 9,(pcr % 300) & 0x01FFLL);//program clock reference ext
+				
 			}
 			//here we have to put stuffing byte
 			for(i = 0; i < stuffing_size; i++)
@@ -156,7 +169,7 @@ static int generate_ts_header(char* out_buf, int out_buf_size, int cont_count, i
 *@ attention      :
 *******************************************************************************/
 static int generate_pes_header(char* out_buf, int out_buf_size, int data_size, 
-									double fpts, double fdts, int es_id)
+									long long fpts, long long fdts, int es_id)
 {
 	PutBitContext bs;
 
@@ -165,9 +178,13 @@ static int generate_pes_header(char* out_buf, int out_buf_size, int data_size,
 	long long pts;
 	long long dts;
 
-	pts = (fpts + 0.300) * 90000LL;
+	#if 1  //pts dts 都采用整数（依据音视频各自的 timescale 换算）
+	pts = (long long)fpts;
+	dts = (long long)fdts;
+	#else
+	pts = (fpts + 0.300) * 90000LL;//又转化回了整数，不如直接使用整数计算
 	dts = (fdts + 0.300) * 90000LL;
-
+	#endif
 	if (abs(pts-dts) > 10)
 		pts_dts_length += 5;
 
@@ -245,7 +262,6 @@ static int generate_pes_header(char* out_buf, int out_buf_size, int data_size,
 /*******************************************************************************
 *@ Description    :对一块源帧数据（可为多帧）进行 TS 打包
 *@ Input          :<ts_buf>TS文件的输出buf
-					<frame_count>打包成TS包的包（帧）总数（ts包大小固定为188字节）
 					<cc>TS包的包（帧）总数计数（上层）
 					<pts>
 					<dts>
@@ -255,11 +271,11 @@ static int generate_pes_header(char* out_buf, int out_buf_size, int data_size,
 					<frame_size>源帧数据的总大小
 					<pcr_pid> video track（lead track）：1 否则:0 
 					
-*@ Output         :
+*@ Output         :<frame_count>打包成TS包的包（帧）总数（ts包大小固定为188字节）
 *@ Return         :
 *@ attention      :
 *******************************************************************************/
-void pack_data(char* ts_buf, int* frame_count, int* cc, double pts, double dts,
+void pack_data(char* ts_buf, int* frame_count, int* cc, long long  pts, long long dts,
 					int es_id, int pid, char* data, int frame_size, int pcr_pid)
 {
 	char pes_header_buffer[128];
@@ -318,7 +334,7 @@ void pack_data(char* ts_buf, int* frame_count, int* cc, double pts, double dts,
 *@ Input          :
 *@ Output         :
 *@ Return         :188（TS包的固定大小）
-*@ attention      :
+*@ attention      :打包ts流时PAT和PMT表是没有adaptation field的，不够的长度直接补0xff即可。
 *******************************************************************************/
 int TS_put_pat(char* buf, int* pat_cc)
 {
@@ -372,7 +388,7 @@ int TS_put_pat(char* buf, int* pat_cc)
 					<pcr_pid> PCR(节目参考时钟)所在TS分组的PID，指定为视频PID
 *@ Output         :<buf>结果输出
 *@ Return         :188（TS包的固定大小）
-*@ attention      :
+*@ attention      :打包ts流时PAT和PMT表是没有adaptation field的，不够的长度直接补0xff即可。
 *******************************************************************************/
 int TS_put_pmt(char* buf, ts_media_stats_t* status, int* pmt_cc, int pcr_pid)
 {
@@ -453,11 +469,13 @@ int TS_put_data_frame(char* buf, ts_media_stats_t* stats, ts_media_data_t* data,
 	int first_frame = data->track[track].first_frame;//当前TS分片对应帧区间的开始位置（下标）
 	int fn = data->track[track].frames_written;//记录已经写入到TS文件（缓冲区）的帧数
 	char* data_buf = data->track[track].buffer + data->track[track].offset[fn];//下一个写入的帧数据位置
-	//print_array("data_buf:",data_buf,20);
+	if(track != lead_track)
+		print_array("get data_buf:",data_buf,20);
+	
 	int data_buf_size = 0;//帧数据总大小
 	int i;
-	double pts;
-	double dts;
+	long long pts;
+	long long dts;
 
 	for(i = 0; i < num_of_frames && ((i + fn) < data->track[track].n_frames); ++i)
 	{
@@ -469,8 +487,8 @@ int TS_put_data_frame(char* buf, ts_media_stats_t* stats, ts_media_data_t* data,
 	if (stats->track[track].codec == H264_VIDEO)
 		es_id = 0xE0;
 	
-	pts = stats->track[track].pts[first_frame + fn];
-	dts = stats->track[track].dts[first_frame + fn];
+	pts = (long long)stats->track[track].pts[first_frame + fn];
+	dts = (long long)stats->track[track].dts[first_frame + fn];
 
 	if (stats->track[track].repeat_for_every_segment)//在 lead track 的基础上展开pts和dts
 	{
@@ -498,14 +516,15 @@ int TS_put_data_frame(char* buf, ts_media_stats_t* stats, ts_media_data_t* data,
 int select_current_track(ts_media_stats_t* stats, ts_media_data_t* data)
 {
 	int ct = -1;
-	float min_time = 1000000000.0;
+	//float min_time = 1000000000.0;
+	int min_time = 1000000000;
 	int  i;
 
 	for(i = 0; i < stats->n_tracks; ++i)
 	{
 		ts_track_data_t* td = &data->track[i]; //当前TS文件 音/视频 trak 对应源数据帧的描述信息 
 		ts_track_media_t* ts = &stats->track[i];
-		float* pts = ts->dts;//优先设置成pts = dts，如果一个视频没有B帧，则pts永远和dts相同
+		int* pts = ts->dts;//优先设置成pts = dts，如果一个视频没有B帧，则pts永远和dts相同
 		if ( !pts )
 			pts = ts->pts;
 
@@ -564,13 +583,13 @@ int TS_recoder_init(ts_recoder_init_t *config)
 	//media_stats.track[VIDEO_INDEX].elementary_PID = VIDEO_stream_PID;
 	media_stats.track[VIDEO_INDEX].n_frames = 0;
 	media_stats.track[VIDEO_INDEX].bitrate = 0;//不填
-	media_stats.track[VIDEO_INDEX].pts = (float*)calloc(MAX_VIDEO_FRAME*sizeof(float),sizeof(char));
+	media_stats.track[VIDEO_INDEX].pts = (int*)calloc(MAX_VIDEO_FRAME*sizeof(int),sizeof(char));
 	if(media_stats.track[VIDEO_INDEX].pts == NULL){
 		TS_ERROR_LOG("calloc failed!\n");
 		return -1;
 	}
 	
-	media_stats.track[VIDEO_INDEX].dts = (float*)calloc(MAX_VIDEO_FRAME*sizeof(float),sizeof(char));
+	media_stats.track[VIDEO_INDEX].dts = (int*)calloc(MAX_VIDEO_FRAME*sizeof(int),sizeof(char));
 	if(media_stats.track[VIDEO_INDEX].dts == NULL){
 		TS_ERROR_LOG("calloc failed!\n");
 		return -1;
@@ -590,13 +609,13 @@ int TS_recoder_init(ts_recoder_init_t *config)
 	//media_stats.track[1].elementary_PID = AUDIO_stream_PID;
 	media_stats.track[AUDIO_INDEX].n_frames = 0;
 	media_stats.track[AUDIO_INDEX].bitrate = 0;
-	media_stats.track[AUDIO_INDEX].pts = (float*)calloc(MAX_AUDIO_FRAME*sizeof(float),sizeof(char));
+	media_stats.track[AUDIO_INDEX].pts = (int*)calloc(MAX_AUDIO_FRAME*sizeof(int),sizeof(char));
 	if(media_stats.track[AUDIO_INDEX].pts == NULL){
 		TS_ERROR_LOG("calloc failed!\n");
 		return -1;
 	}
 
-	media_stats.track[AUDIO_INDEX].dts = (float*)calloc(MAX_AUDIO_FRAME*sizeof(float),sizeof(char));
+	media_stats.track[AUDIO_INDEX].dts = (int*)calloc(MAX_AUDIO_FRAME*sizeof(int),sizeof(char));
 	if(media_stats.track[AUDIO_INDEX].dts == NULL){
 		TS_ERROR_LOG("calloc failed!\n");
 		return -1;
@@ -684,6 +703,9 @@ int TS_recoder_init(ts_recoder_init_t *config)
 *@ Return         :成功：0 ；失败：-1
 *@ attention      :
 *******************************************************************************/
+extern ts_audio_init_t ts_audio_init_info;
+extern int Aframe_duration;
+
 int TsAEncode(void*frame,int frame_len)
 {
 	ts_track_data_t* 	track_data = &media_data.track[AUDIO_INDEX];
@@ -704,6 +726,8 @@ int TsAEncode(void*frame,int frame_len)
 		TS_ERROR_LOG("media_data.track_data[AUDIO_INDEX].buffer overflow!!\n");
 		return -1;
 	}
+	print_array("put to media_data:", out_buf, 10);
+	
 	memcpy(track_data->buffer_w_pos,out_buf,out_buf_len); 
 	track_data->n_frames ++;
 	track_data->buffer_w_pos +=  out_buf_len;
@@ -715,11 +739,19 @@ int TsAEncode(void*frame,int frame_len)
 	/*---# media_stats 放入新的一帧数据信息-------------------------------------------------------*/
 	track_status->n_frames ++;
 	if(1 == track_status->n_frames)
-		track_status->pts[track_status->n_frames-1] = (float)(1024.0/ts_audio_init_info.sample_rate);//给个随意初始值（不为零,1024为AAC帧样本数）
+	{
+		track_status->pts[track_status->n_frames-1] = Aframe_duration;//给个随意初始值（不为零,1024为AAC帧样本数）
+		//track_status->pts[track_status->n_frames-1] = (float)(1024.0/ts_audio_init_info.sample_rate);//给个随意初始值（不为零,1024为AAC帧样本数）
+	}
 	else
-		track_status->pts[track_status->n_frames-1] = track_status->pts[track_status->n_frames-2] + \
-													1024.0/ts_audio_init_info.sample_rate;//加上1帧的播放时长(1024/sample_rate)
+	{
+		track_status->pts[track_status->n_frames-1] = track_status->pts[track_status->n_frames-2] + Aframe_duration;//加上1帧的播放时长									
+		//track_status->pts[track_status->n_frames-1] = track_status->pts[track_status->n_frames-2] + \
+		//										1024.0/ts_audio_init_info.sample_rate;//加上1帧的播放时长(1024/sample_rate)
+	}
 	track_status->dts[track_status->n_frames-1] = track_status->pts[track_status->n_frames-1];
+	printf("----audio pts[%d] = %d  dts[%d] = %d\n",track_status->n_frames-1,track_status->pts[track_status->n_frames-1] ,
+													track_status->n_frames-1,track_status->dts[track_status->n_frames-1]);
 	track_status->flags[track_status->n_frames-1] = 1;//audio 帧每帧都是（当做）关键帧
 
 	/*---#--END------------------------------------------------------------------------------------*/
@@ -768,14 +800,20 @@ int TsVEncode(void*frame,int frame_len)
 	/*---# media_stats 放入新的一帧数据信息-------------------------------------------------------*/
 	track_status->n_frames ++;
 	if(1 == track_status->n_frames)
-		track_status->pts[track_status->n_frames-1] = (float)(1.0/ts_video_init_info.frame_rate);//给个随意初始值（一帧的时长）
+	{
+		track_status->pts[track_status->n_frames-1] = 90000/ts_video_init_info.frame_rate;
+		//track_status->pts[track_status->n_frames-1] = (float)(1.0/ts_video_init_info.frame_rate);//给个随意初始值（一帧的时长）
+	}
 	else
-		track_status->pts[track_status->n_frames-1] = track_status->pts[track_status->n_frames-2] + \
-													1.0/ts_video_init_info.frame_rate;//加上1帧的播放时长(90000/frame_rate)/90000
+	{
+		track_status->pts[track_status->n_frames-1] = track_status->pts[track_status->n_frames-2] + 90000/ts_video_init_info.frame_rate;
+		//track_status->pts[track_status->n_frames-1] = track_status->pts[track_status->n_frames-2] + \
+		//											1.0/ts_video_init_info.frame_rate;//加上1帧的播放时长(90000/frame_rate)/90000
+	}
 	track_status->dts[track_status->n_frames-1] = track_status->pts[track_status->n_frames-1];
 	
-	printf("----video pts[%d] = %f  dts[%d] = %f\n",track_status->n_frames-1,track_status->pts[track_status->n_frames-1] ,
-													track_status->n_frames-1,track_status->dts[track_status->n_frames-1]);
+	//printf("----video pts[%d] = %d  dts[%d] = %d\n",track_status->n_frames-1,track_status->pts[track_status->n_frames-1] ,
+	//												track_status->n_frames-1,track_status->dts[track_status->n_frames-1]);
 	if(is_key_frame)
 		track_status->flags[track_status->n_frames-1] = 1;
 	else

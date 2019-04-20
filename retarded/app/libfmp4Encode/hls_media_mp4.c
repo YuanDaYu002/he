@@ -3523,7 +3523,7 @@ int mp4_media_get_data(FILE_info_t* mp4_file,void* context, file_handle_t* mp4, 
 			DEBUG_LOG("into position I10 \n");
 			/*---------解析esds box，获取音频解码参数-------------------------------------------------------------------------*/
 			int DecSpecInfo=0;
-			long long BaseMask=0xFFF10200001FFC;
+			long long BaseMask=0xFFF10200001FFC;  //1111 1111 1111 0001 0000 0010 0000 0000 0000 0000 0001 1111 1111 1100
 			DecSpecInfo = get_DecoderSpecificInfo(mp4_file,mp4, source, find_stsd);
 			long long objecttype=0;
 			long long frequency_index=0;
@@ -3782,6 +3782,7 @@ void hls_media_mp4_global_variable_reset(void)
 	memset(&sample_offset,0,sizeof(sample_offset));
 	
 }
+
 
 
 

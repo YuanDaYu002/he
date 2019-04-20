@@ -604,7 +604,7 @@ extern void fmp4_record_exit(fmp4_out_info_t *info);
 int recode_mp4_done = 1; //标记 mp4 文件录制是否结束 (0:没结束 1：结束)
 pthread_mutex_t MD_func_mut; //MD 告警 响应线程 锁 
 #define OUT_FILE_BUF_SIZE (2*1024*1024) //初始化 3M大小空间（15S音视频）
-#define MD_ALARM_RECODE_TIME  5  //MD告警录制时长
+#define MD_ALARM_RECODE_TIME  6  //MD告警录制时长
 /*---# m3u索引文件类型------------------------------------------------------------*/
 #define M3U_TS_FILE     1
 #define M3U_FMP4_FILE   2
@@ -632,20 +632,41 @@ void* MD_alarm_response_func(void* args) //文件模式 版本
         recode_data = out_buf;
         recode_data_len = (int)out_len;
 
+        /***DEBUG 整体再写入到文件*********************************/
         #if 1
-            int fd = 0;
-            int ret = 0;
-            fd = open("/jffs0/MD_alarm_20190419.ts" , O_CREAT | O_WRONLY | O_TRUNC, 0664);
-            ret = write(fd, recode_data, recode_data_len);
-            if(ret != recode_data_len)
+        char* debug_file_name = "/jffs0/MD_alarm_20190420.ts";
+        if(0 == access(debug_file_name,F_OK))
+        {
+            if(0 == remove(debug_file_name))
             {
-                ERROR_LOG("write error!\n");
-                close(fd);
+                DEBUG_LOG("remove old file success!\n");
+            }
+            else
+            {
+                ERROR_LOG("remove old file failed!\n");
                 goto ERR;
             }
-            close(fd);
-            printf("-----write file success!---------------------------------------\n");
+        }
+
+        FILE*debug_file = fopen(debug_file_name, "wb+");
+        if(NULL == debug_file )
+        {
+            ERROR_LOG("debug open fmp4 file failed!\n");
+            goto ERR;
+        }
+        DEBUG_LOG("debug open file success!\n");
+
+        int debug_ret = fwrite(recode_data,1,recode_data_len,debug_file);
+        if(debug_ret < 0)
+        {
+            ERROR_LOG("write file error!\n");
+            fclose(debug_file);
+            goto ERR;
+        }
+        DEBUG_LOG("----fewite file size(%d)----\n",debug_ret);
+        fclose(debug_file);
         #endif
+        /*****************************************/
         
         if(recode_data) {free(recode_data);recode_data = NULL;}
         

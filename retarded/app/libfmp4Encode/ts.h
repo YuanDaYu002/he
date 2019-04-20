@@ -19,8 +19,10 @@ typedef struct _ts_media_track_t{
 								*/
 	int 	n_frames;			//目前该trak的帧数目
 	int 	bitrate;
-	float*	pts;
-	float*	dts;
+	//float*	pts;
+	//float*	dts;
+	int*	pts;
+	int*	dts;
 	int 	repeat_for_every_segment;
 	int*	flags;			//关键帧标记
 	int 	sample_rate;	//采样率
@@ -47,7 +49,7 @@ typedef struct ts_track_data_t
 	int		buffer_size;	//帧数据BUF的总大小
 	int*	size;			//帧的大小信息的指针（理解为数组的指针）
 	int* 	offset;			//帧的偏移量信息的指针（理解为数组的指针）（相较于 buffer/TS文件 开始位置 ）
-	int 	frames_written; //记录已经写入到TS文件（缓冲区）的帧数
+	int 	frames_written; //记录已经写入到TS文件的（源音视）频帧数
 	int 	data_start_offset;
 	int 	cc;				//mpeg2 ts continuity counter （TS 包/帧的数量统计）
 } ts_track_data_t;

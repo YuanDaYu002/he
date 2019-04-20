@@ -268,7 +268,8 @@ int ts_record(void **out_buf,int* out_len,int recode_time)
         goto ERR;
     }
     gettimeofday(&time_end,NULL);
-    printf("TS_remux_video_audio use time = %d(s) %d(us) \n",time_end.tv_sec - time_start.tv_sec,time_end.tv_usec - time_start.tv_usec);
+    int use_time = (time_end.tv_sec * 1000*1000 + time_end.tv_usec) - (time_start.tv_sec*1000*1000 + time_start.tv_usec);
+    printf("TS_remux_video_audio use time = %d(ms)  \n",use_time/1000);
 
     
     encoder_free_stream(stream_id);
