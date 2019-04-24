@@ -469,9 +469,10 @@ int TS_put_data_frame(char* buf, ts_media_stats_t* stats, ts_media_data_t* data,
 	int first_frame = data->track[track].first_frame;//当前TS分片对应帧区间的开始位置（下标）
 	int fn = data->track[track].frames_written;//记录已经写入到TS文件（缓冲区）的帧数
 	char* data_buf = data->track[track].buffer + data->track[track].offset[fn];//下一个写入的帧数据位置
-	if(track != lead_track)
+
+	/*if(track != lead_track)
 		print_array("get data_buf:",data_buf,20);
-	
+	*/
 	int data_buf_size = 0;//帧数据总大小
 	int i;
 	long long pts;
@@ -550,10 +551,6 @@ int select_current_track(ts_media_stats_t* stats, ts_media_data_t* data)
 *@ Return         :成功：0 失败：-1
 *@ attention      :
 *******************************************************************************/
-#define TS_RECODER_BUF_SIZE  1024*512*4		//TS文件缓存buf大小(最终的TS文件数据)
-#define VIDEO_BUF_SIZE		 1024*512*3		//缓存video帧（15S总帧数）的buf大小（1.5M）
-#define AUDIO_BUF_SIZE		 1024*512*1		//缓存audio帧（15S总帧数）的buf大小（0.5M）
-
 buf_t ts_recoder_buf = {0} ;		//TS文件缓存buf
 static ts_media_stats_t media_stats = {0};	//媒体状态信息描述
 static ts_media_data_t  media_data = {0}; 	//媒体数据信息描述
@@ -726,7 +723,7 @@ int TsAEncode(void*frame,int frame_len)
 		TS_ERROR_LOG("media_data.track_data[AUDIO_INDEX].buffer overflow!!\n");
 		return -1;
 	}
-	print_array("put to media_data:", out_buf, 10);
+	//print_array("put to media_data:", out_buf, 10);
 	
 	memcpy(track_data->buffer_w_pos,out_buf,out_buf_len); 
 	track_data->n_frames ++;
@@ -750,8 +747,8 @@ int TsAEncode(void*frame,int frame_len)
 		//										1024.0/ts_audio_init_info.sample_rate;//加上1帧的播放时长(1024/sample_rate)
 	}
 	track_status->dts[track_status->n_frames-1] = track_status->pts[track_status->n_frames-1];
-	printf("----audio pts[%d] = %d  dts[%d] = %d\n",track_status->n_frames-1,track_status->pts[track_status->n_frames-1] ,
-													track_status->n_frames-1,track_status->dts[track_status->n_frames-1]);
+	//printf("----audio pts[%d] = %d  dts[%d] = %d\n",track_status->n_frames-1,track_status->pts[track_status->n_frames-1] ,
+	//												track_status->n_frames-1,track_status->dts[track_status->n_frames-1]);
 	track_status->flags[track_status->n_frames-1] = 1;//audio 帧每帧都是（当做）关键帧
 
 	/*---#--END------------------------------------------------------------------------------------*/
@@ -866,7 +863,7 @@ int  TS_remux_video_audio(void **out_buf,int* out_len)
 	/*---#将剩余的帧数据进行TS打包------------------------------------------------------------*/
 	while(1)
 	{
-		DEBUG_LOG("put other frames\n");	
+		TS_DEBUG_LOG("put other frames\n");	
 		int ct = select_current_track(&media_stats,  &media_data);
 		if (ct < 0)
 			break;
@@ -882,8 +879,20 @@ int  TS_remux_video_audio(void **out_buf,int* out_len)
 		//usleep(5);
 	}
 
-	*out_buf = ts_recoder_buf.buf;
-	*out_len = (int)(ts_recoder_buf.w_pos - ts_recoder_buf.buf);
+	/*---# 为节省内存，返回的buf只满足能恰好存下文件------------------------*/
+	int ret_len = (int)(ts_recoder_buf.w_pos - ts_recoder_buf.buf);
+	char* ret_buf = (char*)malloc(ret_len);
+	if(NULL == ret_buf)
+	{
+		TS_ERROR_LOG("malloc failed!\n");
+		goto ERR;
+	}
+	memcpy(ret_buf,ts_recoder_buf.buf,ret_len);
+	
+	*out_buf = ret_buf;
+	*out_len = ret_len;
+	free_buf(&ts_recoder_buf);
+	
 	return 0;
 	//本次打包工作完成，标记该部分 buf 可用
 	//循环等待下一次的打包条件成熟，同时判断要不要退出打包线程
@@ -952,5 +961,6 @@ void ts_global_variable_reset(void)
 
 }
 	
+
 
 

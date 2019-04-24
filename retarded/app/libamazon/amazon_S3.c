@@ -1520,9 +1520,171 @@ void amazon_S3_req_thread(void)
 }
 
 
+/*======================================================================================================
+							告警音视频文件上传队列部分
+======================================================================================================*/
+#include "link_queue.h"
 
 
+QHeader* 				upload_file_queue = NULL;		//amazom上传文件队列头结点指针
+pthread_mutex_t 		up_file_queue_mut;				//队列锁
+/*******************************************************************************
+*@ Description    :将文件放入到（上传 amazom 云）上传队列
+*@ Input          :<file_info> 文件描述信息
+*@ Output         :
+*@ Return         :成功：0 ； 失败：-1
+*@ attention      :
+*******************************************************************************/
+int push_to_upload_file_queue(put_file_info_t *file_info)
+{
+	if(NULL != upload_file_queue && NULL != file_info)
+	{
+		int ret =0;		
+		pthread_mutex_lock(&up_file_queue_mut);
+		if(-3 == LQueueIsEmpty(upload_file_queue)) //如果队列已经满了，则先释放一个最旧的节点
+		{ 
+			put_file_info_t info = {0};
+			pop_frome_upload_file_queue(&info);
+			if(info.file_buf) free(info.file_buf);
+			
+		}
+		printf("---push file addr(%p)------ \n",file_info->file_buf);
+		ret = InLQueue(upload_file_queue,file_info);
+		pthread_mutex_unlock(&up_file_queue_mut);
+		if(ret < 0)
+		{
+			ERROR_LOG("InLQueue failed !\n");
+			return -1;
+		}
+		
+		return 0;
+	}
 
+	return -1;
+}
+
+/*******************************************************************************
+*@ Description    :从（上传 amazom 云）上传队列，出队最旧的一个节点
+*@ Input          :
+*@ Output         :<file_info> （上传）文件的描述信息
+*@ Return         :成功：0 ； 失败：-1
+*@ attention      :
+*******************************************************************************/
+int pop_frome_upload_file_queue(put_file_info_t* file_info)
+{
+	if(NULL != upload_file_queue && NULL != file_info)
+	{
+		int ret =0;
+		
+		pthread_mutex_lock(&up_file_queue_mut);
+		ret = DeLQueue(upload_file_queue,file_info);
+		pthread_mutex_unlock(&up_file_queue_mut);
+		if(ret < 0)
+		{
+			ERROR_LOG("DeLQueue failed !\n");
+			return -1;
+		}
+
+		//DEBUG
+		printf("---pop file addr(%p) \n",file_info->file_buf);
+		
+		return 0;
+	}
+
+	return -1;
+}
+
+
+/*******************************************************************************
+*@ Description    : 负责图片视频上传的线程入口（该线程需要常驻）
+*@ Input          :
+*@ Output         :
+*@ Return         :
+*******************************************************************************/
+void* amazon_upload_thread(void*args)
+{
+
+	pthread_detach(pthread_self());
+
+	//暂时屏蔽
+	//amazon_S3_req_thread();
+	pthread_mutex_init(&up_file_queue_mut,NULL);
+	
+	//初始化上传文件队列
+	upload_file_queue = CreateLQueue();
+	if(NULL == upload_file_queue)
+	{
+		ERROR_LOG("CreateLQueue failed!\n");
+		pthread_exit(NULL);
+	}
+
+	while(1)
+	{
+		while(0 == LQueueIsEmpty(upload_file_queue))//队列不为空
+		{
+			put_file_info_t  pop_node = {0};
+			pop_frome_upload_file_queue(&pop_node);
+
+			if(pop_node.file_buf) {free(pop_node.file_buf); pop_node.file_buf = NULL;}
+			
+			/*---# 推送到 amazon 云---------------------------------------------------*/
+		    #if 0		       
+		        while(1 != is_amazon_info_update()) 
+		        {
+		            DEBUG_LOG("wait g_amazon_info update .....\n");
+		            sleep(1);
+		        }
+				
+			    int i= 0;
+			    for(i = 0 ; i < tmp_info->ts_num ; i++)
+			    {
+			        #if 1
+			        put_file_info_t file_info = {0};
+			        file_info.mode = 2; //缓存buf模式
+			        file_info.file_tlen = MD_ALARM_RECORD_TIME;
+			        if(M3U_INDEX_FILE_TYPE == M3U_TS_FILE) 
+			            file_info.file_type = TYPE_TS;
+			        else //if(M3U_INDEX_FILE_TYPE == M3U_FMP4_FILE) //内部传输逻辑和 TS 一样
+			            file_info.file_type = TYPE_TS;  
+			        
+			        file_info.ts_flag = TS_FLAG_ONE;  //目前按照只有一个15 s TS文件的方案去实现？？？？？15S内发生了二次告警就接着录制，但内存很可能不够，后续考虑
+			        strcpy(file_info.file_name,tmp_info->ts_array[i].ts_name);
+			        file_info.file_buf = tmp_info->ts_array[i].ts_buf;
+			        file_info.file_buf_len = tmp_info->ts_array[i].ts_buf_size;
+			        strcpy(file_info.m3u8name,tmp_info->m3u_name);
+			        
+			        time_t timer = time(NULL);
+			        //struct tm *lctv = localtime(&timer);
+			        memcpy(&file_info.datetime,&timer,sizeof(timer));
+			        amazon_put_even_thread(&file_info);
+			       
+			        #endif
+			        
+			    }
+		    
+		    #endif
+			
+		}
+
+		//do other things.....
+		usleep(100);
+	}
+	
+
+}
+
+
+int  start_amazon_upload_thread(void)
+{
+	pthread_t threadID;
+    HLE_S32 err = pthread_create(&threadID, NULL, &amazon_upload_thread, NULL);
+    if (0 != err) 
+    {
+        ERROR_LOG("create amazon_upload_thread failed!\n");
+		return -1;
+    } 
+	return 0;
+}
 
 
 

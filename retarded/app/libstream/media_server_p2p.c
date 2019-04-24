@@ -1178,7 +1178,7 @@ HLE_S32 P2P_wait_for_wakeup(p2p_handle_t *P2P_handle)
 			{
 				case 0: // time out，没有唤醒就会一直进入到 case 0中
 					{
-						DEBUG_LOG("-------------------(select timeout!)\n");
+						//DEBUG_LOG("-------------------(select timeout!)\n");
 						printf(".");
 						setbuf(stdout, NULL);
 						if (0 == ++i%6)  //select 10S超时，6*10 = 60s 发送一包保活封包

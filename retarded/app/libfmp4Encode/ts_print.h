@@ -10,7 +10,7 @@
 #define _TS_PRINT_H
 #include "typeport.h"
 
-#define TS_DEBUG // 打印控制开关
+//#define TS_DEBUG // 打印控制开关
 #define TS_ERROR
 #define TS_FATAR
 

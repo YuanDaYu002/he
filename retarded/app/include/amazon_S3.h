@@ -88,8 +88,32 @@ void amazon_put_even_thread(put_file_info_t *put_file);
 
 int is_amazon_info_update(void);
 
+/*******************************************************************************
+*@ Description    :将文件放入到（上传 amazom 云）上传队列
+*@ Input          :<file_buf> 文件buf指针
+					<file_len>文件的长度
+*@ Output         :
+*@ Return         :成功：0 ； 失败：-1
+*@ attention      :
+*******************************************************************************/
+int push_to_upload_file_queue(put_file_info_t *file_info);
+
+/*******************************************************************************
+*@ Description    :从（上传 amazom 云）上传队列，出队最旧的一个节点
+*@ Input          :
+*@ Output         :<file_buf> 文件buf指针
+					<file_len>文件的长度
+*@ Return         :成功：0 ； 失败：-1
+*@ attention      :
+*******************************************************************************/
+int pop_frome_upload_file_queue(put_file_info_t *file_info);
+
+
+int  start_amazon_upload_thread(void);
+
 
 #endif
+
 
 
 

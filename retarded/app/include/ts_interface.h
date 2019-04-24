@@ -9,6 +9,11 @@
 #ifndef _TS_INTERFACE_H
 #define _TS_INTERFACE_H
 
+#define TS_RECODER_BUF_SIZE  1024*512*4		//TS文件缓存buf大小(最终的TS文件数据)
+#define VIDEO_BUF_SIZE		 1024*512*3		//缓存video帧（15S总帧数）的buf大小（1.5M）
+#define AUDIO_BUF_SIZE		 1024*512*1		//缓存audio帧（15S总帧数）的buf大小（0.5M）
+
+
 
 /*---#-对外开放的 audio/video 部分参数配置-----------------------------------------------------------*/
  typedef struct _ts_audio_init_t
@@ -43,5 +48,6 @@
  void TS_recoder_exit(void);
 
  #endif
+
 
 

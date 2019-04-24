@@ -67,7 +67,7 @@ extern void print_array(unsigned char* box_name,unsigned char*start,unsigned int
 /*******************************************************************************
 *@ Description    : 录制TS文件
 *@ Input          :
-*@ Output         :<out_buf>ts文件缓存buf
+*@ Output         :<out_buf>ts文件缓存buf(内存在函数内部已经分配)
                     <out_len>ts文件缓存buf长度
                     <recode_time>录制时长（s）
 *@ Return         :成功：0；失败：-1
@@ -283,6 +283,7 @@ ERR:
     printf("\n******ERR fmp4_record !!!************************************************************************\n\n");
     return -1;
 }
+
 
 
 

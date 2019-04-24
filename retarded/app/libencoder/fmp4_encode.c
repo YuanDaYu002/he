@@ -534,7 +534,7 @@ void print_array(unsigned char* box_name,unsigned char*start,unsigned int length
     倍速效果（不推荐），但8KHZ下比较正常。
 ----------------------------------------------------------------*/
 #define A_FRAME_RATE  (14)  //aac音频数据帧率
-//#define OUT_FILE_BUF_SIZE (4*1024*1024) //初始化 3M大小空间（30S音视频）
+
 //void* fmp4_record(void* args)
 fmp4_out_info_t* fmp4_record(fmp4_out_info_t* info)
 {
@@ -765,6 +765,7 @@ void fmp4_record_exit(fmp4_out_info_t *info)
     //info = NULL;
     
 }
+
 
 
 

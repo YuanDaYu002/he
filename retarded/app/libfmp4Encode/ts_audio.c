@@ -118,11 +118,11 @@ int TS_Audio_Encode(void*frame,int frame_len,char**out_buf,int* out_buf_len)
 	*/
 	//print_array("ADTS:",(char*)&adts_header,sizeof(adts_header));
 	long long int final_adts_header  = t_htonll(adts_header);
-	print_array("final t_htonll(adts_header):",(char*)&final_adts_header,sizeof(final_adts_header));
+	//print_array("final t_htonll(adts_header):",(char*)&final_adts_header,sizeof(final_adts_header));
 	
 	write_buf(&audio_frame_buf, (char*)&final_adts_header + 1, sizeof(final_adts_header)-1/*ADTS_LENGTH*/);
 	write_buf(&audio_frame_buf, frame, frame_len);//拷贝数据 加的是 ADTS_LENGTH
-	print_array("recode audio:",frame,10);
+	//print_array("recode audio:",frame,10);
 	
 	*out_buf = audio_frame_buf.buf;
 	*out_buf_len = (int)(audio_frame_buf.w_pos - audio_frame_buf.buf);

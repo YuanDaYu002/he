@@ -2126,7 +2126,7 @@ void * remuxVideoAudio(void *args)
 
 	/***DEBUG 保存到内存模式下最后整体再写入到文件*********************************/
 	
-	#if 1
+	#if 0
 		char* debug_file_name = "/jffs0/fmp4.mp4";
 		if(0 == access(debug_file_name,F_OK))
 		{
@@ -2459,6 +2459,7 @@ void fmp4_global_variable_reset(void)
 	
 	
 }
+
 
 
 

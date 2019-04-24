@@ -34,6 +34,7 @@
 //#include "hls_main.h"
 #include "fmp4_interface.h"
 #include "ts_encode.h"
+#include "ts_interface.h"
 
 
 
@@ -592,185 +593,308 @@ int file_size(char* filename)
     return size;  
 }  
 
+/*******************************************************************************
+*@ Description    :创建并写一个文件（文件已经存在则先删除文件）
+*@ Input          :<file_name>文件名
+                    <data>要写入文件的数据
+                    <data_len>数据的长度
+*@ Output         :
+*@ Return         :成功：0 ； 失败：-1
+*@ attention      :
+*******************************************************************************/
+int create_write_file(char*file_name,void* data,unsigned int data_len)
+{
+    if(NULL == file_name || NULL == data || data_len <= 0)
+        return -1;
 
+    if(0 == access(file_name,F_OK))
+    {
+        if(0 == remove(file_name))
+        {
+            DEBUG_LOG("remove old file success!\n");
+        }
+        else
+        {
+            ERROR_LOG("remove old file failed!\n");
+            return -1;
+        }
+    }
+
+    FILE*debug_file = fopen(file_name, "wb+");
+    if(NULL == debug_file )
+    {
+        ERROR_LOG("debug open fmp4 file failed!\n");
+        return -1;
+    }
+
+    int debug_ret = fwrite(data,1,data_len,debug_file);
+    if(debug_ret < 0)
+    {
+        ERROR_LOG("write file error!\n");
+        fclose(debug_file);
+        return -1;
+    }
+    printf("\n----fewite file size(%d)----success!!---\n",debug_ret);
+    fclose(debug_file);
+    
+    return 0;
+
+}
 
 extern void fmp4_record_exit(fmp4_out_info_t *info);
+int record_mp4_done = 1; //标记文件录制是否结束 (0:没结束 1：结束)
+pthread_mutex_t MD_func_mut; //MD 告警 响应线程 锁 
+#define OUT_FILE_BUF_SIZE   TS_RECODER_BUF_SIZE //MD 告警录制文件缓存 buf
+#define MD_ALARM_RECORD_TIME  15    //MD告警录制时长
+#define MD_ALARM_PRERECORD_TIME  6  //MD告警预录制时长
+/*---# m3u索引文件类型---------*/
+#define M3U_TS_FILE     1
+#define M3U_FMP4_FILE   2
+#define M3U_INDEX_FILE_TYPE  M3U_TS_FILE
+static int need_more_record = 0; //1:有连续告警发生（在告警视频录制期间又发生了告警）;0:无
+pthread_mutex_t need_more_record_mut;
 /*******************************************************************************
 *@ Description    :  MD 告警响应函数（fmp4录像 + TS切片 + 推送amazon云）
 *@ Input          :
 *@ Output         :
 *@ Return         :
 *******************************************************************************/
-int recode_mp4_done = 1; //标记 mp4 文件录制是否结束 (0:没结束 1：结束)
-pthread_mutex_t MD_func_mut; //MD 告警 响应线程 锁 
-#define OUT_FILE_BUF_SIZE (2*1024*1024) //初始化 3M大小空间（15S音视频）
-#define MD_ALARM_RECODE_TIME  6  //MD告警录制时长
-/*---# m3u索引文件类型------------------------------------------------------------*/
-#define M3U_TS_FILE     1
-#define M3U_FMP4_FILE   2
-#define M3U_INDEX_FILE_TYPE  M3U_TS_FILE
 void* MD_alarm_response_func(void* args) //文件模式 版本
-{
-    /*---#目前支持的有: 15s录制视频切片上传------------------------------------------------------------*/
-    
+{    
     printf("\n\n=======start MD_alarm_response_func==================================================================\n");
     pthread_detach(pthread_self());
     
-    void *  recode_data  = NULL; //最终录制的文件数据buf
-    unsigned int  recode_data_len = 0; //最终录制的文件数据buf长度 
+    void *  record_data  = NULL; //最终录制的文件数据buf
+    unsigned int  record_data_len = 0; //最终录制的文件数据buf长度 
     fmp4_out_info_t out_mp4_info = {0};
+    put_file_info_t file_info = {0};
+    int file_count = 0; //标记已经连续产生了几个15s的告警视频文件
     
+    /*---#抓拍图片------------------------------------------------------------*/
+    //该操作在执行的期间会占用MMZ 4M 大小的内存空间
+    int size;
+    char * jpg = encoder_request_jpeg(0, &size, IMAGE_SIZE_1920x1080);
+    if (!jpg)
+    {
+        ERROR_LOG("encoder_request_jpeg failed!\n");
+        goto ERR;
+    }
+
+    //将录制的文件放入到 amazom 云上传队列，云上传线程将自动进行传输
+    memset(&file_info,0,sizeof(file_info));
+    file_info.mode = 2;
+    file_info.file_tlen = 0;
+    file_info.file_type = TYPE_JPG;
+    file_info.ts_flag = TS_FLAG_JPG;
+    //file_info.file_name = ;
+    file_info.file_buf =  jpg;
+    file_info.file_buf_len = size;
+    //file_info.m3u8name = ;
+    //file_info.datetime = ;
+    push_to_upload_file_queue(&file_info);
+    //create_write_file("MD_snap_01.jpg",jpg,size); //debug
+    //encoder_free_jpeg(jpg);//debug
+        
+
     if(M3U_INDEX_FILE_TYPE == M3U_TS_FILE)
     {
         void* out_buf = NULL;
         int out_len = 0;
-        if(ts_record(&out_buf,&out_len,MD_ALARM_RECODE_TIME) < 0)
+        /*---#录6s预录视频------------------------------------------------------------*/
+        if(ts_record(&out_buf,&out_len,MD_ALARM_PRERECORD_TIME) < 0)
         {
             ERROR_LOG("ts_record failed!\n");
-            pthread_exit(NULL);
+            goto ERR;
         }
-        recode_data = out_buf;
-        recode_data_len = (int)out_len;
-
-        /***DEBUG 整体再写入到文件*********************************/
-        #if 1
-        char* debug_file_name = "/jffs0/MD_alarm_20190420.ts";
-        if(0 == access(debug_file_name,F_OK))
+        record_data = out_buf;
+        record_data_len = (int)out_len;  
+        /*---# 将录制的文件放入到 amazom 云上传队列，云上传线程将自动进行传输--------------*/
+        memset(&file_info,0,sizeof(file_info));
+        file_info.mode = 2;
+        file_info.file_tlen = MD_ALARM_PRERECORD_TIME;
+        file_info.file_type = TYPE_TS;
+        file_info.ts_flag = TS_FLAG_6S;
+        //file_info.file_name = ;
+        file_info.file_buf =  record_data;
+        file_info.file_buf_len = record_data_len;
+        //file_info.m3u8name = ;
+        //file_info.datetime = ;
+        push_to_upload_file_queue(&file_info);
+            
+        //create_write_file("MD_TS_6s_01.ts",record_data,record_data_len); //debug
+        //if(record_data) {free(record_data);record_data = NULL;} //debug
+        
+        /*---#录 15s 视频------------------------------------------------------------*/
+        while(need_more_record != 0)
         {
-            if(0 == remove(debug_file_name))
+            pthread_mutex_lock(&need_more_record_mut);
+            need_more_record = 0;//清零操作必须放到 ts_record 之前，因录制15s视频期间发生新的告警，则会被再次置位。
+            pthread_mutex_unlock(&need_more_record_mut);
+            file_count ++;
+            
+            if(ts_record(&out_buf,&out_len,MD_ALARM_RECORD_TIME) < 0)
             {
-                DEBUG_LOG("remove old file success!\n");
-            }
-            else
-            {
-                ERROR_LOG("remove old file failed!\n");
+                ERROR_LOG("ts_record failed!\n");
                 goto ERR;
             }
+            record_data = out_buf;
+            record_data_len = (int)out_len;  
+      
+            /*---# 将录制的文件放入到 amazom 云上传队列，云上传线程将自动进行传输--------------*/
+            memset(&file_info,0,sizeof(file_info));
+            file_info.mode = 2;
+            file_info.file_tlen = MD_ALARM_RECORD_TIME;
+            file_info.file_type = TYPE_TS;
+            if(need_more_record)//有连续告警发生（还需继续录制下一个15s）
+            {
+                if(1 == file_count)//当前录制文件为第一个
+                    file_info.ts_flag = TS_FLAG_START;
+                else
+                    file_info.ts_flag = TS_FLAG_MID;
+            }
+            else//没有连续告警发生(不需要再录制下一个15s了)
+            {
+                if(1 == file_count)//当前录制文件为第一个
+                    file_info.ts_flag = TS_FLAG_ONE;
+                else
+                    file_info.ts_flag = TS_FLAG_END;
+            }
+            //file_info.file_name = ;
+            file_info.file_buf =  record_data;
+            file_info.file_buf_len = record_data_len;
+            //file_info.m3u8name = ;
+            //file_info.datetime = ;
+            push_to_upload_file_queue(&file_info);
+            //create_write_file("MD_TS_15s_01.ts",record_data,record_data_len); //debug
+            //if(record_data) {free(record_data);record_data = NULL;}//debug
         }
-
-        FILE*debug_file = fopen(debug_file_name, "wb+");
-        if(NULL == debug_file )
-        {
-            ERROR_LOG("debug open fmp4 file failed!\n");
-            goto ERR;
-        }
-        DEBUG_LOG("debug open file success!\n");
-
-        int debug_ret = fwrite(recode_data,1,recode_data_len,debug_file);
-        if(debug_ret < 0)
-        {
-            ERROR_LOG("write file error!\n");
-            fclose(debug_file);
-            goto ERR;
-        }
-        DEBUG_LOG("----fewite file size(%d)----\n",debug_ret);
-        fclose(debug_file);
-        #endif
-        /*****************************************/
         
-        if(recode_data) {free(recode_data);recode_data = NULL;}
-        
+
     }
     else //if(M3U_INDEX_FILE_TYPE == M3U_FMP4_FILE)
     {
-        /*---# MP4 文件录制--------------------------------------------------*/
-        out_mp4_info.recode_time = MD_ALARM_RECODE_TIME;
+        #if 1
+        /*---#录6s预录视频------------------------------------------------------------*/
+        memset(&out_mp4_info,0,sizeof(out_mp4_info));
+        out_mp4_info.recode_time = MD_ALARM_PRERECORD_TIME;
         /*---#配置 buf存储 模式-----*/
         out_mp4_info.buf_mode.buf_start = (char*)calloc(OUT_FILE_BUF_SIZE,sizeof(char));
         if(NULL == out_mp4_info.buf_mode.buf_start)
         {
             ERROR_LOG("calloc failed!\n");
-             pthread_exit(NULL);
+            goto ERR;
         }
         out_mp4_info.buf_mode.buf_size = OUT_FILE_BUF_SIZE;
         out_mp4_info.buf_mode.w_offset = 0;
         out_mp4_info.file_mode.file_name = NULL; //不采用 文件模式 liteos 的 ramfs 延时太大
-        
-        /*---#开始录制------------*/
         if(NULL == fmp4_record(&out_mp4_info))
         {
             ERROR_LOG("call fmp4_record failed!\n");
             fmp4_record_exit(&out_mp4_info);
-            pthread_exit(NULL);
+            goto ERR;
         }
-        recode_data = out_mp4_info.buf_mode.buf_start;
-        recode_data_len = out_mp4_info.buf_mode.w_offset;
-        /*---# END------------------------------------------------------------*/
-    }
-    
-    
-    
-    /*---# 推送到 amazon 云---------------------------------------------------*/
-    #if 0
-        #if 0
-        while(1 != is_amazon_info_update()) //该处逻辑还是欠妥，后续改进
+        int  out_len = out_mp4_info.buf_mode.w_offset;
+        char* out_buf = (char*)malloc(out_len);
+        if(NULL == out_buf)
         {
-            DEBUG_LOG("wait g_amazon_info update .....\n");
-            sleep(2);
+            ERROR_LOG("malloc failed!\n");
+            goto ERR;
         }
-        #endif
-    int i= 0;
-    for(i = 0 ; i < tmp_info->ts_num ; i++)
-    {
-        #if 1
-        put_file_info_t file_info = {0};
-        file_info.mode = 2; //缓存buf模式
-        file_info.file_tlen = MD_ALARM_RECODE_TIME;
-        if(M3U_INDEX_FILE_TYPE == M3U_TS_FILE) 
-            file_info.file_type = TYPE_TS;
-        else //if(M3U_INDEX_FILE_TYPE == M3U_FMP4_FILE) //内部传输逻辑和 TS 一样
-            file_info.file_type = TYPE_TS;  
+        memcpy(out_buf,out_mp4_info.buf_mode.buf_start,out_len);
         
-        file_info.ts_flag = TS_FLAG_ONE;  //目前按照只有一个15 s TS文件的方案去实现？？？？？15S内发生了二次告警就接着录制，但内存很可能不够，后续考虑
-        strcpy(file_info.file_name,tmp_info->ts_array[i].ts_name);
-        file_info.file_buf = tmp_info->ts_array[i].ts_buf;
-        file_info.file_buf_len = tmp_info->ts_array[i].ts_buf_size;
-        strcpy(file_info.m3u8name,tmp_info->m3u_name);
+        record_data = out_buf;
+        record_data_len = out_len;
+        if(out_mp4_info.buf_mode.buf_start) fmp4_record_exit(&out_mp4_info);
         
-        time_t timer = time(NULL);
-        //struct tm *lctv = localtime(&timer);
-        memcpy(&file_info.datetime,&timer,sizeof(timer));
-        amazon_put_even_thread(&file_info);
-       
-        #endif
+        /*将录制的文件放入到 amazom 云上传队列，云上传线程将自动进行传输--*/
+        memset(&file_info,0,sizeof(file_info));
+        file_info.mode = 2;
+        file_info.file_tlen = MD_ALARM_PRERECORD_TIME;
+        file_info.file_type = TYPE_FMP4;
+        file_info.ts_flag = TS_FLAG_6S;
+        //file_info.file_name = ;
+        file_info.file_buf =  record_data;
+        file_info.file_buf_len = record_data_len;
+        //file_info.m3u8name = ;
+        //file_info.datetime = ;
+        push_to_upload_file_queue(&file_info);
         
-        #if 0  //DEBUG 写到本地端
-            int fd = -1;
-            int ret = 0;
-            /*
-            if(0 == i)
-            {   printf("out_ts_info->m3u_name = %s\n",ts_info->m3u_name);
-                fd = open(ts_info->m3u_name , O_CREAT | O_WRONLY | O_TRUNC, 0664);
-                ret = write(fd, ts_info->m3u_buf, ts_info->m3u_buf_size);
-                if(ret != ts_info->m3u_buf_size)
-                {
-                    ERROR_LOG("write error!\n");
-                    close(fd);
-                    goto ERR;
-                }
-                close(fd);
-            }
-            */
-            printf("out_ts_info->ts_array[%d].ts_name = %s\n",i,tmp_info->ts_array[i].ts_name);
-            fd = open(tmp_info->ts_array[i].ts_name , O_CREAT | O_WRONLY | O_TRUNC, 0664);
-            ret = write(fd, tmp_info->ts_array[i].ts_buf, tmp_info->ts_array[i].ts_buf_size);
-            if(ret != tmp_info->ts_array[i].ts_buf_size)
+        /*---#录 15s 视频------------------------------------------------------------*/
+        while(need_more_record != 0)
+        {
+            pthread_mutex_lock(&need_more_record_mut);
+            need_more_record = 0;//清零操作必须放到 ts_record 之前，因录制15s视频期间发生新的告警，则会被再次置位。
+            pthread_mutex_unlock(&need_more_record_mut);
+            file_count ++;
+            
+            memset(&out_mp4_info,0,sizeof(out_mp4_info));
+            out_mp4_info.recode_time = MD_ALARM_RECORD_TIME;
+            /*---#配置 buf存储 模式-----*/
+            out_mp4_info.buf_mode.buf_start = (char*)calloc(OUT_FILE_BUF_SIZE,sizeof(char));
+            if(NULL == out_mp4_info.buf_mode.buf_start)
             {
-                ERROR_LOG("write error!\n");
-                close(fd);
+                ERROR_LOG("calloc failed!\n");
                 goto ERR;
             }
-            close(fd);
-            printf("****write file success!****************************************************\n");
+            out_mp4_info.buf_mode.buf_size = OUT_FILE_BUF_SIZE;
+            out_mp4_info.buf_mode.w_offset = 0;
+            out_mp4_info.file_mode.file_name = NULL; //不采用 文件模式 liteos 的 ramfs 延时太大
+            if(NULL == fmp4_record(&out_mp4_info))
+            {
+                ERROR_LOG("call fmp4_record failed!\n");
+                fmp4_record_exit(&out_mp4_info);
+                goto ERR;
+            }
+            //为了节省内存空间，文件数据有多大，就只分配这么大空间（原来的空间是大于文件大小的）
+            int  out_len = out_mp4_info.buf_mode.w_offset;
+            char* out_buf = (char*)malloc(out_len);
+            if(NULL == out_buf)
+            {
+                ERROR_LOG("malloc failed!\n");
+                goto ERR;
+            }
+            memcpy(out_buf,out_mp4_info.buf_mode.buf_start,out_len);
+            
+            record_data = out_buf;
+            record_data_len = out_len;
+            if(out_mp4_info.buf_mode.buf_start) fmp4_record_exit(&out_mp4_info);
+            
+            /*将录制的文件放入到 amazom 云上传队列，云上传线程将自动进行传输--*/
+            memset(&file_info,0,sizeof(file_info));
+            file_info.mode = 2;
+            file_info.file_tlen = MD_ALARM_RECORD_TIME;
+            file_info.file_type = TYPE_FMP4;
+            if(need_more_record)//有连续告警发生（还需继续录制下一个15s）
+            {
+                if(1 == file_count)//当前录制文件为第一个
+                    file_info.ts_flag = TS_FLAG_START;
+                else
+                    file_info.ts_flag = TS_FLAG_MID;
+            }
+            else//没有连续告警发生(不需要再录制下一个15s了)
+            {
+                if(1 == file_count)//当前录制文件为第一个
+                    file_info.ts_flag = TS_FLAG_ONE;
+                else
+                    file_info.ts_flag = TS_FLAG_END;
+            }
+            //file_info.file_name = ;
+            file_info.file_buf =  record_data;
+            file_info.file_buf_len = record_data_len;
+            //file_info.m3u8name = ;
+            //file_info.datetime = ;
+            push_to_upload_file_queue(&file_info);
+            /*---# END------------------------------------------------------------*/
+        
+        }
+        
         #endif
     }
     
-    #endif
-    
 ERR:
-    if(recode_data) {free(recode_data);recode_data = NULL;}
+    if(record_data) {free(record_data);record_data = NULL;}
     if(out_mp4_info.buf_mode.buf_start) fmp4_record_exit(&out_mp4_info);
-    recode_mp4_done = 1;//标记结束
+    record_mp4_done = 1;//标记结束
     printf("=======END MD_alarm_response_func==================================================================\n");
     pthread_exit(NULL);
     
@@ -835,7 +959,7 @@ int app_main(int argc, char *argv[])
     }
     
 
-    #if 0 //P2P 媒体服务程序部分
+    #if 1 //P2P 媒体服务程序部分
         ret = media_server_module_init();
         if (HLE_RET_OK != ret) {
             ERROR_LOG("media_server_module_init fail!\n");
@@ -849,10 +973,11 @@ int app_main(int argc, char *argv[])
         }
     #endif
 
-    #if 0  //start amazon info update thread
-        amazon_S3_req_thread(); 
+    #if 1
+       start_amazon_upload_thread();
     #endif
-
+    
+    pthread_mutex_init(&need_more_record_mut,NULL);
     
     int i, snap;
     int id[STREAMS_PER_CHN];
@@ -913,16 +1038,6 @@ int app_main(int argc, char *argv[])
     int skip_len = 0;
     int snap_count = 2;//定义抓拍保存的图片数量
 
-    #if 0  //debug
-    pthread_t threadID_Idle;
-    HLE_S32 err = pthread_create(&threadID_Idle, NULL, &fmp4_record, NULL);
-    if (0 != err) 
-    {
-        ERROR_LOG("create media_server_start failed!\n");
-        return HLE_RET_ERROR;
-    }   
-    DEBUG_LOG("fmp4_record start success!\n");
-    #endif
     
 
     for (;;) 
@@ -967,18 +1082,33 @@ int app_main(int argc, char *argv[])
         #if 1
             int motion = 0;
             motion_detect_get_state(&motion);
-            if(motion && recode_mp4_done)//有告警产生 + 上一次录像已经结束
+            if(motion)//有告警产生
             {
-                recode_mp4_done = 0;//标记开始
-                DEBUG_LOG("---Alarm---------------------------------------------------------!\n");
-                pthread_t threadID;
-                HLE_S32 err = pthread_create(&threadID, NULL, &MD_alarm_response_func, NULL);
-                if (0 != err) 
+                if(record_mp4_done)//上一次录像已经结束
                 {
-                    ERROR_LOG("create media_server_start failed!\n");
-                    continue;
-                } 
+                    record_mp4_done = 0;//标记开始
+                    pthread_mutex_lock(&need_more_record_mut);
+                    need_more_record = 1; 
+                    pthread_mutex_unlock(&need_more_record_mut);
+                    
+                    DEBUG_LOG("---Alarm---------------------------------------------------------!\n");
+                    pthread_t threadID;
+                    HLE_S32 err = pthread_create(&threadID, NULL, &MD_alarm_response_func, NULL);
+                    if (0 != err) 
+                    {
+                        ERROR_LOG("create media_server_start failed!\n");
+                        continue;
+                    } 
+                }
+                else//上一次录像没结束
+                {
+                    pthread_mutex_lock(&need_more_record_mut);
+                    need_more_record = 1; 
+                    pthread_mutex_unlock(&need_more_record_mut);
+                }
             }
+            
+            
             
         #endif
         /*---#------------------------------------------------------------*/
@@ -988,6 +1118,7 @@ int app_main(int argc, char *argv[])
             if ((snap % 30) == 0) 
             {
                 snap = 0;
+                #if 1  //该操作在执行的期间会占用MMZ 4M 大小的内存空间
                 int size;
                 char * jpg = encoder_request_jpeg(0, &size, IMAGE_SIZE_1920x1080);
                 if (jpg) 
@@ -1005,6 +1136,7 @@ int app_main(int argc, char *argv[])
                     #endif
                     encoder_free_jpeg(jpg);
                 }
+                #endif
             }
         #endif
 
@@ -1131,6 +1263,7 @@ int app_main(int argc, char *argv[])
 }
 
 #endif
+
 
 
 
