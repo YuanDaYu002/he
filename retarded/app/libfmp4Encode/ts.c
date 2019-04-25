@@ -560,8 +560,13 @@ int TS_recoder_init(ts_recoder_init_t *config)
 	ts_recoder_init_t tmp_config = {0};
 	memcpy(&tmp_config,config,sizeof(ts_recoder_init_t));
 	ts_global_variable_reset();
+
 	
-	ret = init_buf(&ts_recoder_buf,TS_RECODER_BUF_SIZE);
+	int init_size = TS_RECODER_BUF_SIZE;
+	if(config->recode_time <= 6)//重新调整初始化的 buf 大小
+		init_size = init_size/2;
+		
+	ret = init_buf(&ts_recoder_buf,init_size);
 	if(ret < 0){
 		TS_ERROR_LOG("init_buf failed !\n");
 		return -1;
@@ -637,14 +642,19 @@ int TS_recoder_init(ts_recoder_init_t *config)
 	/*---# video部分------------------------------------------------------------*/
 	media_data.track[VIDEO_INDEX].n_frames = 0;
 	media_data.track[VIDEO_INDEX].first_frame = 0;
-	media_data.track[VIDEO_INDEX].buffer = (char*)calloc(VIDEO_BUF_SIZE,sizeof(char));  //15s的视频数据缓存
+
+	init_size = VIDEO_BUF_SIZE;
+	if(config->recode_time <= 6) //重新调整buf大小
+		init_size = init_size/2;
+	
+	media_data.track[VIDEO_INDEX].buffer = (char*)calloc(init_size,sizeof(char));  //15s的视频数据缓存
 	if(media_data.track[VIDEO_INDEX].buffer == NULL){
-		TS_ERROR_LOG("calloc failed!\n");
+		TS_ERROR_LOG("calloc failed! calloc_size(%d)\n",init_size);
 		return -1;
 	}
 	media_data.track[VIDEO_INDEX].buffer_w_pos = media_data.track[VIDEO_INDEX].buffer;
 	media_data.track[VIDEO_INDEX].buffer_r_pos = media_data.track[VIDEO_INDEX].buffer;
-	media_data.track[VIDEO_INDEX].buffer_size = VIDEO_BUF_SIZE;
+	media_data.track[VIDEO_INDEX].buffer_size = init_size;
 	media_data.track[VIDEO_INDEX].size = (int *)calloc(MAX_VIDEO_FRAME*sizeof(int),sizeof(char));
 	if(media_data.track[VIDEO_INDEX].size == NULL){
 		TS_ERROR_LOG("calloc failed!\n");
@@ -664,14 +674,19 @@ int TS_recoder_init(ts_recoder_init_t *config)
 	/*---# audio 部分------------------------------------------------------------*/
 	media_data.track[AUDIO_INDEX].n_frames = 0;
 	media_data.track[AUDIO_INDEX].first_frame = 0;
-	media_data.track[AUDIO_INDEX].buffer = (char*)calloc(AUDIO_BUF_SIZE,sizeof(char));  //15s的视频数据缓存
+	
+	init_size = AUDIO_BUF_SIZE;
+	if(config->recode_time <= 6) //重新调整buf大小
+		init_size = init_size/2;
+	
+	media_data.track[AUDIO_INDEX].buffer = (char*)calloc(init_size,sizeof(char));  //15s的视频数据缓存
 	if(media_data.track[AUDIO_INDEX].buffer == NULL){
 		TS_ERROR_LOG("calloc failed!\n");
 		return -1;
 	}
 	media_data.track[AUDIO_INDEX].buffer_w_pos = media_data.track[AUDIO_INDEX].buffer;
 	media_data.track[AUDIO_INDEX].buffer_r_pos = media_data.track[AUDIO_INDEX].buffer;
-	media_data.track[AUDIO_INDEX].buffer_size = VIDEO_BUF_SIZE;
+	media_data.track[AUDIO_INDEX].buffer_size = init_size;
 	media_data.track[AUDIO_INDEX].size = (int *)calloc(MAX_AUDIO_FRAME*sizeof(int),sizeof(char));
 	if(media_data.track[AUDIO_INDEX].size == NULL){
 		TS_ERROR_LOG("calloc failed!\n");
@@ -692,7 +707,46 @@ int TS_recoder_init(ts_recoder_init_t *config)
 	return 0;
 }
 
+void print_track_media_info(ts_track_media_t*info)
+{
+	if(info)
+	{	
+		printf("------------------------------------------\n");
+		printf("info->n_frames(%d)\n",info->n_frames);	
+		printf("info->bitrate(%d)\n",info->bitrate);
+		printf("info->pts(%p)\n",info->pts);	
+		printf("info->dts(%p)\n",info->dts);
+		printf("info->repeat_for_every_segment(%d)\n",info->repeat_for_every_segment);
+		printf("info->flags(%p)\n",info->flags);
+		printf("info->sample_rate(%d)\n",info->sample_rate);
+		printf("info->n_ch(%d)\n",info->n_ch);
+		printf("info->sample_size(%d)\n",info->sample_size);
+		printf("info->data_start_offset(%d)\n",info->data_start_offset);
+		printf("info->type(%d)\n",info->type);
+		printf("------------------------------------------\n");
+	}
+}
 
+void print_track_data_info(ts_track_data_t*info)
+{
+	if(info)
+	{
+		printf("------------------------------------------\n");
+		printf("info->n_frames(%d)\n",info->n_frames);	
+		printf("info->first_frame(%d)\n",info->first_frame);
+		printf("info->buffer(%p)\n",info->buffer);
+		printf("info->buffer_w_pos(%p)\n",info->buffer_w_pos);
+		printf("writed data (%d)Bytes!\n",info->buffer_w_pos - info->buffer);
+		printf("info->buffer_r_pos(%p)\n",info->buffer_r_pos);
+		printf("info->buffer_size(%d)\n",info->buffer_size);
+		printf("info->size(%p)\n",info->size);
+		printf("info->offset(%p)\n",info->offset);
+		printf("info->frames_written(%d)\n",info->frames_written);
+		printf("info->data_start_offset(%d)\n",info->data_start_offset);
+		printf("info->cc(%d)\n",info->cc);
+		printf("------------------------------------------\n");
+	}
+}
 /*******************************************************************************
 *@ Description    :音频编码对外接口函数
 *@ Input          :
@@ -783,7 +837,8 @@ int TsVEncode(void*frame,int frame_len)
 	/*---# media_data 放入新的一帧数据------------------------------------------------------------*/
 	if(track_data->buffer_w_pos + out_buf_len > w_buf_max_pos)
 	{
-		TS_ERROR_LOG("media_data.track_data[VIDEO_INDEX].buffer overflow!!\n");
+		TS_ERROR_LOG("media_data.track_data[VIDEO_INDEX].buffer overflow!! current out_buf_len(%d)\n",out_buf_len);
+		print_track_data_info(track_data);
 		return -1;
 	}
 	memcpy(track_data->buffer_w_pos,out_buf,out_buf_len); 
@@ -835,6 +890,9 @@ int  TS_remux_video_audio(void **out_buf,int* out_len)
 	//pthread_detach(pthread_self());
 	//等待条件成熟,记录下这次要打包的音视频数据帧 buf 的区间，支队该区间进行操作
 
+	//DEBUG ： 
+	print_track_data_info(&media_data.track[VIDEO_INDEX]);
+	print_track_data_info(&media_data.track[AUDIO_INDEX]);
 	
 	/*---#放 TS header + PAT + PMT-------------------------------------------------*/
 	TS_DEBUG_LOG("put pat/pmt + video frame\n");	
@@ -879,26 +937,16 @@ int  TS_remux_video_audio(void **out_buf,int* out_len)
 		//usleep(5);
 	}
 
-	/*---# 为节省内存，返回的buf只满足能恰好存下文件------------------------*/
-	int ret_len = (int)(ts_recoder_buf.w_pos - ts_recoder_buf.buf);
-	char* ret_buf = (char*)malloc(ret_len);
-	if(NULL == ret_buf)
-	{
-		TS_ERROR_LOG("malloc failed!\n");
-		goto ERR;
-	}
-	memcpy(ret_buf,ts_recoder_buf.buf,ret_len);
 	
-	*out_buf = ret_buf;
-	*out_len = ret_len;
-	free_buf(&ts_recoder_buf);
+	*out_buf = ts_recoder_buf.buf;
+	*out_len = (int)(ts_recoder_buf.w_pos - ts_recoder_buf.buf);
+
+	//free_buf(&ts_recoder_buf);正常退出得由上层来时放
 	
 	return 0;
-	//本次打包工作完成，标记该部分 buf 可用
-	//循环等待下一次的打包条件成熟，同时判断要不要退出打包线程
 
 ERR:
-	//通知“帧接收线程”退出，程序异常结束
+
 	free_buf(&ts_recoder_buf);//异常退出时ts_recoder_buf需要自己释放
 	*out_buf = NULL;
 	*out_len = 0;
@@ -906,8 +954,14 @@ ERR:
 	//pthread_exit(NULL);
 }
 
-
-void TS_recoder_exit(void)
+/*******************************************************************************
+*@ Description    :
+*@ Input          :<status>退出的出状态 : 0:正常退出 -1：异常退出
+*@ Output         :
+*@ Return         :
+*@ attention      :
+*******************************************************************************/
+void TS_recoder_exit(int status)
 {
 			
 	TS_video_exit();
@@ -939,14 +993,14 @@ void TS_recoder_exit(void)
 		memset(&media_data,0,sizeof(media_data));
 	}
 
-	/* 该部分buf需要返回给上层，由上层释放
-	if(ts_recoder_buf.buf) 
+	
+	if(status < 0 && ts_recoder_buf.buf) //异常退出该部分内存需要自己释放
 	{
 		free(ts_recoder_buf.buf);
 		ts_recoder_buf.buf = NULL;
 		memset(&ts_recoder_buf,0,sizeof(ts_recoder_buf));
 	}
-	*/
+	
 
 }
 

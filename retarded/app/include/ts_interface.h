@@ -10,8 +10,8 @@
 #define _TS_INTERFACE_H
 
 #define TS_RECODER_BUF_SIZE  1024*512*4		//TS文件缓存buf大小(最终的TS文件数据)
-#define VIDEO_BUF_SIZE		 1024*512*3		//缓存video帧（15S总帧数）的buf大小（1.5M）
-#define AUDIO_BUF_SIZE		 1024*512*1		//缓存audio帧（15S总帧数）的buf大小（0.5M）
+#define VIDEO_BUF_SIZE		 1024*512*4		//缓存video帧（15S总帧数）的buf大小（1.5M）
+#define AUDIO_BUF_SIZE		 1024*100*1		//缓存audio帧（15S总帧数）的buf大小（100K）
 
 
 
@@ -34,6 +34,7 @@
 
  typedef struct _ts_recoder_init_t
  {
+ 	unsigned int 	 recode_time;//录制时长
 	ts_video_init_t	 video_config;//输入的video配置信息
 	ts_audio_init_t	 audio_config;//输入的audio配置信息				 
  }ts_recoder_init_t;
@@ -45,7 +46,7 @@
  int TsVEncode(void*frame,int frame_len);
 /*---#------------------------------------------------------------*/
  int  TS_remux_video_audio(void **out_buf,int* out_len);
- void TS_recoder_exit(void);
+void TS_recoder_exit(int status);
 
  #endif
 

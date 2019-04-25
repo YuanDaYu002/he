@@ -79,21 +79,6 @@ int ts_record(void **out_buf,int* out_len,int recode_time)
     pthread_detach(pthread_self());  
 
     //sleep(5); //如若刚开机，不要太快开始录像
- 
-
-    /*---# init ------------------------------------------------------------*/
-    ts_recoder_init_t init_info = {0};
-    init_info.audio_config.ID = 0;
-    init_info.audio_config.profile = 1; // low
-    init_info.audio_config.sampling_frequency_index = 0x8; //16000HZ
-    init_info.audio_config.sample_rate = 16000;
-    init_info.audio_config.n_ch = 1;
-    init_info.video_config.frame_rate = 15;//video 15帧/s
-    if(TS_recoder_init(&init_info) < 0)
-    {
-        ERROR_LOG("fmp4 encode init failed!\n");
-        goto ERR;
-    }
         
     /*---#------------------------------------------------------------*/
     
@@ -103,7 +88,22 @@ int ts_record(void **out_buf,int* out_len,int recode_time)
     struct timeval tmp_time = {0};
     ENC_STREAM_PACK *pack = NULL;
     FRAME_HDR *header  = NULL;
-    int  stream_id;
+    int  stream_id = -1;
+
+     /*---# init ------------------------------------------------------------*/
+    ts_recoder_init_t init_info = {0};
+    init_info.audio_config.ID = 0;
+    init_info.audio_config.profile = 1; // low
+    init_info.audio_config.sampling_frequency_index = 0x8; //16000HZ
+    init_info.audio_config.sample_rate = 16000;
+    init_info.audio_config.n_ch = 1;
+    init_info.video_config.frame_rate = 15;//video 15帧/s
+    init_info.recode_time = recode_time;
+    if(TS_recoder_init(&init_info) < 0)
+    {
+        ERROR_LOG("TS encode init failed!\n");
+        goto ERR;
+    }
    
     //--request stream--------------------------------------
     stream_id = encoder_request_stream(0, RECODE_STREAM_ID, 1);
@@ -273,14 +273,15 @@ int ts_record(void **out_buf,int* out_len,int recode_time)
 
     
     encoder_free_stream(stream_id);
-    TS_recoder_exit();
+    TS_recoder_exit(0);
     printf("\n******END ts_record************************************************************************\n\n");
     return 0;
     
 ERR:
-    encoder_free_stream(stream_id);
-    TS_recoder_exit();
-    printf("\n******ERR fmp4_record !!!************************************************************************\n\n");
+    if(pack)  encoder_release_packet(pack);
+    if(stream_id >= 0) encoder_free_stream(stream_id);
+    TS_recoder_exit(-1);
+    printf("\n******ERR TS_record !!!************************************************************************\n\n");
     return -1;
 }
 

@@ -634,7 +634,7 @@ int create_write_file(char*file_name,void* data,unsigned int data_len)
         fclose(debug_file);
         return -1;
     }
-    printf("\n----fewite file size(%d)----success!!---\n",debug_ret);
+    ERROR_LOG("\n----fewite %s size(%d)----success!!---\n",file_name,debug_ret);
     fclose(debug_file);
     
     return 0;
@@ -721,7 +721,7 @@ void* MD_alarm_response_func(void* args) //文件模式 版本
         //file_info.datetime = ;
         push_to_upload_file_queue(&file_info);
             
-        //create_write_file("MD_TS_6s_01.ts",record_data,record_data_len); //debug
+        //create_write_file("/jffs0/MD_TS_6s_01.ts",record_data,record_data_len); //debug
         //if(record_data) {free(record_data);record_data = NULL;} //debug
         
         /*---#录 15s 视频------------------------------------------------------------*/
@@ -765,7 +765,7 @@ void* MD_alarm_response_func(void* args) //文件模式 版本
             //file_info.m3u8name = ;
             //file_info.datetime = ;
             push_to_upload_file_queue(&file_info);
-            //create_write_file("MD_TS_15s_01.ts",record_data,record_data_len); //debug
+            //create_write_file("/jffs0/MD_TS_15s_01.ts",record_data,record_data_len); //debug
             //if(record_data) {free(record_data);record_data = NULL;}//debug
         }
         
@@ -778,13 +778,13 @@ void* MD_alarm_response_func(void* args) //文件模式 版本
         memset(&out_mp4_info,0,sizeof(out_mp4_info));
         out_mp4_info.recode_time = MD_ALARM_PRERECORD_TIME;
         /*---#配置 buf存储 模式-----*/
-        out_mp4_info.buf_mode.buf_start = (char*)calloc(OUT_FILE_BUF_SIZE,sizeof(char));
+        out_mp4_info.buf_mode.buf_start = (char*)calloc(OUT_FILE_BUF_SIZE/2,sizeof(char));
         if(NULL == out_mp4_info.buf_mode.buf_start)
         {
             ERROR_LOG("calloc failed!\n");
             goto ERR;
         }
-        out_mp4_info.buf_mode.buf_size = OUT_FILE_BUF_SIZE;
+        out_mp4_info.buf_mode.buf_size = OUT_FILE_BUF_SIZE/2;
         out_mp4_info.buf_mode.w_offset = 0;
         out_mp4_info.file_mode.file_name = NULL; //不采用 文件模式 liteos 的 ramfs 延时太大
         if(NULL == fmp4_record(&out_mp4_info))
@@ -793,18 +793,12 @@ void* MD_alarm_response_func(void* args) //文件模式 版本
             fmp4_record_exit(&out_mp4_info);
             goto ERR;
         }
-        int  out_len = out_mp4_info.buf_mode.w_offset;
-        char* out_buf = (char*)malloc(out_len);
-        if(NULL == out_buf)
-        {
-            ERROR_LOG("malloc failed!\n");
-            goto ERR;
-        }
-        memcpy(out_buf,out_mp4_info.buf_mode.buf_start,out_len);
+ 
         
-        record_data = out_buf;
-        record_data_len = out_len;
-        if(out_mp4_info.buf_mode.buf_start) fmp4_record_exit(&out_mp4_info);
+        record_data = out_mp4_info.buf_mode.buf_start;
+        record_data_len = out_mp4_info.buf_mode.w_offset;
+        
+        //if(out_mp4_info.buf_mode.buf_start) fmp4_record_exit(&out_mp4_info);由 amazon 上传后释放
         
         /*将录制的文件放入到 amazom 云上传队列，云上传线程将自动进行传输--*/
         memset(&file_info,0,sizeof(file_info));
@@ -845,19 +839,10 @@ void* MD_alarm_response_func(void* args) //文件模式 版本
                 fmp4_record_exit(&out_mp4_info);
                 goto ERR;
             }
-            //为了节省内存空间，文件数据有多大，就只分配这么大空间（原来的空间是大于文件大小的）
-            int  out_len = out_mp4_info.buf_mode.w_offset;
-            char* out_buf = (char*)malloc(out_len);
-            if(NULL == out_buf)
-            {
-                ERROR_LOG("malloc failed!\n");
-                goto ERR;
-            }
-            memcpy(out_buf,out_mp4_info.buf_mode.buf_start,out_len);
-            
-            record_data = out_buf;
-            record_data_len = out_len;
-            if(out_mp4_info.buf_mode.buf_start) fmp4_record_exit(&out_mp4_info);
+              
+            record_data = out_mp4_info.buf_mode.buf_start;
+            record_data_len = out_mp4_info.buf_mode.w_offset;
+            //if(out_mp4_info.buf_mode.buf_start) fmp4_record_exit(&out_mp4_info);由 amazon 上传后释放
             
             /*将录制的文件放入到 amazom 云上传队列，云上传线程将自动进行传输--*/
             memset(&file_info,0,sizeof(file_info));

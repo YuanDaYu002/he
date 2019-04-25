@@ -1594,7 +1594,7 @@ int pop_frome_upload_file_queue(put_file_info_t* file_info)
 	return -1;
 }
 
-
+extern int create_write_file(char*file_name,void* data,unsigned int data_len);
 /*******************************************************************************
 *@ Description    : 负责图片视频上传的线程入口（该线程需要常驻）
 *@ Input          :
@@ -1624,8 +1624,17 @@ void* amazon_upload_thread(void*args)
 		{
 			put_file_info_t  pop_node = {0};
 			pop_frome_upload_file_queue(&pop_node);
-
-			if(pop_node.file_buf) {free(pop_node.file_buf); pop_node.file_buf = NULL;}
+			
+			/*if(pop_node.file_type == TYPE_TS)//debug
+					create_write_file("/jffs0/MD_TS_01.ts",pop_node.file_buf,pop_node.file_buf_len);//DEBUG
+			*/
+			
+			if(pop_node.file_buf) 
+			{
+				printf("pop_node.file_buf_len = %d Bytes\n",pop_node.file_buf_len);
+				free(pop_node.file_buf); 
+				pop_node.file_buf = NULL;
+			}
 			
 			/*---# 推送到 amazon 云---------------------------------------------------*/
 		    #if 0		       
