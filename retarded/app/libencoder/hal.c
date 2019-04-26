@@ -650,7 +650,7 @@ pthread_mutex_t MD_func_mut; //MD 告警 响应线程 锁
 /*---# m3u索引文件类型---------*/
 #define M3U_TS_FILE     1
 #define M3U_FMP4_FILE   2
-#define M3U_INDEX_FILE_TYPE  M3U_TS_FILE
+#define M3U_INDEX_FILE_TYPE  M3U_FMP4_FILE
 static int need_more_record = 0; //1:有连续告警发生（在告警视频录制期间又发生了告警）;0:无
 pthread_mutex_t need_more_record_mut;
 /*******************************************************************************

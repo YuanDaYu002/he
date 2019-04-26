@@ -730,6 +730,7 @@ fmp4_out_info_t* fmp4_record(fmp4_out_info_t* info)
     return info;
     
 other_error:
+    if(pack)  encoder_release_packet(pack);
     encoder_free_stream(stream_id);
 InitFmp4Encoder_Failed:
     //encode part
