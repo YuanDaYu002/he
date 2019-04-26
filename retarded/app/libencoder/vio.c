@@ -671,7 +671,7 @@ static int vpss_config_ext_chn(VPSS_GRP vpssGrp, VPSS_CHN vpssChn, VPSS_CHN bind
 	extAttr.s32BindChn = bindChn;
 	extAttr.u32Width = width;
 	extAttr.u32Height = height;
-	extAttr.s32SrcFrameRate = 30;//15;
+	extAttr.s32SrcFrameRate = 15;
 	extAttr.s32DstFrameRate = frmRate;
 	extAttr.enPixelFormat = PIXEL_FORMAT_YUV_SEMIPLANAR_420;
 	int ret = HI_MPI_VPSS_SetExtChnAttr(vpssGrp, vpssChn, &extAttr);
@@ -735,31 +735,40 @@ int vpss_enable_chn(void)
 		return ret;
 	}
 
-	ret = vpss_config_chn(VPSS_GRP_ID, VPSS_CHN_ENC1, 960, 544);
+	/*
+	ret = vpss_config_chn(VPSS_GRP_ID, VPSS_CHN_ENC1, 960,544);
 	if (HLE_RET_OK != ret) {
 		return ret;
 	}
+	*/
+	
+	
 
+	/*
 	ret = vpss_config_chn(VPSS_GRP_ID, VPSS_CHN_ENC2, 480, 272);
 	if (HLE_RET_OK != ret) {
 		return ret;
 	}
+	*/
+	
 
 	ret = vpss_config_ext_chn(VPSS_GRP_ID, VPSS_CHN_JPEG, VPSS_CHN_ENC0, 1920, 1080, 15);
 	if (HLE_RET_OK != ret) {
 		return ret;
 	}
 
-	ret = vpss_config_ext_chn(VPSS_GRP_ID, VPSS_CHN_MD, VPSS_CHN_ENC2, 480, 272, 5);
+	ret = vpss_config_ext_chn(VPSS_GRP_ID, VPSS_CHN_MD,VPSS_CHN_ENC0, 480, 272, 5);
 	if (HLE_RET_OK != ret) {
 		return ret;
 	}
-
+	
+	
 	ret = HI_MPI_VPSS_SetDepth(VPSS_GRP_ID, VPSS_CHN_MD, 2);
 	if (HLE_RET_OK != ret) {
 		ERROR_LOG("HI_MPI_VPSS_SetDepth(%d, %d, %d) fail: %#x!\n", VPSS_GRP_ID, VPSS_CHN_MD, 2, ret);
 		return ret;
 	}
+	
 
 #if 0
 	ret = vpss_config_ext_chn(VPSS_GRP_ID, VPSS_CHN_OD, VPSS_CHN_ENC2, 480, 272, 5);

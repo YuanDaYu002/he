@@ -64,7 +64,7 @@ extern "C"
 #endif
 
 /******************************ENC*******************************/
-#define STREAMS_PER_CHN     2   //每个通道的码流数目
+#define STREAMS_PER_CHN     1   //每个通道的码流数目
 #define ENC_STREAM_NUM      (VI_PORT_NUM*STREAMS_PER_CHN)    //设备编码通道数
 
 #define JPEGS_PER_CHN       1

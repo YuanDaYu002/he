@@ -72,7 +72,7 @@ static int calc_pic_vbblk_size(int width, int height, int align)
 
 static int mpp_sys_init(void)
 {
-#define SYS_ALIGN_WIDTH  16
+#define SYS_ALIGN_WIDTH  16   //整个系统中使用图像的 stride 字节对齐数,一般选择 16 字节对齐
 
     HLE_S32 ret;
 
@@ -82,11 +82,11 @@ static int mpp_sys_init(void)
     memset(&vb_conf, 0, sizeof (VB_CONF_S));
     vb_conf.u32MaxPoolCnt = VB_MAX_POOLS;
     vb_conf.astCommPool[0].u32BlkSize = calc_pic_vbblk_size(1920, 1088, SYS_ALIGN_WIDTH);
-    vb_conf.astCommPool[0].u32BlkCnt = 6;
+    vb_conf.astCommPool[0].u32BlkCnt = 5;
     //vb_conf.astCommPool[1].u32BlkSize = calc_pic_vbblk_size(960, 544, SYS_ALIGN_WIDTH);
     //vb_conf.astCommPool[1].u32BlkCnt = 6;
-    vb_conf.astCommPool[1].u32BlkSize = calc_pic_vbblk_size(480, 272, SYS_ALIGN_WIDTH);
-    vb_conf.astCommPool[1].u32BlkCnt = 6;
+    //vb_conf.astCommPool[1].u32BlkSize = calc_pic_vbblk_size(480, 272, SYS_ALIGN_WIDTH);
+    //vb_conf.astCommPool[1].u32BlkCnt = 6;
     ret = HI_MPI_VB_SetConf(&vb_conf);
     if (HLE_RET_OK != ret) {
         ERROR_LOG("HI_MPI_VB_SetConf fail: %#x.\n", ret);

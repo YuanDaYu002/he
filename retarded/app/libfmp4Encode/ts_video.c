@@ -54,7 +54,8 @@
 	 }
 	 else
 	 {
-		 TS_ERROR_LOG("---unknow NALU !!---\n");
+		 TS_ERROR_LOG("---unknow NALU !!---naluData[] = %d %d %d %d %d\n",naluData[0],naluData[1],naluData[2],
+		 																	naluData[3],naluData[4],naluData[5]);
 	 }
  
 	 return index;

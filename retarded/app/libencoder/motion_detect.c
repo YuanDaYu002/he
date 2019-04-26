@@ -477,11 +477,15 @@ void motion_detect_exit(void)
 	HI_IVS_MD_Exit();
 }
 
-/*
-初始化 img 的空间，（按照 width height 申请MMZ内存）
-注意，只需要Y分量，所以初始化也就只有Y分量
 
-*/
+/*******************************************************************************
+*@ Description    :初始化 img 的空间，（按照 width height 申请MMZ内存）
+*@ Input          :<width> 图片的宽
+					<height> 图片的高
+*@ Output         :<img>返回申请的内存信息
+*@ Return         :
+*@ attention      :注意，只需要Y分量，所以初始化也就只有Y分量
+*******************************************************************************/
 static int ive_create_image(IVE_IMAGE_S* img, HLE_U16 width, HLE_U16 height)
 {
 	if (NULL == img) {
@@ -740,6 +744,7 @@ int motion_detect_write_cfg(void)
 
 	return motion_detect_config(0, &g_motion_detect_artr);
 }
+
 
 
 

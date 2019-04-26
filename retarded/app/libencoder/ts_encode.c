@@ -75,7 +75,7 @@ extern void print_array(unsigned char* box_name,unsigned char*start,unsigned int
 *******************************************************************************/
 int ts_record(void **out_buf,int* out_len,int recode_time)
 {
-    printf("\n\n******start ts_record************************************************************************\n");
+    printf("\n******start ts_record************************************************************************\n");
     pthread_detach(pthread_self());  
 
     //sleep(5); //如若刚开机，不要太快开始录像
@@ -261,7 +261,7 @@ int ts_record(void **out_buf,int* out_len,int recode_time)
     struct timeval time_start = {0};
     struct timeval time_end = {0};
     gettimeofday(&time_start,NULL);
-    
+    printf("------start TS_remux_video_audio ------\n");
     if(TS_remux_video_audio(out_buf,out_len) < 0)
     {
         ERROR_LOG("TS_remux_video_audio failed!\n");
@@ -269,19 +269,19 @@ int ts_record(void **out_buf,int* out_len,int recode_time)
     }
     gettimeofday(&time_end,NULL);
     int use_time = (time_end.tv_sec * 1000*1000 + time_end.tv_usec) - (time_start.tv_sec*1000*1000 + time_start.tv_usec);
-    printf("TS_remux_video_audio use time = %d(ms)  \n",use_time/1000);
+    printf("------END TS_remux_video_audio, use time = %d(ms)------  \n",use_time/1000);
 
     
     encoder_free_stream(stream_id);
     TS_recoder_exit(0);
-    printf("\n******END ts_record************************************************************************\n\n");
+    printf("******END ts_record************************************************************************\n\n");
     return 0;
     
 ERR:
     if(pack)  encoder_release_packet(pack);
     if(stream_id >= 0) encoder_free_stream(stream_id);
     TS_recoder_exit(-1);
-    printf("\n******ERR TS_record !!!************************************************************************\n\n");
+    printf("******ERR TS_record !!!************************************************************************\n\n");
     return -1;
 }
 

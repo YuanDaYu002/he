@@ -711,7 +711,11 @@ void print_track_media_info(ts_track_media_t*info)
 {
 	if(info)
 	{	
-		printf("------------------------------------------\n");
+		if(&media_stats.track[VIDEO_INDEX] == info)
+			printf("------ts_track_media(video) info------------------\n");
+		else
+			printf("------ts_track_media(audio) info------------------\n");
+	
 		printf("info->n_frames(%d)\n",info->n_frames);	
 		printf("info->bitrate(%d)\n",info->bitrate);
 		printf("info->pts(%p)\n",info->pts);	
@@ -731,7 +735,10 @@ void print_track_data_info(ts_track_data_t*info)
 {
 	if(info)
 	{
-		printf("------------------------------------------\n");
+		if(&media_data.track[VIDEO_INDEX] == info)
+			printf("------ts_track_data(video) info------------------\n");
+		else
+			printf("------ts_track_data(audio) info------------------\n");
 		printf("info->n_frames(%d)\n",info->n_frames);	
 		printf("info->first_frame(%d)\n",info->first_frame);
 		printf("info->buffer(%p)\n",info->buffer);
@@ -890,7 +897,7 @@ int  TS_remux_video_audio(void **out_buf,int* out_len)
 	//pthread_detach(pthread_self());
 	//等待条件成熟,记录下这次要打包的音视频数据帧 buf 的区间，支队该区间进行操作
 
-	//DEBUG ： 
+	//DEBUG ：
 	print_track_data_info(&media_data.track[VIDEO_INDEX]);
 	print_track_data_info(&media_data.track[AUDIO_INDEX]);
 	

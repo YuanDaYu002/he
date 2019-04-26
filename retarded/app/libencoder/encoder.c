@@ -125,7 +125,7 @@ static ENC_STREAM_ATTR defEncStreamAttr[STREAMS_PER_CHN] = {
         1,
         64 * 20
     },
-#if 0
+    #if 0
     {
         VENC_STD_H264,
         IMAGE_SIZE_960x544,
@@ -135,7 +135,6 @@ static ENC_STREAM_ATTR defEncStreamAttr[STREAMS_PER_CHN] = {
         1,
         64 * 6
     },
-#endif
     {
         VENC_STD_H264,
         IMAGE_SIZE_480x272,
@@ -144,7 +143,8 @@ static ENC_STREAM_ATTR defEncStreamAttr[STREAMS_PER_CHN] = {
         1,
         1,
         64 * 4
-    },
+    }
+    #endif
 };
 
 /*设置audio帧标志位（是否进行 audio 帧编码）*/
@@ -704,8 +704,8 @@ void * venc_get_stream_proc(void *arg)
                         pthread_mutex_lock(&chn_ctx->lock);
                         /* 申请pack并拷贝 stream 数据到pack */
                         ENC_STREAM_PACK *pack = video_stream_to_pack(i, &venc_stream);  
-						pthread_mutex_unlock(&chn_ctx->lock);
-						
+                        pthread_mutex_unlock(&chn_ctx->lock);
+                        
                         HI_MPI_VENC_ReleaseStream(i, &venc_stream);
 
                         //释放空间
@@ -901,13 +901,13 @@ void * AAC_get_stream_proc(void *arg)
                 if (chn_ctx->state == ENC_STATE_RUNING\
                     && chn_ctx->enc_attr.hasaudio) /* 是否把音频放进数据流里 */ 
                  {
-                 	pthread_mutex_lock(&chn_ctx->lock);
+                    pthread_mutex_lock(&chn_ctx->lock);
                     /* 申请pack并拷贝 stream 数据到pack */
                     ENC_STREAM_PACK *pack = audio_stream_to_pack(i, &stream);
                     //debug
                     //printf("put one Audio pack into queue! stream_id(%d)\n",i);
                     pthread_mutex_unlock(&chn_ctx->lock);
-					
+                    
                     /*一定要在调用sdp_enqueue之前释放锁，否则有可能死锁*/
                     if (pack)
                         sdp_enqueue(i, pack);
