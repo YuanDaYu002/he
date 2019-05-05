@@ -142,7 +142,8 @@
 /*-----------------------------------------------------------------------
  *  Environment   Configuration
  *-----------------------------------------------------------------------*/
-#define CONFIG_BOOTCOMMAND	"sf probe 0; sf read 0x80000000 0x100000 0x700000; go 0x80000000"
+//#define CONFIG_BOOTCOMMAND	"sf probe 0; sf read 0x80000000 0x100000 0x700000; go 0x80000000"
+#define CONFIG_BOOTCOMMAND	"hle_bootm"
 #define CONFIG_BOOTDELAY	1
 #define CONFIG_BOOTARGS		"mem=96M console=ttyAMA0,115200"
 #define CONFIG_NETMASK  255.255.255.0       /* talk on MY local net */

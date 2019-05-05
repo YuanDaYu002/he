@@ -27,6 +27,9 @@
 #include <common.h>
 #include <command.h>
 #include <net.h>
+#include <malloc.h>
+
+
 
 extern int do_spi_flash_probe(int argc, char *argv[]);
 extern int do_spi_flash_read_write(int argc, char *argv[]);
@@ -85,20 +88,74 @@ void printf_config_info(config_info_t* info)
 	printf("info->image_info[1].image_version = %d\n",info->image_info[1].image_version);
 	printf("info->image_info[1].damage_flag   = %#x\n",info->image_info[1].damage_flag);
 	printf("info->image_info[1].start_address = %#lx\n",info->image_info[1].start_address);
-	printf("---------------------------------------------------------------\n");
+	printf("-------------------------------------------------------------\n");
 }
 
+
+extern int do_spi_flash_erase(int argc, char *argv[]);
 /*******************************************************************************
-*@ Description    :	初始化config分区
+*@ Description    :	初始化config分区(设备烧片后初次启动)
 *@ Input          :
 *@ Output         :
-*@ Return         :
+*@ Return         :成功：0  	失败：-1
 *@ attention      :
 *******************************************************************************/
-void init_config_info(void)
+int init_config_info(void)
 {
-	
+	printf("---INIT CONFIG REGION INFO----------------------------------------\n");
 
+	config_info_t * config_info = (config_info_t*)malloc(CONFIG_REGION_SIZE);
+	if(NULL == config_info)
+	{
+		printf("\033[1;31m<ERR!!>init_config_info error!!\n\033[0m");
+		return -1;
+	}
+	memset(config_info,0,CONFIG_REGION_SIZE);
+
+	//出厂状态，默认只有 IMAGE0 分区有镜像文件
+	config_info->magic_flag = HLE_MAGIC;
+	config_info->image_info[0].image_version = 1;
+	config_info->image_info[0].damage_flag = FLAG_OK;
+	config_info->image_info[0].start_address = IMAGE0_REGION_START;
+
+	config_info->image_info[1].image_version = 0;
+	config_info->image_info[1].damage_flag = FLAG_BAD;
+	config_info->image_info[1].start_address = IMAGE1_REGION_START;
+
+
+	//擦除并写入norflash 的 config 分区
+	char erase_off [32] = {0};
+	char erase_size [32] = {0};
+	sprintf(erase_off,"0x%x",CONFIG_REGION_START);
+	sprintf(erase_size,"0x%x",CONFIG_REGION_SIZE);
+	printf("## config: erase_off[] = %s\n",erase_off);
+	printf("## config: erase_size[] = %s\n",erase_size);
+
+	char* argv_erase[3] = {"erase",(char*)&erase_off,(char*)&erase_size};
+	do_spi_flash_erase(3,argv_erase);
+	
+	//sf write 
+	char write_from_addr[32] = {0};
+	sprintf(write_from_addr,"0x%x",(int)config_info);
+	char write_offset[32] = {0};
+	sprintf(write_offset,"0x%x",CONFIG_REGION_START);
+	char write_len[32] = {0};
+	sprintf(write_len,"0x%x",CONFIG_REGION_SIZE);
+
+	printf("write_from_addr[] = %s\n",write_from_addr);
+	printf("write_offset[] = %s\n",write_offset);
+	printf("write_len[] = %s\n",write_len);
+	
+	char* argv_write[4] = {"write",(char*)&write_from_addr,(char*)&write_offset,(char*)&write_len};
+	do_spi_flash_read_write(4,argv_write);
+
+	//进行一次 saveenv 操作，防止uboot 报警告：*** Warning - bad CRC, using default environment
+	setenv("bootcmd","hle_bootm");
+	saveenv();
+	
+	printf("------------------------------------------------------------------\n");
+
+	return 0;
 }
 
 
@@ -111,51 +168,77 @@ void init_config_info(void)
 *******************************************************************************/
 ulong select_boot_system_partition(void)
 {
-	config_info_t config_info = {0};
-	memcpy(&config_info,(char*)CONFIG_REGION_START,sizeof(config_info_t));
-	if(config_info.magic_flag != HLE_MAGIC)
+	//读取 norflash 配置分区的数据到内存
+	config_info_t *config_info = ((config_info_t*)malloc(CONFIG_REGION_SIZE));
+	if(NULL == config_info)
 	{
-		printf("\033[1;31m<ERR!!>config_info.magic_flag error!!\n\033[0m");
+		printf("\033[1;31m<ERR!!>select_boot_system_partition malloc failed!!\n\033[0m");
+		return (ulong)IMAGE0_REGION_START;//默认返回分区0的image
+	}
+	memset(config_info,0,CONFIG_REGION_SIZE);
+
+	char config_size[32] = {0};
+	sprintf(config_size,"0x%x",CONFIG_REGION_SIZE);
+	//printf("## config_size[] = %s\n",config_size);
+
+	char mem_addr[32] = {0};
+	sprintf(mem_addr,"0x%x",(int)config_info);
+	//printf("## mem_addr[] = %s\n",mem_addr);
+
+	char src_flash_addr[32] = {0};
+	sprintf(src_flash_addr,"0x%x",CONFIG_REGION_START);
+	//printf("## src_flash_addr[] = %s\n",src_flash_addr);
+	
+	//sf read 0x80000000 config_addr 0x100000
+	char* argv[4] = {"read",(char*)&mem_addr,(char*)&src_flash_addr,(char*)&config_size};
+	do_spi_flash_read_write(4,argv);
+
+	
+	if(config_info->magic_flag != HLE_MAGIC)
+	{ 
+		printf("config_info->magic_flag = %#x\n",config_info->magic_flag);
+		printf("\033[1;31m<ERR!!>config_info.magic_flag error!! start to init CONFIG REGION...\n\033[0m");
+		init_config_info();//出厂初次启动，初始化 config 分区
 		return (ulong)IMAGE0_REGION_START;//默认返回分区0的image
 	}
 
 	/*打印两个分区的详细信息*/
-	printf_config_info(&config_info);
+	printf_config_info(config_info);
 	
-	//情况1：两个都为坏的
-	if(config_info.image_info[0].damage_flag != FLAG_OK &&
-	   config_info.image_info[1].damage_flag != FLAG_OK)
+	//情况1：两个都为坏的,默认返回分区0的image	
+	if(config_info->image_info[0].damage_flag != FLAG_OK &&
+	   config_info->image_info[1].damage_flag != FLAG_OK)
 	{
 		printf("\033[1;31m<ERR!!>Both image[0] and image[1] is bad !!\n\033[0m");
-		return (ulong)IMAGE0_REGION_START;//默认返回分区0的image	
+		return (ulong)IMAGE0_REGION_START;
 	}
 
-	//情况2：两个都是好的
-	if(config_info.image_info[0].damage_flag == FLAG_OK &&
-	   config_info.image_info[1].damage_flag == FLAG_OK) 
+	//情况2：两个都是好的,谁的版本高用哪个
+	if(config_info->image_info[0].damage_flag == FLAG_OK &&
+	   config_info->image_info[1].damage_flag == FLAG_OK) 
 	{
 		printf("## Both image[0] and image[1] is OK!!\n");
-		if(config_info.image_info[0].image_version > 
-		   config_info.image_info[1].image_version)
+		if(config_info->image_info[0].image_version > 
+		   config_info->image_info[1].image_version)
 		{
-			return config_info.image_info[0].start_address;
+			return config_info->image_info[0].start_address;
 		}
 		else
 		{
-			return config_info.image_info[1].start_address;
+			return config_info->image_info[1].start_address;
 		}
 	}
 	   
-	//情况3：只有一个是好的
-	if(config_info.image_info[0].damage_flag == FLAG_OK)
+	//情况3：只有一个是好的，只能用这个好的
+	if(config_info->image_info[0].damage_flag == FLAG_OK)
 	{
 		printf("##Just image[0] is OK!!\n");
-		return config_info.image_info[0].start_address;
+		return config_info->image_info[0].start_address;
 	}
 	else //if(config_info.image_info[1].damage_flag == FLAG_OK)
 	{
 		printf("##Just image[1] is OK!!\n");
-		return config_info.image_info[1].start_address;
+		return config_info->image_info[1].start_address;
 	}
 
 }
@@ -198,5 +281,6 @@ U_BOOT_CMD(
 	"select (kernel + app) image and boot it , No input parameters are required",
 	""
 );
+
 
 

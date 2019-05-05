@@ -348,7 +348,8 @@ cmd_hle_double_system_bootm.o: cmd_hle_double_system_bootm.c \
  /home/yuanda.yu/svndebug/trunk/retarded/Hi3516CV300_SDK_V1.0.2.0/osdrv/opensource/u-boot/u-boot-2010.06/include/asm/setup.h \
  /home/yuanda.yu/svndebug/trunk/retarded/Hi3516CV300_SDK_V1.0.2.0/osdrv/opensource/u-boot/u-boot-2010.06/include/asm/u-boot-arm.h \
  /home/yuanda.yu/svndebug/trunk/retarded/Hi3516CV300_SDK_V1.0.2.0/osdrv/opensource/u-boot/u-boot-2010.06/include/net.h \
- /home/yuanda.yu/svndebug/trunk/retarded/Hi3516CV300_SDK_V1.0.2.0/osdrv/opensource/u-boot/u-boot-2010.06/include/u-boot/crc.h
+ /home/yuanda.yu/svndebug/trunk/retarded/Hi3516CV300_SDK_V1.0.2.0/osdrv/opensource/u-boot/u-boot-2010.06/include/u-boot/crc.h \
+ /home/yuanda.yu/svndebug/trunk/retarded/Hi3516CV300_SDK_V1.0.2.0/osdrv/opensource/u-boot/u-boot-2010.06/include/malloc.h
 cmd_load.o: cmd_load.c \
  /home/yuanda.yu/svndebug/trunk/retarded/Hi3516CV300_SDK_V1.0.2.0/osdrv/opensource/u-boot/u-boot-2010.06/include/common.h \
  /home/yuanda.yu/svndebug/trunk/retarded/Hi3516CV300_SDK_V1.0.2.0/osdrv/opensource/u-boot/u-boot-2010.06/include/config.h \

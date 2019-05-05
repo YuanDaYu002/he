@@ -169,8 +169,8 @@ usage:
 	printf("Usage: sf %s addr offset len\n", argv[0]);
 	return 1;
 }
-
-static int do_spi_flash_erase(int argc, char *argv[])
+ 
+int do_spi_flash_erase(int argc, char *argv[])
 {
 	unsigned long offset;
 	unsigned long len;
