@@ -6,6 +6,9 @@
 #include "watchdog.h"
 //#include "ssp.h"
 #include "mpi_sys.h"
+#include "los_hwi.h"
+#include "los_typedef.h"
+#include "system_upgrade.h"
 
 //#define WDG_SET					(0x2010)
 //#define WDG_ENABLE_BIT			15
@@ -75,11 +78,15 @@ int watchdog_disable()
 	return HLE_RET_OK;
 }
 
+void watchdog_interrupt_func_init(void);
 int watchdog_feed()
 {
 	if (fdWdg < 0) {
 		watchdog_enable();
 		if (fdWdg < 0) return HLE_RET_EIO;
+		//初始化 看门狗中断
+		DEBUG_LOG("init watchdog_interrupt_func_init !\n");
+		watchdog_interrupt_func_init();
 	}
 	
 	int ret = ioctl(fdWdg, WDIOC_KEEPALIVE);
@@ -89,6 +96,28 @@ int watchdog_feed()
 
 	return HLE_RET_OK;
 }
+
+void watchdog_irqhandle(void)
+{
+	set_boot_region_bad();	
+}
+
+
+void watchdog_interrupt_func_init(void)
+{
+	int a = 1;
+	UINTPTR uvIntSave;
+	//uvIntSave = LOS_IntLock(); //关中断
+	LOS_HwiCreate(NUM_HAL_INTERRUPT_WDT, 0xa0, 0, (HWI_PROC_FUNC)watchdog_irqhandle, 0);//创建中断
+	hal_interrupt_unmask(NUM_HAL_INTERRUPT_WDT); //中断使能
+	//LOS_IntRestore(uvIntSave);//恢复到关中断之前的状态
+
+	//hal_interrupt_mask(NUM_HAL_INTERRUPT_WDT);//中断屏蔽
+
+}
+
+
+
 
 #if 0
 
@@ -154,4 +183,11 @@ int phy_reset(void)
 	return HLE_RET_OK;
 }
 #endif
+
+
+
+
+
+
+
 

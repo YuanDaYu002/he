@@ -68,34 +68,44 @@ void http_parse_url(const char *url, char *host, int *port, char *file_name)
                     <message_json>要推送的字符数据（http头的数据部分）
                     <>
                     <filepath>文件的路径
+                    <file_buf>文件的缓存
+                    <file_len>文件长度
                     
 *@ Output         :<response>服务器返回的响应包数据
 *@ Return         :成功：0 失败: <0的数
 *@ attention      : 返回参数 response 需要上层free才能释放
 *******************************************************************************/
 static int http_post_file(tcpclient *pclient, const char *page,
-     const char* message_json, const char* content_type, const char *filepath,
+     const char* message_json, const char* content_type, const char *filepath,void* file_buf,int file_len,
      char **response)
 {
 
     //check if the file is valid or not
     struct stat stat_buf;
-    if(lstat(filepath,&stat_buf)<0)//获取文件的相关信息
-    {
-        ERROR_LOG("lstat %s fail", filepath);
-        return -1;
-    }
-    if(!S_ISREG(stat_buf.st_mode)) //判断该文件是否是一个常规文件
-    {
-        ERROR_LOG("%s is not a regular file!",filepath);
-        return  -1;
-    }
+	if(file_len <= 0 && file_buf == NULL) //文件模式
+	{
+		if(lstat(filepath,&stat_buf)<0)//获取文件的相关信息
+	    {
+	        ERROR_LOG("lstat %s fail", filepath);
+	        return -1;
+	    }
+
+		if(!S_ISREG(stat_buf.st_mode)) //判断该文件是否是一个常规文件
+	    {
+	        ERROR_LOG("%s is not a regular file!",filepath);
+	        return  -1;
+	    }
+			
+	}
+
+	
+
  
     char *filename;
     filename=strrchr((char*)filepath,'/'); //查找filepath中最后一次出现字符‘/’的位置
     if(filename==NULL)
     {
- 
+ 	
     }
     filename+=1;
     if(filename>=filepath+strlen(filepath))
@@ -177,15 +187,24 @@ static int http_post_file(tcpclient *pclient, const char *page,
         ERROR_LOG("malloc failed !\n");
         return -1;
     }
-
-    int fd;
-    fd = open(filepath,O_RDONLY,0666);
-    if(!fd)
-    {
-        ERROR_LOG("fail to open file : %s",filepath);
-        return -1;
-    }
-    len = get_file_size(filepath);
+	
+	int fd;
+	if(file_len > 0 && file_buf != NULL)//buf模式（需使用传入的文件buf，而不是open文件）
+	{
+		len = file_len;
+	}
+	else //文件模式
+	{
+		 fd = open(filepath,O_RDONLY,0666);
+	    if(!fd)
+	    {
+	        ERROR_LOG("fail to open file : %s",filepath);
+	        return -1;
+	    }
+	    len = get_file_size(filepath);
+	}
+   
+   
  
 
     char *lenstr;//字符串总长度
@@ -212,13 +231,27 @@ static int http_post_file(tcpclient *pclient, const char *page,
     //content
     unsigned int count_len = 0;
     unsigned int ret = 0;
+	int cpy_len = 0;
+	int offset = 0;
+	
     while(count_len != len)
     {
-        ret = read(fd,content,max_cont_len);
+    	if(file_len > 0 && file_buf != NULL) //buf模式
+    	{
+    		cpy_len = (file_len - offset >= max_cont_len)? max_cont_len :(file_len - offset);
+			memcpy(content,(char*)file_buf + offset,cpy_len);
+			offset += cpy_len;
+			ret = cpy_len;
+		}
+		else  //文件模式
+		{
+			ret = read(fd,content,max_cont_len);
+		}
+        
         if(ret < 0)
         {
             ERROR_LOG("read fialed !\n");
-            close(fd);
+            if(file_len <= 0 && file_buf == NULL) close(fd);
             free(content);
             return -1;
         }
@@ -226,7 +259,7 @@ static int http_post_file(tcpclient *pclient, const char *page,
         if(0 == ret && count_len != len)//读到文件的实际总长度和原本长度不一致
         {
             ERROR_LOG("the actualy data length  is not equal the file length !\n ");
-            close(fd);
+            if(file_len <= 0 && file_buf == NULL) close(fd);
             free(content);
             return -1;
         }
@@ -236,13 +269,13 @@ static int http_post_file(tcpclient *pclient, const char *page,
         if(ret_tmp != ret)
         {
             ERROR_LOG("tcpclient_send failed ! \n");
-            close(fd);
+            if(file_len <= 0 && file_buf == NULL) close(fd);
             free(content);
             return -1;
         }
         
     }
-    close(fd);
+    if(file_len <= 0 && file_buf == NULL) close(fd);
     free(content);
  
     //content-end
@@ -505,11 +538,13 @@ int http_post_data(const char* pServerPath,const char* pMessageJson,char*content
                     <content_type>http头content-type字段，
                             传入NULL时默认填充"Content-Type: image/jpeg\r\n\r\n"
                     <pFile> 要上传的文件(绝对路径)
+                    <file_buf> 文件的缓存（buf模式专用，内部不进行文件操作，文件模式请传NULL）
+                    <file_len> 文件缓存的长度（buf模式专用，内部不进行文件操作，文件模式请传0）
 *@ Output         :
 *@ Return         :失败：NULL ; 成功 :服务器的响应数据
 *@ attention      :返回值 response 需要上层 free 才能释放
 *******************************************************************************/
-char* http_upload_file(const char* pServerPath,const char* pMessageJson,const char* content_type, const char* pFile)
+char* http_upload_file(const char* pServerPath,const char* pMessageJson,const char* content_type, const char* pFile,void*file_buf,int file_len)
 {
  
     tcpclient client;
@@ -530,11 +565,13 @@ char* http_upload_file(const char* pServerPath,const char* pMessageJson,const ch
 //        GH_LOG_INFO("失败!");
 //        exit(2);
 //    }
-    int ret= http_post_file(&client, pServerPath, pMessageJson,content_type, pFile, &response);
+    int ret= http_post_file(&client, pServerPath, pMessageJson,content_type, pFile,file_buf,file_len, &response);
     
     tcpclient_close(&client);
     return response;
 }
+
+
 
 
 

@@ -297,8 +297,8 @@ void make_StringToSign(const char *http_req, char *stringToSign)
 *@ Description    :生成数字签名  
 *@ Input          :<YourSecretAccessKeyID>
 					<StringToSign>
-					<Signature>
-*@ Output         :
+					
+*@ Output         :<Signature> 生成的签名
 *@ Return         :
 *******************************************************************************/
 #if 1
@@ -467,30 +467,37 @@ size_t amazonWriteData(void *ptr, size_t size, size_t nmemb, void *stream)
 /*******************************************************************************
 *@ Description    :  将文件推送到 amazon 云上
 *@ Input          :	<filename>:文件名（要推送到amazon的文件）
+					<file_buf>：文件buf（buf模式时需要该参数）
+					<file_len>:文件长度（buf模式时需要该参数）
 					<tsflag>:TS文件的文件标记
 					<type>：文件类型
 *@ Output         :
 *@ Return         :成功：0  	失败：-1
 *******************************************************************************/
-int amazon_curl_send(char *filename, ts_flag_e tsflag, file_type_e type)
+int amazon_curl_send(char *filename,void*file_buf,int file_len,ts_flag_e tsflag, file_type_e type)
 {	
-	DEBUG_LOG("1000000013 ,filename(%s), tsflag(%d) type(%d)\n",filename,tsflag,type);
-	char filetype[16]; //http put 头部分的文件类型
-	char sub_dir[16];  // amazon 云端目标路径中的子项目录（不同文件类型推送路径不一样）	
-	char path[256];
-	char http_url[512];	
-	int timeout;
+	if(NULL == filename || NULL == file_buf ||  file_len <= 0)
+	{
+		ERROR_LOG("Illegal parameter!\n");
+		return -1;
+	}
+	
+	DEBUG_LOG("amazon_curl_send ,filename(%s)|file_len(%d)|tsflag(%d)|type(%d)\n",filename,file_len,tsflag,type);
+	char filetype[16] = {0}; //http put 头部分的文件类型
+	char sub_dir[16] = {0};  // amazon 云端目标路径中的子项目录（不同文件类型推送路径不一样）	
+	char path[256] = {0}; //推送amazon云的路径
+	char http_url[512] = {0}; //完整的	推送amazon云的 URL
+	int timeout = 0;;
 
-
-	/*---构造应答的时间戳，年月日，时分秒---------*/
+	/*---#构造应答的时间戳，年月日，时分秒------------------------------------------------------------*/
 	time_t timer=time(NULL); 
 	struct tm *gmt = gmtime(&timer);
 	snprintf(aws_yymmdd,12 ,"%04d%02d%02d", 1900+gmt->tm_year, 1+gmt->tm_mon, gmt->tm_mday);
 	snprintf(aws_TimeStamp, 20,"%04d%02d%02dT%02d%02d%02dZ", 1900+gmt->tm_year, 1+gmt->tm_mon, gmt->tm_mday, gmt->tm_hour, gmt->tm_min, gmt->tm_sec);
-	DEBUG_LOG("date =%s, time=%s\n",aws_yymmdd, aws_TimeStamp);
+	DEBUG_LOG("aws_yymmdd =%s, aws_TimeStamp=%s\n",aws_yymmdd, aws_TimeStamp);
 
-	/*---构造amazon云端子目录（将文件推送到哪个子目录）-----------------*/
-	if(tsflag == TS_FLAG_JPG)//TS文件类型是JPEG，则需要到jpeg的目录下去取
+	/*---#构造amazon云端子目录（将文件推送到哪个子目录）-----------------------------------------------*/
+	if(tsflag == TS_FLAG_JPG)//文件类型是JPEG，则需要到jpeg的目录下去取
 	{
 		strcpy(sub_dir,A_JPG_DIR);
 		strcpy(filetype,"image/jpeg");
@@ -499,20 +506,22 @@ int amazon_curl_send(char *filename, ts_flag_e tsflag, file_type_e type)
 	else if(tsflag == TS_FLAG_6S )
 	{
 		strcpy(sub_dir,A_VIDEO6s_DIR);
-		if(type==TYPE_TS)
+		if(type==TYPE_TS||TYPE_FMP4)
 			strcpy(filetype,"video/mp2t");//x-mpeg
 		else
 			strcpy(filetype,"audio/mpegurl");
 		timeout = 50;
 	}
-	else if(tsflag == TS_FLAG_ONE)
+	/*
+	else if(tsflag == TS_FLAG_ONE)// ?????????????
 	{
 		goto ERR;
 	}
+	*/
 	else//ts文件属于告警录像文件
 	{
 		strcpy(sub_dir,A_VIDEO_DIR);
-		if(type==TYPE_TS)
+		if(type==TYPE_TS||TYPE_FMP4)
 			strcpy(filetype,"video/mp2t");//x-mpeg
 		else
 			strcpy(filetype,"audio/mpegurl");
@@ -521,8 +530,7 @@ int amazon_curl_send(char *filename, ts_flag_e tsflag, file_type_e type)
 	
 	/*---构造完整 amazon 云 文件推送的 url 字符串---------------*/
 	amazon_info_complet(path, http_url, sub_dir, filename);
-	unsigned long fsize = get_file_size(filename);
-	
+		
 	////////////////////////////////////////////////////////////////aws
 	/*---http PUT命令构造-----------------
 	PUT
@@ -551,18 +559,14 @@ int amazon_curl_send(char *filename, ts_flag_e tsflag, file_type_e type)
 	//strcat(http_req,"x-amz-content-sha256: UNSIGNED-PAYLOAD\n");
 	
 	//printf("http_req//////////////////\n%s\n////////////////\n",http_req);
-	//////////////2  Signature
 	
-	/*---将请求字符串转换成数字签名--------------------------------*/
+	/*---将请求字符串转换成数字签名 Signature--------------------------------*/
 	char stringToSign[256] = {0};
 	make_StringToSign(http_req , stringToSign);
-	
-	//////////////3  Signature
 	unsigned char Signature[65] = {0};
 	make_signatue(g_amazon_info.secret_aceess_keyid, stringToSign, Signature);
 
-	/*---依据签名生成数字证书--------------------------------*/
-	///////////////4 Authorization
+	/*---依据签名生成数字证书 Authorization------------------------------------------------*/
 	char Authorization[1024];	
 	Authorization[0] = '\0';
 	snprintf(Authorization,1024	,"Authorization: AWS4-HMAC-SHA256 "
@@ -574,7 +578,7 @@ int amazon_curl_send(char *filename, ts_flag_e tsflag, file_type_e type)
 							g_amazon_info.regon,
 							Signature
 							);
-	DEBUG_LOG("Authorization////////////////////\n%s\n///////////\n", Authorization);
+	DEBUG_LOG("********************\nAuthorization:\n%s\n********************\n", Authorization);
 
 	/*--- https 设置请求头------------------------------*/
 	char * headers = (char*)malloc(1024*3);
@@ -591,7 +595,7 @@ int amazon_curl_send(char *filename, ts_flag_e tsflag, file_type_e type)
 	strcat(headers,"\r\n");
 	
 	char contentlen[64];
-	snprintf(contentlen,64,"Content-Length: %ld", fsize);
+	snprintf(contentlen,64,"Content-Length: %d", file_len);
 	strcat(headers,contentlen);
 	strcat(headers,"\r\n");
 	
@@ -626,7 +630,7 @@ int amazon_curl_send(char *filename, ts_flag_e tsflag, file_type_e type)
 	strcat(headers,"Expect: 100-continue");
 	strcat(headers,"\r\n");
 
-	char* response = http_upload_file(http_url,headers,content_type,filename);
+	char* response = http_upload_file(http_url,headers,content_type,filename,file_buf,file_len);
 	if(NULL == response)
 	{
 		ERROR_LOG("http_upload_file failed !\n");
@@ -682,13 +686,15 @@ ERR:
 /*******************************************************************************
 *@ Description    :  将文件推送到 amazon 云上（美国版）
 *@ Input          :	<filename>:文件名（要推送到amazon的文件）
+					<file_buf>：文件buf（buf模式时需要该参数）
+					<file_len>:文件长度（buf模式时需要该参数）
 					<tsflag>:TS文件的文件标记
 					<type>：文件类型
 *@ Output         :
 *@ Return         :成功 ： 0
 					失败：-1
 *******************************************************************************/
-int amazon_curl_send_am(char *filename, char tsflag, char type)
+int amazon_curl_send_am(char *filename,void*file_buf,int file_len, char tsflag, char type)
 {	
 	DEBUG_LOG("1000000013 ,%s, %d\n",filename,tsflag);
 	char filetype[16]; 
@@ -706,20 +712,21 @@ int amazon_curl_send_am(char *filename, char tsflag, char type)
 	else if(tsflag == TS_FLAG_6S)
 	{
 		strcpy(sub_dir,A_VIDEO6s_DIR);
-		if(type==TYPE_TS)
+		if(type==TYPE_TS||TYPE_FMP4)
 			strcpy(filetype,"video/mp2t");//x-mpeg
 		else
 			strcpy(filetype,"audio/mpegurl");
 		timeout = 50;
 	}
-	else if(tsflag == TS_FLAG_ONE)
+	/*else if(tsflag == TS_FLAG_ONE)
 	{
 		return -1;
 	}
+	*/
 	else  //是告警的视频文件
 	{
 		strcpy(sub_dir,A_VIDEO_DIR);
-		if(type==TYPE_TS)
+		if(type==TYPE_TS||TYPE_FMP4)
 			strcpy(filetype,"video/mp2t");//x-mpeg
 		else
 			strcpy(filetype,"audio/mpegurl");
@@ -729,15 +736,7 @@ int amazon_curl_send_am(char *filename, char tsflag, char type)
 	/*printf("1000011filename=%s,type=%s,path=%s\n url=%s\n%s,id=%s,key=%s\n",filename,sub_dir, path, url,
 	 	filetype,g_amazon_info.aws_access_keyid,g_amazon_info.secret_aceess_keyid);
 	*/
-	
-	FILE *fp = fopen(filename, "r"); 
-	if (fp == NULL)
-	{
-		//remove(filename);	
-		ERROR_LOG("open path==%s fail,%d\n",filename,errno);
-		return -1;
-	}	
-	unsigned long fsize = get_file_size(filename);
+
 	
 	/*---http PUT命令构造-----------------
 		PUT
@@ -761,7 +760,7 @@ int amazon_curl_send_am(char *filename, char tsflag, char type)
 	strcat(Stringtosign,time_str);
 	strcat(Stringtosign,"\n");
 
-	if(type==TYPE_TS)
+	if(type==TYPE_TS||TYPE_FMP4)
 		strcat(Stringtosign,"x-amz-acl:public-read\n");//test 	
 	 
 	strcat(Stringtosign,path);	
@@ -799,7 +798,7 @@ int amazon_curl_send_am(char *filename, char tsflag, char type)
 
 
 	char contentlen[64];
-	snprintf(contentlen,sizeof(contentlen),"Content-Length: %ld", fsize);
+	snprintf(contentlen,sizeof(contentlen),"Content-Length: %ld", file_len);
 	strcat(headers,contentlen);
 	strcat(headers,"\r\n");
 
@@ -820,7 +819,7 @@ int amazon_curl_send_am(char *filename, char tsflag, char type)
 	strcat(headers,"\r\n");
 
 	
-	if(type==TYPE_TS) 
+	if(type==TYPE_TS||TYPE_FMP4) 
 	{
 		strcat(headers,"x-amz-acl: public-read");
 		strcat(headers,"\r\n");
@@ -831,7 +830,7 @@ int amazon_curl_send_am(char *filename, char tsflag, char type)
 	strcat(headers,"Expect: 100-continue");
 	strcat(headers,"\r\n");
 
-	char*response = http_upload_file(url,headers,content_type,filename); 
+	char*response = http_upload_file(url,headers,content_type,filename,file_buf,file_len); 
 	if(NULL == response)
 	{
 		ERROR_LOG("http_upload_file failed !\n");
@@ -863,12 +862,12 @@ int amazon_curl_send_am(char *filename, char tsflag, char type)
 	#endif
 
 	
-	if(fp) fclose(fp); 
+
 	if(response) free(response);
 	if(headers) free(headers);
 	return 0;	
 ERR:
-	if(fp) fclose(fp); 
+
 	if(response) free(response);
 	if(headers) free(headers);
 	return -1;
@@ -1145,25 +1144,25 @@ void* amazon_put_even(void *arg)
 	memcpy(&file_info,arg,sizeof(put_file_info_t));
 	DEBUG_LOG("file_name : %s\n",file_info.file_name);
 	int ret;
-	static int failnum = 0; //上传失败的TS文件个数
+	static int failnum = 0; //上传失败的TS/fmp4文件个数
 	/*---#分文件类型传输------------------------------------------------------------*/
 	if(file_info.file_type == TYPE_JPG)
 	{
 		if(url_index != AMAZON_PRODUCE)//开发环境/测试环境
-			ret = amazon_curl_send(file_info.file_name , file_info.ts_flag ,file_info.file_type); 
+			ret = amazon_curl_send(file_info.file_name ,file_info.file_buf,file_info.file_buf_len, file_info.ts_flag ,file_info.file_type); 
 		else //美国线上环境
-			ret = amazon_curl_send_am(file_info.file_name, file_info.ts_flag ,file_info.file_type);
+			ret = amazon_curl_send_am(file_info.file_name,file_info.file_buf,file_info.file_buf_len, file_info.ts_flag ,file_info.file_type);
 		if(ret != 0)//put 失败   
 		{
 			//异常逻辑
 		}
 	}
-	else if(file_info.file_type == TYPE_TS)
+	else if(file_info.file_type == TYPE_TS || file_info.file_type == TYPE_FMP4)
 	{
 		if(url_index != AMAZON_PRODUCE)//开发环境/测试环境
-			ret = amazon_curl_send(file_info.file_name, file_info.ts_flag, file_info.file_type); 
+			ret = amazon_curl_send(file_info.file_name,file_info.file_buf,file_info.file_buf_len, file_info.ts_flag, file_info.file_type); 
 		else //美国线上环境
-			ret = amazon_curl_send_am(file_info.file_name, file_info.ts_flag, file_info.file_type); 
+			ret = amazon_curl_send_am(file_info.file_name,file_info.file_buf,file_info.file_buf_len, file_info.ts_flag, file_info.file_type); 
 		if(ret != 0)//put 失败
 		{
 			if(file_info.ts_flag >=TS_FLAG_START && file_info.ts_flag <= TS_FLAG_END)//有多个连续的ts文件的情况
@@ -1172,7 +1171,7 @@ void* amazon_put_even(void *arg)
 				DEBUG_LOG("-1----------------put failed !!!!\n");
 			}
 			failnum ++;
-			ERROR_LOG("curl_send_ts fail:%d,,,%s\n",failnum,file_info.file_name);
+			ERROR_LOG("amazon_curl_send() fail:%d--->%s\n",failnum,file_info.file_name);
 		}
 		else //put 成功
 		{
@@ -1183,13 +1182,13 @@ void* amazon_put_even(void *arg)
 
 			/*---推送 m3u8 文件----------------------------------------------------------------*/
 			if(url_index != AMAZON_PRODUCE)
-				ret = amazon_curl_send(file_info.m3u8name, file_info.ts_flag, TYPE_M3U);
+				ret = amazon_curl_send(file_info.m3u8name,file_info.file_buf,file_info.file_buf_len,file_info.ts_flag, TYPE_M3U);
 			else
-				ret = amazon_curl_send_am(file_info.m3u8name, file_info.ts_flag, TYPE_M3U);
+				ret = amazon_curl_send_am(file_info.m3u8name,file_info.file_buf,file_info.file_buf_len, file_info.ts_flag, TYPE_M3U);
 			if(ret != 0)
 			{
 				/*--- m3u8 发送失败，要不要重传？？？------------------------------------------------*/
-				printf("curl_send_ts fail:%d,,,%s\n",++failnum,file_info.m3u8name);
+				printf("amazon_curl_send() fail:%d--->%s\n",++failnum,file_info.m3u8name);
 			}
 			else  //m3u8文件发送成功，构造消息推送到云服务器,告知有新的图片视频文件上传
 			{   
@@ -1203,18 +1202,22 @@ void* amazon_put_even(void *arg)
 	else if(file_info.file_type == TYPE_M3U)
 	{
 		DEBUG_LOG("not support!\n");
-		//m3u8文件已经按照动态生成的方式来重建了。这里不实现
+		//m3u8文件已经按照动态生成的方式来重建了。这里不需要实现
 	}
-	else if(file_info.file_type == TYPE_FMP4)
+	else
 	{
-		DEBUG_LOG("not support!\n");
-		//暂时不支持
+		ERROR_LOG("unknown file type!\n");
 	}
 
 
-	//删除已经发送成功的文件，
+	//删除已经发送成功的文件（文件模式下）
 
 	//释放资源
+	if(file_info.file_buf) 
+	{
+		free(file_info.file_buf); 
+		file_info.file_buf = NULL;
+	}
 	
 	pthread_exit(NULL);
 	
@@ -1620,6 +1623,12 @@ void* amazon_upload_thread(void*args)
 
 	while(1)
 	{
+		while(1 != is_amazon_info_update()) 
+        {
+            DEBUG_LOG("wait g_amazon_info update .....\n");
+            sleep(1);
+        }
+						
 		while(0 == LQueueIsEmpty(upload_file_queue))//队列不为空
 		{
 			put_file_info_t  pop_node = {0};
@@ -1628,15 +1637,19 @@ void* amazon_upload_thread(void*args)
 			/*if(pop_node.file_type == TYPE_TS)//debug
 					create_write_file("/jffs0/MD_TS_01.ts",pop_node.file_buf,pop_node.file_buf_len);//DEBUG
 			*/
-			
+			#if 0 //DEBUG 部分
 			if(pop_node.file_buf) 
 			{
 				printf("pop_node.file_buf_len = %d Bytes\n",pop_node.file_buf_len);
 				free(pop_node.file_buf); 
 				pop_node.file_buf = NULL;
 			}
+
+			#else   //正常的推送逻辑
+				amazon_put_even_thread(&pop_node);
+			#endif 
 			
-			/*---# 推送到 amazon 云---------------------------------------------------*/
+			/*---# DEBUG 推送到 amazon 云---------------------------------------------------*/
 		    #if 0		       
 		        while(1 != is_amazon_info_update()) 
 		        {
@@ -1656,7 +1669,7 @@ void* amazon_upload_thread(void*args)
 			        else //if(M3U_INDEX_FILE_TYPE == M3U_FMP4_FILE) //内部传输逻辑和 TS 一样
 			            file_info.file_type = TYPE_TS;  
 			        
-			        file_info.ts_flag = TS_FLAG_ONE;  //目前按照只有一个15 s TS文件的方案去实现？？？？？15S内发生了二次告警就接着录制，但内存很可能不够，后续考虑
+			        file_info.ts_flag = TS_FLAG_ONE; 
 			        strcpy(file_info.file_name,tmp_info->ts_array[i].ts_name);
 			        file_info.file_buf = tmp_info->ts_array[i].ts_buf;
 			        file_info.file_buf_len = tmp_info->ts_array[i].ts_buf_size;
@@ -1694,6 +1707,9 @@ int  start_amazon_upload_thread(void)
     } 
 	return 0;
 }
+
+
+
 
 
 

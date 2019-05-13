@@ -10,13 +10,47 @@
 
 #include "typeport.h"
 
-/*
-待定：
-TYPE_DEVICE_INFO	deviceInfo ;	//设备信息
-SYSTEM_PARAMETER	param ;			//系统参数
-TYPE_WIFI_LOGIN		wifiAP;			// wifi热点信息结构体
-Audio_Coder_Param	audioParam ;	//音频编码参数
-*/
+
+//设备信息
+typedef struct _device_info_t
+{
+	char 			MAC[32];		//MAC地址（字符串形式）
+	char 			ipv4[32];		//IP地址（字符串形式）
+	char 			dev_id[32];		//设备id（字符串形式）
+	
+}device_info_t;
+
+
+typedef struct _P2P_parameter_t
+{
+
+}P2P_parameter_t;
+
+typedef struct _MD_parameter_t
+{
+
+}MD_parameter_t;
+
+typedef struct _Acodec_parameter_t
+{
+
+}Acodec_parameter_t;
+
+typedef struct _Vcodec_parameter_t
+{
+
+}Vcodec_parameter_t;
+
+//系统参数，注意有些参数不接受修改（app不可修改）
+typedef struct _system_parameter_t
+{
+	P2P_parameter_t 	P2P_param;	//P2P参数
+	MD_parameter_t		MD_param;	//MD（移动侦测）参数（不接受修改）
+	Acodec_parameter_t	Acodec_param; //音频编码参数（不接受修改）	
+	Vcodec_parameter_t	Vcodec_param; //视频编码参数（不接受修改）
+	
+}system_parameter_t;
+
 
 //==================================
 //用户名长度定义，所有与用户名相关的操作均
@@ -77,7 +111,7 @@ typedef struct
 typedef struct
 {
 	DEF_CMD_HEADER	;
-	//TYPE_DEVICE_INFO	devInfo ;			//设备信息,待定
+	device_info_t	devInfo ;				//返回设备信息
 
 }STRUCT_READ_DEVINFO_ECHO ;
 
@@ -87,7 +121,7 @@ typedef struct
 typedef struct
 {
 	DEF_CMD_HEADER	;
-//	SYSTEM_PARAMETER	param ;				//系统参数,待定义
+	system_parameter_t	param ;				//系统参数
 }STRUCT_SET_DEV_PARAM_REQUEST ;
 
 typedef struct
@@ -106,7 +140,7 @@ typedef struct
 typedef struct
 {
 	DEF_CMD_HEADER	;
-//	SYSTEM_PARAMETER	param ;				//系统参数
+	system_parameter_t	param ;				//系统参数
 }STRUCT_READ_DEV_PARAM_ECHO ;
 
 
@@ -133,8 +167,8 @@ enum Stream_Resolution
 typedef struct
 {
 	DEF_CMD_HEADER ;
-	HLE_S32 videoType;							//视频码流类型：0：(1920*1088)，
-											//1：(960*544)，2：(480*272)	,填入上方的枚举变量。
+	HLE_S32 videoType;							//视频码流类型：0：(1920*1080)，
+												//1：(960*544)，2：(480*272)	,填入上方的枚举变量。
 	HLE_S32 openAudio;							//音频码流开关：0:关闭, 1:打开
 	
 }STRUCT_OPEN_LIVING_REQUEST;
@@ -142,7 +176,7 @@ typedef struct
 typedef struct
 {
 	DEF_CMD_HEADER	;
-	HLE_S32		result ;						//成功：0
+	HLE_S32		result ;					//成功：0
 											//失败：
 											//-1：请求视频流失败
 											//-2: 请求音频流失败
@@ -160,7 +194,7 @@ typedef struct
 typedef struct
 {
 	DEF_CMD_HEADER	;
-	HLE_S32		result ;						//成功：0
+	HLE_S32		result ;					//成功：0
 											//失败：-1
 		
 }STRUCT_CLOSE_LIVING_ECHO ;
@@ -171,14 +205,14 @@ typedef struct
 typedef struct
 {
 	DEF_CMD_HEADER;
-	HLE_U32	headFlag1	;			//0x55555555
-	HLE_U32	headFlag2	;			//0xaaaaaaaa
+	HLE_U32	headFlag1	;					//0x55555555
+	HLE_U32	headFlag2	;					//0xaaaaaaaa
 }STRUCT_SET_REBOOT_REQUEST ;
 
 typedef struct
 {
 	DEF_CMD_HEADER	;
-	HLE_S32 echo ;								//回应结果(0:成功,-1:失败)
+	HLE_S32 echo ;							//回应结果(0:成功,-1:失败)
 }STRUCT_SET_REBOOT_ECHO ;
 
 //------------------------------------------------------------------------
@@ -187,7 +221,7 @@ typedef struct
 {
 	DEF_CMD_HEADER;
 	HLE_S8 packageVersion[16];				//线上升级包的最新版本号
-	HLE_S8 URL[256];							//升级文件在网络中的位置信息（URL）
+	HLE_S8 URL[256];						//升级文件在网络中的位置信息（URL）
 	
 
 }STRUCT_SET_UPDATE_REQUEST ;
@@ -206,7 +240,7 @@ typedef struct
 												-8:file length incorrect
 												-9:malloc failed
 												-10:unknow error
-											*/
+												*/
 	HLE_U16	percent;				//进度百分比：0-100
 	HLE_U16	status ;				/*升级状态：
 												0：版本校验状态
@@ -236,10 +270,16 @@ typedef struct
 
 //------------------------------------------------------------------------
 #define CMD_SET_WIFI_CONNECT	0x1016		//连接WIFI热点		
+typedef struct _wifi_info_t
+{
+	char 	wifi_name[32];	//wifi热点名
+	char	wifi_pwd[32];	//wifi密码
+}wifi_info_t;
+
 typedef struct
 {
 	DEF_CMD_HEADER	;
-//	TYPE_WIFI_LOGIN		wifiAP;				//要连接的wifi热点的信息
+	wifi_info_t		wifiAP;				//要连接的wifi热点的信息
 }STRUCT_SET_WIFICONNECT_REQUEST ;
 
 typedef struct
@@ -253,13 +293,12 @@ typedef struct
 typedef struct
 {
 	DEF_CMD_HEADER	;
-//	TYPE_WIFI_LOGIN		wifiAP ;			//所要获取wifi连接状态的热点信息
 }STRUCT_GET_WIFISTATUS_REQUEST ;
 
 typedef struct
 {
 	DEF_CMD_HEADER	;
-//	TYPE_WIFI_LOGIN		wifiAP ;			//返回对应wifi热点的连接状态信息
+	wifi_info_t		wifiAP ;				//返回设备连接wifi的信息
 }STRUCT_GET_WIFISTATUS_ECHO ;
 //------------------------------------------------------------------------
 
@@ -274,8 +313,8 @@ typedef struct
 typedef struct
 {
 	DEF_CMD_HEADER	;
-	HLE_S32	permit  ;							//权限：0：超级用户，1：普通用户
-	HLE_S32 echo ;								//成功：0 ,
+	HLE_S32	permit  ;						//权限：0：超级用户，1：普通用户
+	HLE_S32 echo ;							//成功：0 ,
 											//失败：-1:密码错误，-2：用户名错误
 
 }STRUCT_REQ_LOGIN_ECHO ;
@@ -294,10 +333,10 @@ typedef struct
 typedef struct
 {
 	DEF_CMD_HEADER ;
-	HLE_U16		micVol ;			//设备麦克音量,0-100；
-	HLE_U16		spkVol ;			//设备喇叭音量,0-100;
+	HLE_U16		micVol ;					//设备麦克音量,0-100；
+	HLE_U16		spkVol ;					//设备喇叭音量,0-100;
 											/*（设备端音频API接口的音量设置区间可能不是0-100，
-											客户端按0-100设置，设备端需要重新映射）*/
+											app客户端按0-100设置，设备端需要重新映射）*/
 }STRUCT_SET_AUDIO_VOL_REQUEST ;
 
 typedef struct
@@ -324,6 +363,7 @@ typedef struct
 }
 #endif
 #endif
+
 
 
 

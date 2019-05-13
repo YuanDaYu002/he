@@ -21,10 +21,10 @@
 #endif
 #endif
 /*****************************************************************************
-  1 ÆäËûÍ·ÎÄ¼ş°üº¬
+  1 å…¶ä»–å¤´æ–‡ä»¶åŒ…å«
 *****************************************************************************/
 /*****************************************************************************
-  2 ºê¶¨Òå
+  2 å®å®šä¹‰
 *****************************************************************************/
 #ifndef hsl_uint8
 #define hsl_uint8 unsigned char 
@@ -43,12 +43,12 @@
 #endif
 #define IP_ADDR_LEN           4
 #define CRC_DATA_LEN          2
-#define HSL_IV_LEN          16//IVÏòÁ¿µÄ³¤¶È
+#define HSL_IV_LEN          16//IVå‘é‡çš„é•¿åº¦
 #define HSL_NULL            (0L)
-#define HSL_START_FRAME_NUM 3  //ÆğÊ¼°üµÄ¸öÊı
-#define HSL_LOCK_FRAME_NUM  5  //ËøĞÅµÀ½ÓÊÕ°üµÄ¸öÊı
-#define HSL_LOCK_TIME       2000 //ËøĞÅµÀµÄÊ±¼äms
-/* ²úÉúAP²ÎÊıÏà¹Ø */
+#define HSL_START_FRAME_NUM 3  //èµ·å§‹åŒ…çš„ä¸ªæ•°
+#define HSL_LOCK_FRAME_NUM  5  //é”ä¿¡é“æ¥æ”¶åŒ…çš„ä¸ªæ•°
+#define HSL_LOCK_TIME       2000 //é”ä¿¡é“çš„æ—¶é—´ms
+/* äº§ç”ŸAPå‚æ•°ç›¸å…³ */
 #define HSL_SSID_HEAD             "Hisi_"
 #define HSL_SSID_HEAD_LEN         (sizeof(HSL_SSID_HEAD)-1)
 #define HSL_SSID_VERSION_LEN      1
@@ -62,11 +62,11 @@
 #define HSL_SSID_LEN_MAX         64
 #define HSL_PWD_LEN_MAX          128
 
-/* ÉÏÏßÍ¨ÖªÏà¹Ø */
+/* ä¸Šçº¿é€šçŸ¥ç›¸å…³ */
 #define HSL_ONLINE_HEAD      "online:"
 #define HSL_ONLINE_HEAD_LEN  (sizeof(HSL_ONLINE_HEAD)-1)
-/* °ü³¤¶È¶¨Òå */
-#define HSL_KEY_FRAME_OPEN_LEN   68//´«ÊäKEYĞÅÏ¢·Ç¼ÓÃÜÖ¡³¤¶È
+/* åŒ…é•¿åº¦å®šä¹‰ */
+#define HSL_KEY_FRAME_OPEN_LEN   68//ä¼ è¾“KEYä¿¡æ¯éåŠ å¯†å¸§é•¿åº¦
 #define HSL_KEY_FRAME_WEP_LEN    76
 #define HSL_KEY_FRAME_TKIP_LEN   88
 #define HSL_KEY_FRAME_AES_LEN    84
@@ -76,14 +76,14 @@
 #define HSL_DATA_FRAME_TKIP_LEN  94
 #define HSL_DATA_FRAME_AES_LEN   90
 
-/* AES²»Í¬Î»Êı¼ÓÃÜÊ±Ğ¯´øKEYĞÅÏ¢×Ö½Ú¸öÊı,°üº¬IVÏòÁ¿µÄ16×Ö½ÚºÍKEY¼ÓÃÜºóµÄ³¤¶È */
+/* AESä¸åŒä½æ•°åŠ å¯†æ—¶æºå¸¦KEYä¿¡æ¯å­—èŠ‚ä¸ªæ•°,åŒ…å«IVå‘é‡çš„16å­—èŠ‚å’ŒKEYåŠ å¯†åçš„é•¿åº¦ */
 //#define HSL_KEY_DATA_LEN  32 //AES-128bit
 //#define HSL_KEY_DATA_LEN  48 //AES-192bit
 #define HSL_KEY_DATA_LEN  64 //AES-256bit
-/* AES¼Ó½âÃÜÎ»Êı128bit 192bit 256bit */
+/* AESåŠ è§£å¯†ä½æ•°128bit 192bit 256bit */
 #define HSL_AES_BITS_LEN  256
 /*****************************************************************************
-  3 Ã¶¾Ù¶¨Òå
+  3 æšä¸¾å®šä¹‰
 *****************************************************************************/
 typedef enum
 {
@@ -139,71 +139,71 @@ typedef enum
     HSL_CRC_BUTT
 }hsl_crc_status_enum;
 /*****************************************************************************
-  4 È«¾Ö±äÁ¿ÉùÃ÷
+  4 å…¨å±€å˜é‡å£°æ˜
 *****************************************************************************/
 
 /*****************************************************************************
-  5 ÏûÏ¢Í·¶¨Òå
-*****************************************************************************/
-
-
-/*****************************************************************************
-  6 ÏûÏ¢¶¨Òå
+  5 æ¶ˆæ¯å¤´å®šä¹‰
 *****************************************************************************/
 
 
 /*****************************************************************************
-  7 STRUCT¶¨Òå
+  6 æ¶ˆæ¯å®šä¹‰
+*****************************************************************************/
+
+
+/*****************************************************************************
+  7 STRUCTå®šä¹‰
 *****************************************************************************/
 typedef struct 
 {
-    hsl_uint8  auc_ssid[HSL_SSID_LEN_MAX]; //APµÄsssid
-    hsl_uint8  auc_pwd[HSL_PWD_LEN_MAX];   //APµÄÃÜÂë
-    hsl_uint8  auc_ip[IP_ADDR_LEN];        //ÊÖ»úµÄIPµØÖ·
+    hsl_uint8  auc_ssid[HSL_SSID_LEN_MAX]; //APçš„sssid
+    hsl_uint8  auc_pwd[HSL_PWD_LEN_MAX];   //APçš„å¯†ç 
+    hsl_uint8  auc_ip[IP_ADDR_LEN];        //æ‰‹æœºçš„IPåœ°å€
     hsl_uint8  uc_ssid_len;
     hsl_uint8  uc_pwd_len;
-    hsl_uint16 us_port;                   //ÊÖ»ú¶ËTCP»òUDPÁ¬½Ó¶Ë¿ÚºÅ
-    hsl_uint8  en_auth_mode;              //APµÄ¼ÓÃÜ·½Ê½
-    hsl_uint8  en_online_type;            //ÉÏÏßÍ¨ÖªÊÇTCP»¹ÊÇUDP
-    hsl_uint8  auc_flag[2];               //Á¬½Ó±êÊ¶
+    hsl_uint16 us_port;                   //æ‰‹æœºç«¯TCPæˆ–UDPè¿æ¥ç«¯å£å·
+    hsl_uint8  en_auth_mode;              //APçš„åŠ å¯†æ–¹å¼
+    hsl_uint8  en_online_type;            //ä¸Šçº¿é€šçŸ¥æ˜¯TCPè¿˜æ˜¯UDP
+    hsl_uint8  auc_flag[2];               //è¿æ¥æ ‡è¯†
 }hsl_result_stru;
 typedef struct
 {
-    hsl_uint8   auc_data[256];      //´æ·Å½ÓÊÕµ½µÄÊı¾İ
-    hsl_uint8   auc_fill_flag[128]; //±ê¼ÇÏàÓ¦Î»ÊÇ·ñÌî³ä
-    hsl_uint32  ul_data_len;        //ĞèÒªÌî³äµÄÊı¾İ³¤¶È
-    hsl_uint32  ul_fill_len;        //ÒÑ¾­Ìî³äµÄÊı¾İ³¤¶È
-    hsl_uint8   uc_crc_flag;        //Êı¾İÊÇ·ñCRCĞ£ÑéÍ¨¹ı
+    hsl_uint8   auc_data[256];      //å­˜æ”¾æ¥æ”¶åˆ°çš„æ•°æ®
+    hsl_uint8   auc_fill_flag[128]; //æ ‡è®°ç›¸åº”ä½æ˜¯å¦å¡«å……
+    hsl_uint32  ul_data_len;        //éœ€è¦å¡«å……çš„æ•°æ®é•¿åº¦
+    hsl_uint32  ul_fill_len;        //å·²ç»å¡«å……çš„æ•°æ®é•¿åº¦
+    hsl_uint8   uc_crc_flag;        //æ•°æ®æ˜¯å¦CRCæ ¡éªŒé€šè¿‡
     hsl_uint8   auc_res[3];
 }hsl_data_stru;
 typedef struct
 {
-    hsl_uint32  ul_frame_num;       //Á¬Ğø½ÓÊÕÓĞĞ§°üµÄ¸öÊı
-    hsl_uint32  ul_sync_num;        //½ÓÊÕÆğÊ¼°üµÄ¸öÊı
-    hsl_uint32  ul_lock_time;       //ËøĞÅµÀÊ±µÄÏµÍ³Ê±¼ä
-    hsl_uint8   uc_lock_flag;       //ËøĞÅµÀ±ê¼Ç
+    hsl_uint32  ul_frame_num;       //è¿ç»­æ¥æ”¶æœ‰æ•ˆåŒ…çš„ä¸ªæ•°
+    hsl_uint32  ul_sync_num;        //æ¥æ”¶èµ·å§‹åŒ…çš„ä¸ªæ•°
+    hsl_uint32  ul_lock_time;       //é”ä¿¡é“æ—¶çš„ç³»ç»Ÿæ—¶é—´
+    hsl_uint8   uc_lock_flag;       //é”ä¿¡é“æ ‡è®°
     hsl_uint8   auc_res[3];
 }hsl_status_stru;
 typedef struct
 {
-   hsl_uint8  uc_index;     //MACµØÖ·Ğ¯´øĞÅÏ¢Ó¦¸ÃÌî³äµÄÎ»ÖÃ
-   hsl_uint8  auc_data[2];  //MACµØÖ·Ğ¯´øµÄ¼ÓÃÜĞÅÏ¢
+   hsl_uint8  uc_index;     //MACåœ°å€æºå¸¦ä¿¡æ¯åº”è¯¥å¡«å……çš„ä½ç½®
+   hsl_uint8  auc_data[2];  //MACåœ°å€æºå¸¦çš„åŠ å¯†ä¿¡æ¯
    hsl_uint8  auc_res[1];
 }hsl_mac_data_stru;
 
 typedef struct
 {
-    hsl_uint16  bit_protocol_version    : 2,        /* Ğ­Òé°æ±¾ */
-                bit_type                : 2,        /* Ö¡ÀàĞÍ */
-                bit_sub_type            : 4,        /* ×ÓÀàĞÍ */
-                bit_to_ds               : 1,        /* ·¢ËÍDS */
-                bit_from_ds             : 1,        /* À´×ÔDS */
-                bit_more_frag           : 1,        /* ·Ö¶Î±êÊ¶ */
-                bit_retry               : 1,        /* ÖØ´«Ö¡ */
-                bit_power_mgmt          : 1,        /* ½ÚÄÜ¹ÜÀí */
-                bit_more_data           : 1,        /* ¸ü¶àÊı¾İ±êÊ¶ */
-                bit_protected_frame     : 1,        /* ¼ÓÃÜ±êÊ¶ */
-                bit_order               : 1;        /* ´ÎĞòÎ» */
+    hsl_uint16  bit_protocol_version    : 2,        /* åè®®ç‰ˆæœ¬ */
+                bit_type                : 2,        /* å¸§ç±»å‹ */
+                bit_sub_type            : 4,        /* å­ç±»å‹ */
+                bit_to_ds               : 1,        /* å‘é€DS */
+                bit_from_ds             : 1,        /* æ¥è‡ªDS */
+                bit_more_frag           : 1,        /* åˆ†æ®µæ ‡è¯† */
+                bit_retry               : 1,        /* é‡ä¼ å¸§ */
+                bit_power_mgmt          : 1,        /* èŠ‚èƒ½ç®¡ç† */
+                bit_more_data           : 1,        /* æ›´å¤šæ•°æ®æ ‡è¯† */
+                bit_protected_frame     : 1,        /* åŠ å¯†æ ‡è¯† */
+                bit_order               : 1;        /* æ¬¡åºä½ */
     hsl_uint16  bit_duration_value      : 15,
                 bit_duration_flag       : 1;
     hsl_uint8   auc_addr1[6];
@@ -219,17 +219,17 @@ typedef struct
     hsl_status_stru st_status;
 }hsl_context_stru;
 /*****************************************************************************
-  8 UNION¶¨Òå
+  8 UNIONå®šä¹‰
 *****************************************************************************/
 
 
 /*****************************************************************************
-  9 OTHERS¶¨Òå
+  9 OTHERSå®šä¹‰
 *****************************************************************************/
 
 
 /*****************************************************************************
-  10 º¯ÊıÉùÃ÷
+  10 å‡½æ•°å£°æ˜
 *****************************************************************************/
 hsl_int32 hsl_get_ap_params (hsl_uint8* puc_manufacturer_id, hsl_uint8* puc_device_id,
                              hsl_int8* pc_device_ssid_out, hsl_uint32* ul_ssid_len_out, 
@@ -249,4 +249,5 @@ hsl_int32 hsl_get_lock_status(void);
 #endif
 
 #endif //__HSLCONFIG_LIB_H__
+
 

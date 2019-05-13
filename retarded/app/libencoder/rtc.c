@@ -88,7 +88,7 @@ int rtc_to_sys(void)
 }
 #endif
 
-int rtc_init(void)
+int hal_rtc_init(void)
 {
     fd_rtc = open(RTC_PATH, O_RDWR);
     if (-1 == fd_rtc) {
@@ -127,7 +127,7 @@ int rtc_init(void)
     return HLE_RET_OK;
 }
 
-void rtc_exit(void)
+void hal_rtc_exit(void)
 {
     close(fd_rtc);
 }
@@ -138,7 +138,7 @@ void rtc_exit(void)
 int main(int argc, char** argv)
 {
     struct tm t;
-    rtc_init();
+    hal_rtc_init();
     get_rtc_time(&t);
     printf("read from rtc: %d-%d-%d %d:%d:%d %d\n", t.tm_year, t.tm_mon, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec, t.tm_wday);
 
@@ -162,4 +162,5 @@ int main(int argc, char** argv)
     printf("time()=%d, mktime(gmtime())=%d, mktime(localtime())=%d, ctime()=%s\n", tmt, mktime(&gmt), mktime(&loc), ctime(&tmt));
 }
 #endif
+
 

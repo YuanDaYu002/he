@@ -14,6 +14,8 @@ extern "C"
 {
 #endif
 
+#include <stdio.h>
+
 typedef unsigned char HLE_U8;
 typedef unsigned short HLE_U16;
 typedef unsigned int HLE_U32;

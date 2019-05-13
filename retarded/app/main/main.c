@@ -350,7 +350,7 @@ void app_init(void)
 
     dprintf("spi nor flash init ...\n");
     if(!spinor_init()){
-        add_mtd_partition("spinor", 0x800000, 8*0x100000, 0);
+        add_mtd_partition("spinor", 0xF10000, 0xF0000, 0); //0xF0000 ： 960k
         //add_mtd_partition("spinor", 10*0x100000, 2*0x100000, 1);
         mount("/dev/spinorblk0", "/jffs0", "jffs", 0, NULL);
     }
@@ -451,6 +451,8 @@ void app_init(void)
 }
 
 /* EOF kthread1.c */
+
+
 
 
 

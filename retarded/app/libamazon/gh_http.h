@@ -19,18 +19,23 @@ void http_parse_url(const char *url, char *host, int *port, char *file_name);
 
 
 
+
 /*******************************************************************************
 *@ Description    : HTTP上传文件
-*@ Input          : <pServerPath> 服务端的 URL
+*@ Input          :<pHost>服务端的域名
+                    <nPort> TCP通信的端口
+                    <pServerPath> 服务端的 URL
                     <pMessageJson> 要推送的 字符数据
                     <content_type>http头content-type字段，
-                    		传入NULL时默认填充"Content-Type: image/jpeg\r\n\r\n"
-                    <pFile> 要上传的文件
+                            传入NULL时默认填充"Content-Type: image/jpeg\r\n\r\n"
+                    <pFile> 要上传的文件(绝对路径)
+                    <file_buf> 文件的缓存（buf模式专用，内部不进行文件操作，文件模式请传NULL）
+                    <file_len> 文件缓存的长度（buf模式专用，内部不进行文件操作，文件模式请传0）
 *@ Output         :
-*@ Return         :失败：小于0 ; 成功 ：0
-*@ attention      :
+*@ Return         :失败：NULL ; 成功 :服务器的响应数据
+*@ attention      :返回值 response 需要上层 free 才能释放
 *******************************************************************************/
-char* http_upload_file(const char* pServerPath,const char* pMessageJson,const char* content_type, const char* pFile);
+char* http_upload_file(const char* pServerPath,const char* pMessageJson,const char* content_type, const char* pFile,void*file_buf,int file_len);
 
 
  /*******************************************************************************
@@ -55,5 +60,6 @@ char* http_upload_file(const char* pServerPath,const char* pMessageJson,const ch
 #endif
 
 #endif
+
 
 

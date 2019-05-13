@@ -6,6 +6,7 @@
 #include <stdio.h>
 
 #include "ziku.h"
+#include "ziku_array_vector.h"
 #include "hal.h"
 
 /*
@@ -113,8 +114,56 @@ static struct ZK_VECTOR zks_vector[] = {
     失败：-1
     
 */
+
 static int load_zk_vector(struct ZK_VECTOR *zk)
 {
+#if  1  //使用字库数组的方式
+	DEBUG_LOG("loading %s ...\n", zk->file);
+	char* ziku_array = NULL;
+	int ziku_array_size = 0;
+	if(NULL != strstr(zk->file,"ASCII_vector_w1920"))
+	{
+		ziku_array = (char*)&ASCII_vector_w1920;
+		ziku_array_size = sizeof(ASCII_vector_w1920);
+	}
+	else if(NULL != strstr(zk->file,"ASCII_vector_w960"))
+	{
+		ziku_array = (char*)&ASCII_vector_w960;
+		ziku_array_size = sizeof(ASCII_vector_w960);
+	}
+	else if(NULL != strstr(zk->file,"ASCII_vector_w480"))
+	{
+		ziku_array = (char*)&ASCII_vector_w480;
+		ziku_array_size = sizeof(ASCII_vector_w480);
+	}
+	else
+	{
+		ERROR_LOG(" loading ziku array error!!\n");
+		return -1;
+	}
+
+    /*calc size from head*/
+	memcpy(&zk->head,ziku_array,sizeof (zk->head));
+
+    /*---对字库的数据长度进行校验----------------------------------------*/
+    zk->size = zk->head.data_size;
+
+    /*calc array size*/
+    DEBUG_LOG("ziku %s size %d\n",zk->file,ziku_array_size);
+
+    /*compare two size, check if them match*/
+    if (ziku_array_size != zk->size + sizeof (zk->head)) 
+    {
+        ERROR_LOG("ziku array size and font size mismatch, this array is broken!\n");
+      	return -1;
+    }
+
+    /*初始化字库buf 指针*/
+    zk->buf = ziku_array + sizeof (zk->head);
+
+    return 0;
+	
+#else //使用字库文件的方式
     DEBUG_LOG("loading %s ...\n", zk->file);
 
     int fd = open(zk->file, O_RDONLY);
@@ -168,6 +217,8 @@ freebuf:
 closefile:
     close(fd);
     return -1;
+#endif
+
 }
 
 
@@ -523,6 +574,7 @@ int main(int argc, char *argv[])
 }
 
 #endif
+
 
 
 

@@ -4,14 +4,17 @@
 #include <fcntl.h>
 #include <string.h>
 #include <unistd.h>
-
-#include "write_file_to_flash.h"
-#include "spinor.h"
-
 #include <stdlib.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+
+#include "write_file_to_flash.h"
+#include "spinor.h"
+#include "system_upgrade.h"
+#include "typeport.h"
+
+
 
 
 /*******************************************************************
@@ -208,31 +211,35 @@ int  receive_and_write_file_to_nor_flash(int argc,char**argv)
 
 	#endif
 
-	/*******************/
-#if 1
-	/*擦除NorFlash*/
-	if(countbytes != filesize)
-	{
-		printf("countbytes != filesize\n");
-		return -1;
-	}
+	#if 0  //单系统分区版本
+		/*擦除NorFlash*/
+		if(countbytes != filesize)
+		{
+			printf("countbytes != filesize\n");
+			return -1;
+		}
 
-	printf("erase NorFlash......\n");
-	int ret = hispinor_erase(FLASH_START_ADDRESS, ERRASE_SIZE);
+		printf("erase NorFlash......\n");
+		int ret = hispinor_erase(FLASH_START_ADDRESS, ERRASE_SIZE);
 
-	/*写NorFlash*/
-	printf("write NorFlash......\n");
-	ret = hispinor_write(buffer, FLASH_START_ADDRESS,countbytes);
-	if(0 == ret)
-	{
-		printf("write NroFlash success ,write(%d)bytes!\n",countbytes);
-	}
-	else
-	{
-		perror("write NroFlash failed !\n");
-	}
-
-#endif
+		/*写NorFlash*/
+		printf("write NorFlash......\n");
+		ret = hispinor_write(buffer, FLASH_START_ADDRESS,countbytes);
+		if(0 == ret)
+		{
+			printf("write NroFlash success ,write(%d)bytes!\n",countbytes);
+		}
+		else
+		{
+			perror("write NroFlash failed !\n");
+		}
+	#else  //双系统分区版本（支持系统双备份）
+		upgrade_status_e ret = upgrade_write_norflash(buffer,countbytes);
+		if(ret < 0)
+		{
+			ERROR_LOG("upgrade_write_norflash failed ret = %d\n",ret);
+		}
+	#endif
 
 	close(new_fd);
 	close(sockfd);
@@ -374,6 +381,8 @@ int  tcp_send(int argc,char**argv)
 	free(read_buffer);
 	return 0;
 }
+
+
 
 
 

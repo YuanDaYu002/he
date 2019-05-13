@@ -774,6 +774,8 @@ static HI_S32 LCD_init(void)
 #endif
 
 extern void osal_proc_init(void);
+extern int wtdg_mod_init(void *pArgs);
+extern int rtc_mod_init(void);
 
 HI_VOID SDK_init(void)
 {
@@ -996,6 +998,24 @@ HI_VOID SDK_init(void)
         goto Failed;
     }
 
+	
+	ret = wtdg_mod_init(NULL);
+	if(ret !=0 )
+	{
+		printf("watchdog init error.\n");
+		goto Failed;
+
+	}
+	
+	ret = rtc_mod_init();
+	if(ret !=0 )
+	{
+		printf("rtc init error.\n");
+		goto Failed;
+
+	}
+
+		
 	//sample config as demo board, don't need this ko.
 
 #if 0
@@ -1020,4 +1040,8 @@ Failed:
 }
 #endif
 #endif /* End of #ifdef __cplusplus */
+
+
+
+
 

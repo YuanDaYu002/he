@@ -640,9 +640,8 @@ void * venc_get_stream_proc(void *arg)
     while (enc_ctx.running) 
     {
         usleep(1000);
-        #ifndef DBG_ONLY
-        // TempDisable  watchdog_feed();
-        #endif
+       
+        watchdog_feed();
 
         /*****获取 Video 编码流 , 放入相应缓冲队列 *******************/
     #if 1 

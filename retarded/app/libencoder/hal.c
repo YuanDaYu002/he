@@ -142,12 +142,12 @@ int hal_get_max_frame_rate(void)
     return max_frame_rate;
 }
 
-int rtc_init(void);
+int hal_rtc_init(void);
 int hal_video_init(void);
 int hal_encoder_init(HLE_S32 pack_count);
 int hal_encoder_exit(void);
 int hal_video_exit(void);
-int rtc_exit(void);
+int hal_rtc_exit(void);   
 
 int hal_init(HLE_S32 pack_count, VIDEO_STD_E video_std)
 {
@@ -155,7 +155,7 @@ int hal_init(HLE_S32 pack_count, VIDEO_STD_E video_std)
     if (HLE_RET_OK != hal_set_video_std(video_std))
         goto mode_set_failed;
 
-    if (HLE_RET_OK != rtc_init())
+    if (HLE_RET_OK != hal_rtc_init())
         ERROR_LOG("RTC init failed\n");
 
     if (HLE_RET_OK != mpp_sys_init())
@@ -207,7 +207,7 @@ void hal_exit(void)
     hal_audio_exit();
     hal_video_exit();
     mpp_sys_exit();
-    rtc_exit();
+    hal_rtc_exit();
 }
 
 int hal_get_time(HLE_SYS_TIME *sys_time, int utc, HLE_U8* wday)
@@ -797,7 +797,8 @@ void* MD_alarm_response_func(void* args) //文件模式 版本
         
         record_data = out_mp4_info.buf_mode.buf_start;
         record_data_len = out_mp4_info.buf_mode.w_offset;
-        
+		
+        //create_write_file("/jffs0/MD_fmp4_6s_01.mp4",record_data,record_data_len); //debug
         //if(out_mp4_info.buf_mode.buf_start) fmp4_record_exit(&out_mp4_info);由 amazon 上传后释放
         
         /*将录制的文件放入到 amazom 云上传队列，云上传线程将自动进行传输--*/
@@ -932,6 +933,7 @@ int test_amazon(int argc, char *argv[])
 #if 1
 //#define USE_AI_AENC_BIND  1   // 打开该宏 ：AI绑定到AENC          注释该宏：AI直接输出到AO  
 extern int AI_to_AO_start;
+
 int app_main(int argc, char *argv[])
 {
     int ret;
@@ -1022,9 +1024,8 @@ int app_main(int argc, char *argv[])
     int cycle_num = 0;
     int skip_len = 0;
     int snap_count = 2;//定义抓拍保存的图片数量
-
-    
-
+	
+	
     for (;;) 
     {
          for (i = 0; i < STREAMS_PER_CHN; ++i) 
@@ -1248,6 +1249,12 @@ int app_main(int argc, char *argv[])
 }
 
 #endif
+
+
+
+
+
+
 
 
 

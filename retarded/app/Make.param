@@ -20,6 +20,8 @@ INC_FLAGS += -I$(LITEOSTOPDIR)/lib/libc/kernel/uapi/liteos
 #INC_FLAGS += -I$(LITEOSTOPDIR)/compat/linux/include
 INC_FLAGS += -I$(LITEOSTOPDIR)/drivers/mmc/host/himci
 INC_FLAGS += -I$(LITEOSTOPDIR)/platform/bsp/hi3516cv300/include/asm
+INC_FLAGS += -I$(LITEOSTOPDIR)/platform/cpu/arm/include
+
 ##########################################################################
 CFLAGS = $(LIBS_CFLAGS)
 CFLAGS += $(LITEOS_COPTS) -D__LITEOS__
@@ -88,7 +90,7 @@ SDK_LIB := -lacodec -ldnvqe -lhi3516cv300_adec -lhi3516cv300_aenc -lhi3516cv300_
 -lhi3516cv300_sys -lhi3516cv300_vedu -lhi3516cv300_venc -lhi3516cv300_vgs -lhi3516cv300_viu \
 -lhi3516cv300_vou -lhi3516cv300_vpss -lhi3516cv300_wdt -l_hiae -l_hiaf -l_hiawb -lhi_cipher \
 -l_hidefog -l_hiirauto -lhi_mipi -lhi_osal -lisp -live -lmd -lmpi -lupvqe -lvirtualhifb -lVoiceEngine \
--lhi_piris -ltools   
+-lhi_piris -ltools  -lhieth-sf   
 SDK_LIB +=  -lc -lfmp4Encoder  -lfaac -lcJSON  -lssl -lcrypto -lnecessary
 SDK_LIB += $(SENSOR_LIBS)
 

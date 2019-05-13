@@ -23,6 +23,7 @@
 #include "PPCS_Type.h"
 #include "opt.h"
 #include "timezone.h"
+#include "ctrl.h"
 
 
 
@@ -184,6 +185,17 @@ HLE_S32 cmd_Get_Mac(HLE_S32 SessionID)
 {
 	DEBUG_LOG("cmd_Get_Mac sucess!\n");
 	/*需要知道获取设备参的接口和类型*/
+
+	unsigned char mac[100] = {0};
+	//struct higmac_netdev_local ld_tmp;
+	//higmac_hw_get_mac_addr(&ld_tmp,(unsigned char*)&mac);
+
+	struct hieth_netdev_local ld = {0};
+	hieth_hw_get_macaddress(&ld, (unsigned char *)&mac);//该函数没有返回MAC信息
+
+	DEBUG_LOG("Deceice MAC : %s\n",mac);
+
+	
 	return HLE_RET_OK;
 }
 
@@ -443,9 +455,11 @@ HLE_S32 cmd_close_living(HLE_S32 SessionID)
 }
 
 //重启命令
+extern void cmd_reset(void);
 HLE_S32 cmd_set_reboot(HLE_S32 SessionID)
 {
 	DEBUG_LOG("cmd_set_reboot sucess!\n");
+	cmd_reset();
 	return HLE_RET_OK;
 }
 
@@ -794,6 +808,12 @@ HLE_S32 med_ser_signal_parse(HLE_S32 SessionID,cmd_header_t *data,HLE_S32 length
 
 	return HLE_RET_OK;
 }
+
+
+
+
+
+
 
 
 

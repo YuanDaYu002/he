@@ -242,6 +242,39 @@ upgrade_status_e upgrade_write_norflash(void *buf,unsigned int buf_len)
 
 }
 
+/*******************************************************************************
+*@ Description    :将当前启动的IMAGE分区标记为损坏 “FLAG_BAD”
+*@ Input          :
+*@ Output         :
+*@ Return         :
+*@ attention      :
+*******************************************************************************/
+int set_boot_region_bad(void)
+{
+	config_info_t info = {0};	
+	hispinor_read(&info , CONFIG_REGION_START, sizeof(info)/*CONFIG_REGION_SIZE*/);
+	if(info.magic_flag != HLE_MAGIC)
+	{
+		ERROR_LOG("info.magic_flag  not equal HLE_MAGIC\n");
+		return -1;
+	}
+
+	/*打印两个分区的详细信息*/
+	printf_config_info(&info);
+
+	unsigned long addr;
+	int region;
+	selet_upgrade_region(&addr,&region);
+
+	int curr_boot_region = 1 - region;
+
+	info.image_info[curr_boot_region].damage_flag = FLAG_BAD;
+	hispinor_erase((unsigned long)CONFIG_REGION_START,(unsigned long)CONFIG_REGION_SIZE);
+	hispinor_write(&info,CONFIG_REGION_START,sizeof(config_info_t));
+
+	return 0;
+	
+}
 
 
 
