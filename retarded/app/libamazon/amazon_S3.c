@@ -1623,11 +1623,13 @@ void* amazon_upload_thread(void*args)
 
 	while(1)
 	{
+		#if 0  //临时注释，目前访问 amazon 服务器还无法正常返回
 		while(1 != is_amazon_info_update()) 
         {
             DEBUG_LOG("wait g_amazon_info update .....\n");
             sleep(1);
         }
+		#endif 
 						
 		while(0 == LQueueIsEmpty(upload_file_queue))//队列不为空
 		{
@@ -1637,7 +1639,7 @@ void* amazon_upload_thread(void*args)
 			/*if(pop_node.file_type == TYPE_TS)//debug
 					create_write_file("/jffs0/MD_TS_01.ts",pop_node.file_buf,pop_node.file_buf_len);//DEBUG
 			*/
-			#if 0 //DEBUG 部分
+			#if 1 //DEBUG 部分
 			if(pop_node.file_buf) 
 			{
 				printf("pop_node.file_buf_len = %d Bytes\n",pop_node.file_buf_len);
@@ -1649,42 +1651,7 @@ void* amazon_upload_thread(void*args)
 				amazon_put_even_thread(&pop_node);
 			#endif 
 			
-			/*---# DEBUG 推送到 amazon 云---------------------------------------------------*/
-		    #if 0		       
-		        while(1 != is_amazon_info_update()) 
-		        {
-		            DEBUG_LOG("wait g_amazon_info update .....\n");
-		            sleep(1);
-		        }
-				
-			    int i= 0;
-			    for(i = 0 ; i < tmp_info->ts_num ; i++)
-			    {
-			        #if 1
-			        put_file_info_t file_info = {0};
-			        file_info.mode = 2; //缓存buf模式
-			        file_info.file_tlen = MD_ALARM_RECORD_TIME;
-			        if(M3U_INDEX_FILE_TYPE == M3U_TS_FILE) 
-			            file_info.file_type = TYPE_TS;
-			        else //if(M3U_INDEX_FILE_TYPE == M3U_FMP4_FILE) //内部传输逻辑和 TS 一样
-			            file_info.file_type = TYPE_TS;  
-			        
-			        file_info.ts_flag = TS_FLAG_ONE; 
-			        strcpy(file_info.file_name,tmp_info->ts_array[i].ts_name);
-			        file_info.file_buf = tmp_info->ts_array[i].ts_buf;
-			        file_info.file_buf_len = tmp_info->ts_array[i].ts_buf_size;
-			        strcpy(file_info.m3u8name,tmp_info->m3u_name);
-			        
-			        time_t timer = time(NULL);
-			        //struct tm *lctv = localtime(&timer);
-			        memcpy(&file_info.datetime,&timer,sizeof(timer));
-			        amazon_put_even_thread(&file_info);
-			       
-			        #endif
-			        
-			    }
-		    
-		    #endif
+
 			
 		}
 
@@ -1707,6 +1674,7 @@ int  start_amazon_upload_thread(void)
     } 
 	return 0;
 }
+
 
 
 

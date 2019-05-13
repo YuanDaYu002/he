@@ -116,7 +116,7 @@ extern int tx_flow_ctrl_deactive_threshold;
 #define MAC_EEE        1
 #define PHY_EEE        2
 #define PARTNER_EEE    2
-#define DEBUG        0
+//#define DEBUG        0
 
 typedef struct {
     spinlock_t lock;
