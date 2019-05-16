@@ -23,15 +23,12 @@
 #include <openssl/sha.h> 
 
 
-
-
-
 #include "dlfcn.h"
 //#include "curl/curl.h"
 #include "cJSON/cJSON.h"
 #include "amazon_S3.h"
 #include "typeport.h"
-#include "gh_http.h"
+#include "https_post.h"
 
 
 #define A_PUT_SUCCESS 1		//发送成功
@@ -147,6 +144,56 @@ int get_datetime(char *str)
 	
 	//printf("str=================%s===================%ld\n",str,timer);
 	return 0;
+}
+
+void http_parse_url(const char *url, char *host, int *port, char *file_name)
+{
+     /*通过url解析出域名, 端口, 以及文件名*/
+    int j = 0;
+    int i;
+    int start = 0;
+    *port = 80;
+    char *patterns[] = {"http://", "https://", NULL};
+
+    for (i = 0; patterns[i]; i++)//分离下载地址中的http协议
+        if (strncmp(url, patterns[i], strlen(patterns[i])) == 0)
+            start = strlen(patterns[i]);
+
+    //解析域名, 这里处理时域名后面的端口号会保留
+    for (i = start; url[i] != '/' && url[i] != '\0'; i++, j++)
+        host[j] = url[i];
+    host[j] = '\0';
+
+    //解析端口号, 如果没有, 那么设置端口为80
+    char *pos = strstr(host, ":");
+    if (pos)
+        sscanf(pos, ":%d", port);
+
+    //删除域名端口号
+    for (i = 0; i < (int)strlen(host); i++)
+    {
+        if (host[i] == ':')
+        {
+            host[i] = '\0';
+            break;
+        }
+    }
+
+    //获取下载文件名
+    j = 0;
+    for (i = start; url[i] != '\0'; i++)
+    {
+        if (url[i] == '/')
+        {
+            if (i !=  strlen(url) - 1)
+                j = 0;
+            continue;
+        }
+        else
+            file_name[j++] = url[i];
+    }
+    file_name[j] = '\0';
+
 }
 
 
@@ -294,9 +341,9 @@ void make_StringToSign(const char *http_req, char *stringToSign)
 
 
 /*******************************************************************************
-*@ Description    :生成数字签名  
-*@ Input          :<YourSecretAccessKeyID>
-					<StringToSign>
+*@ Description    :生成数字签名（测试版本） 
+*@ Input          :<YourSecretAccessKeyID>设备的私匙
+					<StringToSign>要转换成签名的链接（字符串）
 					
 *@ Output         :<Signature> 生成的签名
 *@ Return         :
@@ -394,9 +441,9 @@ void make_signatue(char *YourSecretAccessKeyID, char *StringToSign, char *Signat
 #endif
 
 /*******************************************************************************
-*@ Description    :获取签名  
-*@ Input          :<YourSecretAccessKeyID> 安全密匙
-					<Stringtosign>
+*@ Description    :生成签名（亚马逊版本） 
+*@ Input          :<YourSecretAccessKeyID> 设备端私匙
+					<Stringtosign>要转换成签名的链接（字符串）
 *@ Output         :
 *@ Return         : 签名
 *******************************************************************************/
@@ -566,7 +613,7 @@ int amazon_curl_send(char *filename,void*file_buf,int file_len,ts_flag_e tsflag,
 	unsigned char Signature[65] = {0};
 	make_signatue(g_amazon_info.secret_aceess_keyid, stringToSign, Signature);
 
-	/*---依据签名生成数字证书 Authorization------------------------------------------------*/
+	/*---依据签名生成数字证书 Authorization,加到请求头里边------------------------------------------------*/
 	char Authorization[1024];	
 	Authorization[0] = '\0';
 	snprintf(Authorization,1024	,"Authorization: AWS4-HMAC-SHA256 "
@@ -589,6 +636,7 @@ int amazon_curl_send(char *filename,void*file_buf,int file_len,ts_flag_e tsflag,
 	}
 	memset(headers,0,1024*3);
 
+	snprintf(headers,1024*3,"POST %s HTTP/1.0\r\n", http_url);
 	char content_type[128] = {0};
 	snprintf(content_type,sizeof(content_type),"Content-Type: %s",filetype);
 	strcat(headers,content_type);
@@ -629,11 +677,23 @@ int amazon_curl_send(char *filename,void*file_buf,int file_len,ts_flag_e tsflag,
 	
 	strcat(headers,"Expect: 100-continue");
 	strcat(headers,"\r\n");
-
-	char* response = http_upload_file(http_url,headers,content_type,filename,file_buf,file_len);
+	
+	//char host[128] = {0};
+	char file_name[64] = {0};
+	int port;
+	
+	char* response = calloc(1024,1);
 	if(NULL == response)
 	{
-		ERROR_LOG("http_upload_file failed !\n");
+		ERROR_LOG("calloc failed!\n");
+		return -1;
+	}
+	
+	http_parse_url(http_url, host, &port,file_name);
+	int ret = https_post(host,port,http_url,headers,(char*)file_buf,file_len,response,1024);
+	if(ret < 0)
+	{
+		ERROR_LOG("https_post failed !\n");
 		goto ERR;
 	}
 	DEBUG_LOG(" ---push local file = %s ---servers respone:%s---\n",filename, response);
@@ -766,7 +826,7 @@ int amazon_curl_send_am(char *filename,void*file_buf,int file_len, char tsflag, 
 	strcat(Stringtosign,path);	
 	//printf("##########Stringtosign=#########\n%s\n#####################################\n", Stringtosign);
 
-	/*---#获取数字签名------------------------------------------------------------*/
+	/*---#生成数字签名------------------------------------------------------------*/
 	char *Signature = NULL; //签名
 	Signature = make_signatue_am(g_amazon_info.secret_aceess_keyid,Stringtosign);
 
@@ -788,7 +848,8 @@ int amazon_curl_send_am(char *filename,void*file_buf,int file_len, char tsflag, 
 		goto ERR;
 	}
 	//struct curl_slist *headers = NULL;
-		
+	
+	snprintf(headers,1024*3, "POST %s HTTP/1.0\r\n", url);
 	char content_type[128]; 
 	strcpy(content_type, "Content-Type: ");
 	strcat(content_type,filetype);
@@ -830,10 +891,22 @@ int amazon_curl_send_am(char *filename,void*file_buf,int file_len, char tsflag, 
 	strcat(headers,"Expect: 100-continue");
 	strcat(headers,"\r\n");
 
-	char*response = http_upload_file(url,headers,content_type,filename,file_buf,file_len); 
+	//char host[128] = {0};
+	char file_name[64] = {0};
+	int port;
+	
+	char* response = calloc(1024,1);
 	if(NULL == response)
 	{
-		ERROR_LOG("http_upload_file failed !\n");
+		ERROR_LOG("calloc failed!\n");
+		return -1;
+	}
+	
+	http_parse_url(url, host, &port,file_name);
+	int ret = https_post(host,port,url,headers,file_buf,file_len,response,1024);
+	if(ret < 0)
+	{
+		ERROR_LOG("https_post failed !\n");
 		goto ERR;
 	}
 	DEBUG_LOG(" ---push local file = %s ---servers response:%s---\n",filename, response);
@@ -1240,6 +1313,8 @@ void amazon_put_even_thread(put_file_info_t *put_file)
 }
 
 
+
+
 /*---#------------------------------------------------------------*/
 /*---#------------------------------------------------------------*/
 /*---#------------------------------------------------------------*/
@@ -1255,12 +1330,20 @@ char *curl_get(cJSON *pushMsg, char *url)
 	char *postData = cJSON_Print(pushMsg);
 	DEBUG_LOG("postData=%s;\n",postData);
 
-
-	
-	int ret_code = 0;
-	char* ret_buf = NULL;
 	char* content_type = "Content-Type: application/json";
-	int ret = http_post_data(url,(char*)postData,content_type,&ret_code,&ret_buf);
+	char host[128] = {0};
+	char file_name[64] = {0};
+	int port = 0;
+	
+	char* ret_buf = calloc(1024,1);
+	if(NULL == ret_buf)
+	{
+		ERROR_LOG("calloc failed!\n");
+		return NULL;
+	}
+	
+	http_parse_url(url,host,&port,file_name);
+	int ret = https_post(host,port,url,NULL,postData, strlen(postData),ret_buf,1024);
 	if(ret < 0)
 	{
 		ERROR_LOG("http_post_data failed !\n");
@@ -1674,6 +1757,8 @@ int  start_amazon_upload_thread(void)
     } 
 	return 0;
 }
+
+
 
 
 

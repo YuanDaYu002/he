@@ -12,9 +12,9 @@ SHLIB_VERSION_HISTORY=
 SHLIB_MAJOR=1
 SHLIB_MINOR=0.0
 SHLIB_EXT=.so.$(SHLIB_MAJOR).$(SHLIB_MINOR)
-PLATFORM=linux-x86_64
+PLATFORM=linux-x86
 OPTIONS=--prefix=/home/yuanda.yu/svndebug/trunk/retarded/app/openssl-1.0.2l/out no-asm no-bf no-camellia no-cast no-cipherno-md2 no-comp no-des no-dh no-dsa no-dso no-ec no-ec_nistp_64_gcc_128 no-ecdh no-ecdhno-store no-ecdsa no-gmp no-gost no-hw no-idea no-jpake no-krb5 no-libunbound no-md2 no-md4 no-mdc2 no-perlasm no-rc2 no-rc4 no-rc5 no-rfc3779 no-ripemd no-sctp no-shared no-sse2 no-ssl-trace no-ssl2 no-store no-threads no-tls1 no-unit-test no-weak-ssl-ciphers no-zlib no-zlib-dynamic static-engine
-CONFIGURE_ARGS=linux-x86_64 --prefix=/home/yuanda.yu/svndebug/trunk/retarded/app/openssl-1.0.2l/out no-shared no-zlib no-asm no-threads no-sse2 no-comp no-dso no-gmp no-rfc3779 no-krb5 no-rc5 no-zlib-dynamic no-hw no-cipherno-md2 no-md4 no-mdc2 no-rc2 no-idea no-camellia no-ec no-ecdsa no-ecdhno-store no-ripemd no-des no-rc4 no-bf no-cast no-dsa no-dh no-tls no-perlasm
+CONFIGURE_ARGS=linux-x86 --prefix=/home/yuanda.yu/svndebug/trunk/retarded/app/openssl-1.0.2l/out no-shared no-zlib no-asm no-threads no-sse2 no-comp no-dso no-gmp no-rfc3779 no-krb5 no-rc5 no-zlib-dynamic no-hw no-cipherno-md2 no-md4 no-mdc2 no-rc2 no-idea no-camellia no-ec no-ecdsa no-ecdhno-store no-ripemd no-des no-rc4 no-bf no-cast no-dsa no-dh no-tls no-perlasm
 SHLIB_TARGET=linux-shared
 
 # HERE indicates where this Makefile lives.  This can be used to indicate
@@ -60,14 +60,14 @@ OPENSSLDIR=/home/yuanda.yu/svndebug/trunk/retarded/app/openssl-1.0.2l/out/ssl
 # PKCS1_CHECK - pkcs1 tests.
 
 CC= arm-himix100-linux-gcc
-CFLAG=  -O -D__LITEOS__
+CFLAG=  -O -D__LITEOS__ -DL_ENDIAN -O3 -Wall
 DEPFLAG= -DOPENSSL_NO_BF -DOPENSSL_NO_CAMELLIA -DOPENSSL_NO_CAST -DOPENSSL_NO_CIPHERNO_MD2 -DOPENSSL_NO_COMP -DOPENSSL_NO_DES -DOPENSSL_NO_DH -DOPENSSL_NO_DSA -DOPENSSL_NO_EC -DOPENSSL_NO_EC_NISTP_64_GCC_128 -DOPENSSL_NO_ECDH -DOPENSSL_NO_ECDHNO_STORE -DOPENSSL_NO_ECDSA -DOPENSSL_NO_GMP -DOPENSSL_NO_GOST -DOPENSSL_NO_IDEA -DOPENSSL_NO_JPAKE -DOPENSSL_NO_LIBUNBOUND -DOPENSSL_NO_MD2 -DOPENSSL_NO_MD4 -DOPENSSL_NO_MDC2 -DOPENSSL_NO_PERLASM -DOPENSSL_NO_RC2 -DOPENSSL_NO_RC4 -DOPENSSL_NO_RC5 -DOPENSSL_NO_RFC3779 -DOPENSSL_NO_RIPEMD -DOPENSSL_NO_SCTP -DOPENSSL_NO_SSL_TRACE -DOPENSSL_NO_SSL2 -DOPENSSL_NO_STORE -DOPENSSL_NO_TLS1 -DOPENSSL_NO_UNIT_TEST -DOPENSSL_NO_WEAK_SSL_CIPHERS
 PEX_LIBS= 
 EX_LIBS= -ldl
 EXE_EXT= 
 ARFLAGS= 
 AR= arm-himix100-linux-ar -rcu
-RANLIB= arm-himix100-linux-ranlib 
+RANLIB= arm-himix100-linux-ranlib
 RC= windres
 NM= nm
 PERL= /usr/bin/perl

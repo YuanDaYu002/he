@@ -13,8 +13,8 @@ SHLIB_MAJOR=1
 SHLIB_MINOR=0.0
 SHLIB_EXT=.so.$(SHLIB_MAJOR).$(SHLIB_MINOR)
 PLATFORM=linux-x86_64
-OPTIONS=--prefix=/home/yuanda.yu/svndebug/trunk/retarded/app/openssl-1.0.2l/out no-asm no-async no-ec_nistp_64_gcc_128 no-gmp no-jpake no-krb5 no-libunbound no-md2 no-rc5 no-rfc3779 no-sctp no-shared no-ssl-trace no-ssl2 no-store no-unit-test no-weak-ssl-ciphers no-zlib no-zlib-dynamic static-engine
-CONFIGURE_ARGS=linux-x86_64 no-asm no-shared no-async --prefix=/home/yuanda.yu/svndebug/trunk/retarded/app/openssl-1.0.2l/out
+OPTIONS=--prefix=/home/yuanda.yu/svndebug/trunk/retarded/app/openssl-1.0.2l/out no-asm no-bf no-camellia no-cast no-cipherno-md2 no-comp no-des no-dh no-dsa no-dso no-ec no-ec_nistp_64_gcc_128 no-ecdh no-ecdhno-store no-ecdsa no-gmp no-gost no-hw no-idea no-jpake no-krb5 no-libunbound no-md2 no-md4 no-mdc2 no-perlasm no-rc2 no-rc4 no-rc5 no-rfc3779 no-ripemd no-sctp no-shared no-sse2 no-ssl-trace no-ssl2 no-store no-threads no-tls1 no-unit-test no-weak-ssl-ciphers no-zlib no-zlib-dynamic static-engine
+CONFIGURE_ARGS=linux-x86_64 --prefix=/home/yuanda.yu/svndebug/trunk/retarded/app/openssl-1.0.2l/out no-shared no-zlib no-asm no-threads no-sse2 no-comp no-dso no-gmp no-rfc3779 no-krb5 no-rc5 no-zlib-dynamic no-hw no-cipherno-md2 no-md4 no-mdc2 no-rc2 no-idea no-camellia no-ec no-ecdsa no-ecdhno-store no-ripemd no-des no-rc4 no-bf no-cast no-dsa no-dh no-tls no-perlasm
 SHLIB_TARGET=linux-shared
 
 # HERE indicates where this Makefile lives.  This can be used to indicate
@@ -59,21 +59,21 @@ OPENSSLDIR=/home/yuanda.yu/svndebug/trunk/retarded/app/openssl-1.0.2l/out/ssl
 # equal 4.
 # PKCS1_CHECK - pkcs1 tests.
 
-CC= gcc
-CFLAG= -DOPENSSL_THREADS -D_REENTRANT -DDSO_DLFCN -DHAVE_DLFCN_H -m64 -DL_ENDIAN -O3 -Wall
-DEPFLAG= -DOPENSSL_NO_ASYNC -DOPENSSL_NO_EC_NISTP_64_GCC_128 -DOPENSSL_NO_GMP -DOPENSSL_NO_JPAKE -DOPENSSL_NO_LIBUNBOUND -DOPENSSL_NO_MD2 -DOPENSSL_NO_RC5 -DOPENSSL_NO_RFC3779 -DOPENSSL_NO_SCTP -DOPENSSL_NO_SSL_TRACE -DOPENSSL_NO_SSL2 -DOPENSSL_NO_STORE -DOPENSSL_NO_UNIT_TEST -DOPENSSL_NO_WEAK_SSL_CIPHERS
+CC= arm-himix100-linux-gcc
+CFLAG=  -DL_ENDIAN -O3 -Wall  -O -D__LITEOS__
+DEPFLAG= -DOPENSSL_NO_BF -DOPENSSL_NO_CAMELLIA -DOPENSSL_NO_CAST -DOPENSSL_NO_CIPHERNO_MD2 -DOPENSSL_NO_COMP -DOPENSSL_NO_DES -DOPENSSL_NO_DH -DOPENSSL_NO_DSA -DOPENSSL_NO_EC -DOPENSSL_NO_EC_NISTP_64_GCC_128 -DOPENSSL_NO_ECDH -DOPENSSL_NO_ECDHNO_STORE -DOPENSSL_NO_ECDSA -DOPENSSL_NO_GMP -DOPENSSL_NO_GOST -DOPENSSL_NO_IDEA -DOPENSSL_NO_JPAKE -DOPENSSL_NO_LIBUNBOUND -DOPENSSL_NO_MD2 -DOPENSSL_NO_MD4 -DOPENSSL_NO_MDC2 -DOPENSSL_NO_PERLASM -DOPENSSL_NO_RC2 -DOPENSSL_NO_RC4 -DOPENSSL_NO_RC5 -DOPENSSL_NO_RFC3779 -DOPENSSL_NO_RIPEMD -DOPENSSL_NO_SCTP -DOPENSSL_NO_SSL_TRACE -DOPENSSL_NO_SSL2 -DOPENSSL_NO_STORE -DOPENSSL_NO_TLS1 -DOPENSSL_NO_UNIT_TEST -DOPENSSL_NO_WEAK_SSL_CIPHERS
 PEX_LIBS= 
 EX_LIBS= -ldl
 EXE_EXT= 
 ARFLAGS= 
-AR= ar $(ARFLAGS) r
-RANLIB= /usr/bin/ranlib
+AR= arm-himix100-linux-ar -rcu
+RANLIB= arm-himix100-linux-ranlib
 RC= windres
 NM= nm
 PERL= /usr/bin/perl
 TAR= tar
 TARFLAGS= --no-recursion
-MAKEDEPPROG= gcc
+MAKEDEPPROG= arm-himix100-linux-gcc
 LIBDIR=lib
 
 # We let the C compiler driver to take care of .s files. This is done in
@@ -140,17 +140,17 @@ FIPSCANLIB=
 BASEADDR=0xFB00000
 
 DIRS=   crypto ssl engines apps test tools
-ENGDIRS= ccgost
+ENGDIRS= 
 SHLIBDIRS= crypto ssl
 
 # dirs in crypto to build
 SDIRS=  \
 	objects \
-	md4 md5 sha mdc2 hmac ripemd whrlpool \
-	des aes rc2 rc4 idea bf cast camellia seed modes \
-	bn ec rsa dsa ecdsa dh ecdh dso engine \
+	md5 sha hmac whrlpool \
+	aes seed modes \
+	bn rsa dso engine \
 	buffer bio stack lhash rand err \
-	evp asn1 pem x509 x509v3 conf txt_db pkcs7 pkcs12 comp ocsp ui krb5 \
+	evp asn1 pem x509 x509v3 conf txt_db pkcs7 pkcs12 ocsp ui krb5 \
 	cms pqueue ts srp cmac
 # keep in mind that the above list is adjusted by ./Configure
 # according to no-xxx arguments...
@@ -178,7 +178,7 @@ SHARED_CRYPTO=libcrypto$(SHLIB_EXT)
 SHARED_SSL=libssl$(SHLIB_EXT)
 SHARED_LIBS=
 SHARED_LIBS_LINK_EXTS=.so.$(SHLIB_MAJOR) .so
-SHARED_LDFLAGS=-m64
+SHARED_LDFLAGS=
 
 GENERAL=        Makefile
 BASENAME=       openssl
