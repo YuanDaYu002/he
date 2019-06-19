@@ -83,14 +83,27 @@ REL_DIR=$(SDK_PATH)/mpp
 export REL_LIB := $(REL_DIR)/lib
 SDK_LIB_PATH := -L$(REL_LIB) -L$(REL_LIB)/extdrv
 
+#原版
+#SDK_LIB := -lacodec -ldnvqe -lhi3516cv300_adec -lhi3516cv300_aenc -lhi3516cv300_ai \
+#-lhi3516cv300_aio -lhi3516cv300_ao -lhi3516cv300_base -lhi3516cv300_chnl -lhi3516cv300_h264e \
+#-lhi3516cv300_h265e -lhi3516cv300_ir -lhi3516cv300_isp -lhi3516cv300_ive -lhi3516cv300_jpege \
+#-lhi3516cv300_pwm -lhi3516cv300_rc -lhi3516cv300_region -lhi3516cv300_rtc -lhi3516cv300_sensor \
+#-lhi3516cv300_sys -lhi3516cv300_vedu -lhi3516cv300_venc -lhi3516cv300_vgs -lhi3516cv300_viu \
+#-lhi3516cv300_vou -lhi3516cv300_vpss -lhi3516cv300_wdt -l_hiae -l_hiaf -l_hiawb -lhi_cipher \
+#-l_hidefog -l_hiirauto -lhi_mipi -lhi_osal -lisp -live -lmd -lmpi -lupvqe -lvirtualhifb -lVoiceEngine \
+#-lhi_piris -ltools  -lhieth-sf
+
+#去掉了 AO、H265的库
 SDK_LIB := -lacodec -ldnvqe -lhi3516cv300_adec -lhi3516cv300_aenc -lhi3516cv300_ai \
 -lhi3516cv300_aio -lhi3516cv300_ao -lhi3516cv300_base -lhi3516cv300_chnl -lhi3516cv300_h264e \
--lhi3516cv300_h265e -lhi3516cv300_ir -lhi3516cv300_isp -lhi3516cv300_ive -lhi3516cv300_jpege \
+-lhi3516cv300_ir -lhi3516cv300_isp -lhi3516cv300_ive -lhi3516cv300_jpege \
 -lhi3516cv300_pwm -lhi3516cv300_rc -lhi3516cv300_region -lhi3516cv300_rtc -lhi3516cv300_sensor \
 -lhi3516cv300_sys -lhi3516cv300_vedu -lhi3516cv300_venc -lhi3516cv300_vgs -lhi3516cv300_viu \
--lhi3516cv300_vou -lhi3516cv300_vpss -lhi3516cv300_wdt -l_hiae -l_hiaf -l_hiawb -lhi_cipher \
+-lhi3516cv300_vpss -lhi3516cv300_wdt -l_hiae -l_hiaf -l_hiawb -lhi_cipher \
 -l_hidefog -l_hiirauto -lhi_mipi -lhi_osal -lisp -live -lmd -lmpi -lupvqe -lvirtualhifb -lVoiceEngine \
--lhi_piris -ltools  -lhieth-sf   
+-lhi_piris -ltools  -lhieth-sf
+
+   
 SDK_LIB +=  -lc -lfmp4Encoder  -lfaac -lcJSON  -lssl -lcrypto 
 
 SDK_LIB += $(SENSOR_LIBS)

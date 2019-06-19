@@ -293,6 +293,8 @@ static int ive_dma_image(VIDEO_FRAME_INFO_S *frm, IVE_DST_IMAGE_S *img, int inst
 
 void *motion_detect_proc(void *arg)
 {
+	pthread_detach(pthread_self());
+	
 	DEBUG_LOG("pid = %d\n", getpid());
 	prctl(PR_SET_NAME, "hal_md", 0, 0, 0);
 
@@ -346,6 +348,8 @@ void *motion_detect_proc(void *arg)
 			ERROR_LOG("HI_MPI_VPSS_GetChnFrame fail: %#x\n", ret);
 			continue;
 		}
+		//长宽打印 480*272
+		//DEBUG_LOG("MD===== HI_MPI_VPSS_GetChnFrame : width:%d  height:%d\n",frm.stVFrame.u32Width,frm.stVFrame.u32Height);
 
 		/*
 		for(int i = 0; i<3 ; i++)
@@ -422,7 +426,7 @@ ERR:
 		//pthread_mutex_unlock(&ctx->lock);
 	}
 
-	return NULL;
+	pthread_exit(0) ;
 }
 
 static int motion_detect_stop(MD_CHN mdChn)
@@ -744,6 +748,8 @@ int motion_detect_write_cfg(void)
 
 	return motion_detect_config(0, &g_motion_detect_artr);
 }
+
+
 
 
 

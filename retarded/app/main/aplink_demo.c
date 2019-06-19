@@ -30,7 +30,7 @@
 #include "hisilink_ext.h"
 #include "asm/delay.h"
 
-#define APLINK_PERIOD_TIMEOUT 70000 //aplink��ʱʱ��
+#define APLINK_PERIOD_TIMEOUT 70000 //aplink超时时间
 
 typedef enum
 {
@@ -50,7 +50,7 @@ int              gl_aplink_socketfd;
 
 extern hsl_result_stru gst_hsl_params;
 /*****************************************************************************
-                                  ��������
+                                  函数声明
 *****************************************************************************/
 extern unsigned char hsl_demo_get_status(void);
 extern int hsl_demo_set_status(hsl_status_enum_type uc_type);
@@ -58,18 +58,18 @@ extern int hsl_demo_connect_prepare(void);
 extern int hsl_demo_prepare(void);
 
 /***************************************************************************
-�� �� ��  : aplink_demo_get_result
-��������  : ��ȡAP��Ϣ���
-�������  : ��
-�������  : pst_result����ó��Ľ��
-�� �� ֵ  : �ɹ�����0���쳣����-1
-���ú���  :
-��������  :
+函 数 名  : aplink_demo_get_result
+功能描述  : 获取AP信息结果
+输入参数  : 无
+输出参数  : pst_result解码得出的结果
+返 回 值  : 成功返回0、异常返回-1
+调用函数  :
+被调函数  :
 
-�޸���ʷ      :
- 1.��    ��   : 2016��11��12��
-   ��    ��   : 
-   �޸�����   : �����ɺ���
+修改历史      :
+ 1.日    期   : 2016年11月12日
+   作    者   : 
+   修改内容   : 新生成函数
 ***************************************************************************/
 int aplink_demo_get_result(unsigned char* puc_data, hsl_result_stru* pst_result)
 {
@@ -83,13 +83,13 @@ int aplink_demo_get_result(unsigned char* puc_data, hsl_result_stru* pst_result)
         return -1;
     }
 
-    /* ��ʼ�� */
+    /* 初始化 */
     memset(pst_result, 0, sizeof(hsl_result_stru));
     /**************************************************************************************/
-    /*SSID�ĳ���|PWD�ĳ���|SSID������|PWD������|���ܷ�ʽ|���ͷ�ʽ|�ֻ���IP|�ֻ��˶˿ں�|�豸���ӱ�ʶ|*/
-    /*   1�ֽ�  |  1�ֽ�  | �ɱ䳤�� | �ɱ䳤��| 4bits  | 4bits  | 4�ֽ�  |    2�ֽ�   |    2�ֽ�   |*/
+    /*SSID的长度|PWD的长度|SSID的内容|PWD的内容|加密方式|发送方式|手机端IP|手机端端口号|设备连接标识|*/
+    /*   1字节  |  1字节  | 可变长度 | 可变长度| 4bits  | 4bits  | 4字节  |    2字节   |    2字节   |*/
     /**************************************************************************************/
-    /* ǰ�����ֽڵ����ݷֱ��ʾssid��pwd�ĳ��� */
+    /* 前两个字节的数据分别表示ssid和pwd的长度 */
     uc_ssid_len = puc_data[0];
     uc_pwd_len  = puc_data[1];
     if ((32 < uc_ssid_len) || (128 < uc_pwd_len))
@@ -100,23 +100,23 @@ int aplink_demo_get_result(unsigned char* puc_data, hsl_result_stru* pst_result)
     ul_index += 2;
     pst_result->uc_ssid_len = uc_ssid_len;
     pst_result->uc_pwd_len  = uc_pwd_len;
-    /* ��ȡSSID */
+    /* 获取SSID */
     memcpy(pst_result->auc_ssid, &puc_data[ul_index],uc_ssid_len);
     ul_index += uc_ssid_len;
-    /* ��ȡPWD */
+    /* 获取PWD */
     memcpy(pst_result->auc_pwd, &puc_data[ ul_index], uc_pwd_len);
     ul_index += uc_pwd_len;
-    /* ��ȡ���ܷ�ʽ */
+    /* 获取加密方式 */
     pst_result->en_auth_mode = (puc_data[ul_index] & 0xf0) >> 4;
-    /*��ȡ����֪ͨ���ķ��ͷ�ʽ*/
+    /*获取上线通知包的发送方式*/
     pst_result->en_online_type = puc_data[ul_index++] & 0x0f;
-    /* ��ȡ�ֻ���IP��ַ */
+    /* 获取手机端IP地址 */
     memcpy(pst_result->auc_ip, &puc_data[ul_index], IP_ADDR_LEN);
     ul_index += IP_ADDR_LEN;
-    /* ��ȡ�˿ں� */
+    /* 获取端口号 */
     pst_result->us_port = (puc_data[ul_index] << 8) + puc_data[ul_index + 1];
     ul_index += 2;
-    /* ��ȡ���ӱ�ʶ */
+    /* 获取连接标识 */
     pst_result->auc_flag[0] = puc_data[ul_index++];
     pst_result->auc_flag[1] = puc_data[ul_index++];
     HISI_PRINT_INFO("ssid:%s\n",pst_result->auc_ssid);
@@ -130,18 +130,18 @@ int aplink_demo_get_result(unsigned char* puc_data, hsl_result_stru* pst_result)
 }
 
 /***************************************************************************
-�� �� ��  : aplink_demo_tcpserver
-��������  : ��ͳAPģʽ�µ�TCP���������ڽ����ֻ����͵�AP��Ϣ
-�������  :
-�������  : ��
-�� �� ֵ  : �쳣����-1����������0
-���ú���  :
-��������  :
+函 数 名  : aplink_demo_tcpserver
+功能描述  : 传统AP模式下的TCP服务器用于接收手机传送的AP信息
+输入参数  :
+输出参数  : 无
+返 回 值  : 异常返回-1，正常返回0
+调用函数  :
+被调函数  :
 
-�޸���ʷ      :
- 1.��    ��   : 2016��11��12��
-   ��    ��   : 
-   �޸�����   : �����ɺ���
+修改历史      :
+ 1.日    期   : 2016年11月12日
+   作    者   : 
+   修改内容   : 新生成函数
 ***************************************************************************/
 int aplink_demo_tcpserver(void)
 {
@@ -165,14 +165,14 @@ int aplink_demo_tcpserver(void)
     memset(&serveraddr, 0, sizeof(serveraddr));
     memset(&clientaddr, 0, sizeof(clientaddr));
     serveraddr.sin_family      = AF_INET;
-    serveraddr.sin_port        = htons(5000);//�������˵Ķ˿ں�
+    serveraddr.sin_port        = htons(5000);//服务器端的端口号
     serveraddr.sin_addr.s_addr = htonl(INADDR_ANY);
     if (0 != bind(gl_aplink_socketfd, (struct sockaddr *)&serveraddr, sizeof(serveraddr)))
     {
         HISI_PRINT_ERROR("%s[%d]:tcp bind fail",__func__,__LINE__);
         return -1;
     }
-    if (0 != listen(gl_aplink_socketfd, 10))//10����TCP����������ܹ�����10��TCP���Ӽ��������10���ͻ��˵�����
+    if (0 != listen(gl_aplink_socketfd, 10))//10代表TCP服务器最大能够监听10条TCP连接即最大允许10个客户端的连接
     {
         HISI_PRINT_ERROR("%s[%d]:tcp listen fail",__func__,__LINE__);
         return -1;
@@ -187,14 +187,14 @@ int aplink_demo_tcpserver(void)
 
     memset(auc_buf, 0, sizeof(auc_buf));
     recv(sockfd, auc_buf, sizeof(auc_buf), 0);
-    /* ��ȡ��� */
+    /* 获取结果 */
         if(0 == aplink_demo_get_result(auc_buf, &st_result))
     {
         LOS_TaskLock();
         memcpy(g_pst_aplink_result, &st_result, sizeof(hsl_result_stru));
         LOS_TaskUnlock();
 
-        /* ��hsl��״̬����ΪCONNECT��֤��������˳�� */
+        /* 将hsl的状态设置为CONNECT保证后续流程顺利 */
         hsl_demo_set_status(HSL_STATUS_CONNECT);
         puc_macaddr = hisi_wlan_get_macaddr();
         if (HSL_NULL != puc_macaddr)
@@ -218,7 +218,7 @@ int aplink_demo_tcpserver(void)
     close(sockfd);
     gul_aplink_task_flag = 0;
     hsl_demo_set_status(HSL_STATUS_UNCREATE);
-    /* ɾ��aplink TCP�������߳� */
+    /* 删除aplink TCP服务器线程 */
     ul_ret = LOS_TaskDelete(gul_aplink_taskid);
     if (0 != ul_ret)
     {
@@ -228,18 +228,18 @@ int aplink_demo_tcpserver(void)
 }
 
 /***************************************************************************
-�� �� ��  : aplink_demo_timeout_task
-��������  : ��ͳAPģʽ�µĳ�ʱ��ʱ���߳�
-�������  :
-�������  : ��
-�� �� ֵ  : �쳣����-1����������0
-���ú���  :
-��������  :
+函 数 名  : aplink_demo_timeout_task
+功能描述  : 传统AP模式下的超时定时器线程
+输入参数  :
+输出参数  : 无
+返 回 值  : 异常返回-1，正常返回0
+调用函数  :
+被调函数  :
 
-�޸���ʷ      :
- 1.��    ��   : 2017��3��29��
-   ��    ��   : 
-   �޸�����   : �����ɺ���
+修改历史      :
+ 1.日    期   : 2017年3月29日
+   作    者   : 
+   修改内容   : 新生成函数
 ***************************************************************************/
 int aplink_demo_timeout_task(void)
 {
@@ -260,10 +260,10 @@ int aplink_demo_timeout_task(void)
     if (0 != gul_aplink_task_flag)
     {
         printf("timeout,delete aplink task!\n");
-        /* ��ʱɾ���߳� */
+        /* 超时删除线程 */
         hsl_demo_set_status(HSL_STATUS_UNCREATE);
         close(gl_aplink_socketfd);
-        /* ɾ��aplink TCP�������߳� */
+        /* 删除aplink TCP服务器线程 */
         ul_ret = LOS_TaskDelete(gul_aplink_taskid);
         if (0 != ul_ret)
         {
@@ -271,7 +271,7 @@ int aplink_demo_timeout_task(void)
         }
     }
 
-    /* ɾ�������߳� */
+    /* 删除自身线程 */
     ul_ret = LOS_TaskDelete(gul_aplink_timeout_taskid);
     if (0 != ul_ret)
     {
@@ -282,18 +282,18 @@ int aplink_demo_timeout_task(void)
 
 extern int hilink_demo_get_status(void);
 /*****************************************************************************
- �� �� ��  : hsl_demo_main
- ��������  : hsl demo���������
- �������  : ��
- �������  : ��
- �� �� ֵ  :
- ���ú���  :
- ��������  :
+ 函 数 名  : hsl_demo_main
+ 功能描述  : hsl demo程序总入口
+ 输入参数  : 无
+ 输出参数  : 无
+ 返 回 值  :
+ 调用函数  :
+ 被调函数  :
 
- �޸���ʷ      :
-  1.��    ��   : 2016��11��29��
-    ��    ��   : 
-    �޸�����   : �����ɺ���
+ 修改历史      :
+  1.日    期   : 2016年11月29日
+    作    者   : 
+    修改内容   : 新生成函数
 
 *****************************************************************************/
 int aplink_demo_main(void)
@@ -310,7 +310,7 @@ int aplink_demo_main(void)
         HISI_PRINT_ERROR("aplink already start,cannot start again");
         return -HSL_FAIL;
     }
-    /* ��ͳAPģʽ��ȡ�Ľ����hsl��ȡ�Ľ���洢��ͬһλ�� */
+    /* 传统AP模式获取的结果和hsl获取的结果存储在同一位置 */
     g_pst_aplink_result    = &gst_hsl_params;
     hsl_demo_set_status(HSL_STATUS_CREATE);
     l_ret = hsl_demo_prepare();
@@ -321,7 +321,7 @@ int aplink_demo_main(void)
         return -HSL_FAIL;
     }
 
-    /* ����aplink��TCP�������߳� */
+    /* 创建aplink的TCP服务器线程 */
     memset(&st_aplink_task, 0, sizeof(TSK_INIT_PARAM_S));
     st_aplink_task.pfnTaskEntry = (TSK_ENTRY_FUNC)aplink_demo_tcpserver;
 
@@ -338,7 +338,7 @@ int aplink_demo_main(void)
     }
     gul_aplink_task_flag = 1;
 
-    /* ����aplink�ĳ�ʱ�߳� */
+    /* 创建aplink的超时线程 */
     memset(&st_aplink_timeout_task, 0, sizeof(TSK_INIT_PARAM_S));
     st_aplink_timeout_task.pfnTaskEntry = (TSK_ENTRY_FUNC)aplink_demo_timeout_task;
 
@@ -351,7 +351,7 @@ int aplink_demo_main(void)
     {
        hsl_demo_set_status(HSL_STATUS_UNCREATE);
        close(gl_aplink_socketfd);
-       /* ɾ��aplink TCP�������߳� */
+       /* 删除aplink TCP服务器线程 */
        ul_ret = LOS_TaskDelete(gul_aplink_taskid);
        if (0 != ul_ret)
        {
@@ -368,3 +368,5 @@ int aplink_demo_main(void)
         }
     #endif
 #endif
+
+

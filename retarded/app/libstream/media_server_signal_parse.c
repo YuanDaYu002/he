@@ -638,6 +638,7 @@ HLE_S32 cmd_set_time_zone(HLE_S32 SessionID)
 /*
 	传入接收到的信令数据，该函数解析接收到客户端发送的信令，交给响应函数处理
 */
+	extern unsigned char* hisi_wlan_get_macaddr(void);
 
 HLE_S32 med_ser_signal_parse(HLE_S32 SessionID,cmd_header_t *data,HLE_S32 length)
 {
@@ -684,7 +685,8 @@ HLE_S32 med_ser_signal_parse(HLE_S32 SessionID,cmd_header_t *data,HLE_S32 length
 	
 		case CMD_GET_MAC :    		//获取设备MAC地址
 			/*响应函数*/
-			cmd_Get_Mac(SessionID);	
+			//cmd_Get_Mac(SessionID);	
+			hisi_wlan_get_macaddr();
 			break;
 
 	
@@ -808,6 +810,7 @@ HLE_S32 med_ser_signal_parse(HLE_S32 SessionID,cmd_header_t *data,HLE_S32 length
 
 	return HLE_RET_OK;
 }
+
 
 
 

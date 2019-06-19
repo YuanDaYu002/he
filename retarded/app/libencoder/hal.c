@@ -1,7 +1,5 @@
 
 
-
-
 #include <string.h>
 #include <sys/types.h>
 #include <sys/stat.h>
@@ -818,7 +816,7 @@ void* MD_alarm_response_func(void* args) //文件模式 版本
         while(need_more_record != 0)
         {
             pthread_mutex_lock(&need_more_record_mut);
-            need_more_record = 0;//清零操作必须放到 ts_record 之前，因录制15s视频期间发生新的告警，则会被再次置位。
+            need_more_record = 0;//清零操作必须放到 fmp4_record 之前，因录制15s视频期间发生新的告警，则会被再次置位。
             pthread_mutex_unlock(&need_more_record_mut);
             file_count ++;
             
@@ -1024,7 +1022,12 @@ int app_main(int argc, char *argv[])
     int cycle_num = 0;
     int skip_len = 0;
     int snap_count = 2;//定义抓拍保存的图片数量
-	
+
+/* DEBUG
+	extern unsigned char* hisi_wlan_get_macaddr(void);
+	unsigned char* MAC = hisi_wlan_get_macaddr();
+	printf("**********MAC = %s ************\n",MAC);
+*/
 	
     for (;;) 
     {
@@ -1249,6 +1252,8 @@ int app_main(int argc, char *argv[])
 }
 
 #endif
+
+
 
 
 

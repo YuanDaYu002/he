@@ -842,12 +842,14 @@ HI_VOID SDK_init(void)
         goto Failed;
     }
 
+#if 0 //不需要
     ret = VO_init();
     if (ret != 0)
     {
         printf("vo init error.\n");
         goto Failed;
     }
+#endif
 
 #ifdef ENABLE_HIFB
     ret = HIFB_init();
@@ -893,12 +895,14 @@ HI_VOID SDK_init(void)
         goto Failed;
     }
 
+#if 0 //不需要
 	ret = H265E_init();
     if (ret != 0)
     {
         printf("h265e init error.\n");
         goto Failed;
     }
+#endif
 
     ret = JPEGE_init();
     if (ret != 0)
@@ -1040,6 +1044,7 @@ Failed:
 }
 #endif
 #endif /* End of #ifdef __cplusplus */
+
 
 
 
