@@ -1433,13 +1433,13 @@ int play_tip(char* fn, PLAY_END_CALLBACK cbFunc, void* cbfPara)
 }
 
 
-//=========AAC编码部分==================================================================
+/***************************************************************************************
+								AAC编码部分
+采样率：16KHZ
+每帧样本数：n (160 、320 、 480 ) 
+帧率：16000/n
+***************************************************************************************/
 
-/*
-	采样率：16KHZ
-	每帧样本数：320 
-	帧率：16000/320 = 50帧/s
-*/
 aac_config_t aac_config = {0};
 typedef struct _audFrm_t
 {
@@ -1451,10 +1451,8 @@ typedef struct _audFrm_t
 audFrm_t audFrm_flg = {0};
 
 InitParam easy_aac_handle = {0};
-EasyAACEncoder_Handle easyAAChandle = NULL;
 
-
-/*--------记录AAC编码数据到本地文件------------------*/
+/*---#记录AAC编码数据到本地文件------------------------------------------------------------*/
 #define AAC_FILE_BUF_SIZE (1024*40)
 typedef struct _AAC_record_file_t
 {
@@ -1464,8 +1462,16 @@ typedef struct _AAC_record_file_t
 	int 				recod_exit;//写完文件后标记退出
 }AAC_record_file_t;
 AAC_record_file_t AAC_file = {0};
-#define switch_record_AAC  0 //1：打开总控制开关 0：关闭
-/*---------------------------------------------------*/
+#define switch_record_AAC  0 	//1：打开总控制开关 0：关闭
+
+/*******************************************************************************
+*@ Description    :初始化AAC编码
+*@ Input          :
+*@ Output         :
+*@ Return         :成功：配置好的AAC参数指针（是个全局变量的地址，不需要释放）
+					失败：NULL
+*@ attention      :
+*******************************************************************************/
 aac_config_t* AAC_encode_init(void)
 {
 
@@ -1498,26 +1504,6 @@ aac_config_t* AAC_encode_init(void)
    aac_config.InputSamples = 0; 		//注意该参数是后边faac编码接口的传入样本数量，并不是要我们输入一个样本数值
    aac_config.MaxOutputBytes = 0;//8192;	//同上; 
 
-
-#if USE_EASY_AAC //easy AAC
-	easy_aac_handle.ucAudioCodec = Law_PCM16;  ///????????????????????????????????????????
-	easy_aac_handle.ucAudioChannel = 1;
-	easy_aac_handle.u32AudioSamplerate = PCM_SAMPLE_RATE;
-	easy_aac_handle.u32PCMBitSize = 16;
-
-	#if 1
-	unsigned char g711param = Rate16kBits;   
-	memcpy(&easy_aac_handle.g711param,&g711param,sizeof(g711param));
-	#endif
-	
-	easyAAChandle =  Easy_AACEncoder_Init(easy_aac_handle);
-	if(NULL == easyAAChandle)
-	{
-		ERROR_LOG("Easy_AACEncoder_Init fialed !\n");
-		return NULL;
-	}
-
-#else  //使用 faac 库
 	/*用于faac 编码 凑PCM样本数的缓存空间初始化*/
 	aac_config.EncHandle =  faacEncOpen(aac_config.SampleRate, \
 										aac_config.Channels, \
@@ -1562,7 +1548,7 @@ aac_config_t* AAC_encode_init(void)
         return NULL;
 	}
 
-#endif
+
 
 	pthread_mutex_init(&audFrm_flg.audFrm_mut, NULL);
     pthread_cond_init(&audFrm_flg.audFrm_cnd, NULL);
@@ -1650,11 +1636,17 @@ aac_config_t* AAC_encode_init(void)
 }
 
 
-/*
-返回值：
-	成功：返回编码成AAC帧的字节数（大于0）
-	失败： 小于等于0的数
-*/
+/*******************************************************************************
+*@ Description    :编码一帧AAC帧
+*@ Input          :<inputBuffer> 输入的PCM数据buf
+					<samplesInput>输入的PCM数据所包含采样的样本数
+*@ Output         :<outputBuffer>编码后的AAC数据指针
+					（全局缓冲空间，单次调用不需要释放，AAC编码退出统一释放）
+					<bufferSize>编码后的AAC数据大小
+*@ Return         :成功：返回编码成AAC帧的字节数（大于0）
+					失败： 小于等于0的数
+*@ attention      :
+*******************************************************************************/
 int AAC_encode(int * inputBuffer,
 					unsigned int samplesInput,
 					unsigned char *outputBuffer,
@@ -1670,15 +1662,14 @@ int AAC_encode(int * inputBuffer,
 }
 
  
-
-/*
-功能：发送一帧audio数据给AAC编码线程编码
-参数： 
-	pstFrm ：音频帧结构体指针
-返回值： 
-		成功 ： 0
-		失败： -1
-*/
+/*******************************************************************************
+*@ Description    :发送一帧audio数据给AAC编码线程编码
+*@ Input          :<pstFrm >音频帧结构体指针
+*@ Output         :
+*@ Return         :	成功 ： 0
+					失败： -1
+*@ attention      :
+*******************************************************************************/
 static unsigned int send_PCM_count = 0; //统计接收（发送）的PCM帧数（在一段时间内）
 int AAC_AENC_SendFrame( const AUDIO_FRAME_S *pstFrm)
 {
@@ -1697,14 +1688,14 @@ int AAC_AENC_SendFrame( const AUDIO_FRAME_S *pstFrm)
 	return 0;
 }
 
-/***************************************************************
-获取一帧编码后的AAC数据（编码业务在该函数内进行）
-参数：
-	pstStream：(输出)编码后AAC数据存放buf的首地址
-返回：
-	成功： AAC编码帧的实际长度
-	失败：-1
-***************************************************************/
+/*******************************************************************************
+*@ Description    :获取一帧编码后的AAC数据（编码业务在该函数内进行）
+*@ Input          :
+*@ Output         :<pstStream>(输出)编码后AAC数据存放buf的首地址
+*@ Return         :成功： AAC编码帧的实际长度
+					失败：-1
+*@ attention      :
+*******************************************************************************/
 int debug_count = 0;
 static unsigned int PCM_residue = 0; //PCM帧在 aac_config.PCMBuffer没能放下的部分数据大小
 static unsigned char PCM_residue_buf[PCM_FRAME_SIZE] = {0};//PCM帧在 aac_config.PCMBuffer没能放下的部分数据(备份)
@@ -1733,25 +1724,6 @@ AAC_OUT_LEN_IS_0:
 		//进行AAC编码
 		debug_count ++;
 
-		#if USE_EASY_AAC
-			memcpy(&PCM_buf,audFrm_flg.audFrm.pVirAddr[0],audFrm_flg.audFrm.u32Len); //备份PCM帧实际数据
-			//DEBUG_LOG("in Easy_AACEncoder_Encode ! audFrm_bak.u32Len(%d)\n",audFrm_bak.u32Len); //640
-			//注意，传入的samples数据量小的情况下，该接口不一定每次调用都有AAC编码帧返回，有可能返回0
-			ret = Easy_AACEncoder_Encode(easyAAChandle,(unsigned char*)&PCM_buf,audFrm_bak.u32Len,
-									aac_config.AACBuffer,(unsigned int *)&out_len);
-			if(ret < 0)
-			{
-				ERROR_LOG("Easy_AACEncoder_Encode failed ! ret(%d)\n",ret);
-				return -1;
-			}
-			else if (0 == ret )//当前数据量不够编码一帧AAC帧，继续等下一次输入的原数据
-			{
-				pthread_mutex_unlock(&audFrm_flg.audFrm_mut);
-				//DEBUG_LOG("out AAC frame length is 0 ,waite the next input frame... \n");
-				goto AAC_OUT_LEN_IS_0;
-			}
-		
-		#else //直接调用faac库
 			//需要进行凑数据处理
 			if(PCM_residue > 0)//上次循环还有数据没放完，先放上次剩余的部分
 			{
@@ -1809,9 +1781,6 @@ AAC_OUT_LEN_IS_0:
 				//DEBUG_LOG("Lack PCM data---waite the next input frame... \n");
 				goto AAC_OUT_LEN_IS_0;
 			}
-
-			
-		#endif
 		
 		if(debug_count >= 10)
 		{
@@ -1862,22 +1831,28 @@ AAC_OUT_LEN_IS_0:
 }
 
 
+/*******************************************************************************
+*@ Description    :退出AAC编码
+*@ Input          :
+*@ Output         :
+*@ Return         :成功：0
+					失败：-1
+*@ attention      :
+*******************************************************************************/
 int  AAC_encode_exit(void)
 {
-	#if USE_EASY_AAC
-		Easy_AACEncoder_Release(easyAAChandle);
-	#else
-		 if(aac_config.EncHandle)
-	    {  
-	        faacEncClose(aac_config.EncHandle);  
-	        aac_config.EncHandle = NULL;  
-	    }
-		else
-		{
-			ERROR_LOG("AAC_encode_exit failed !\n");
-			return -1;
-		}
-	#endif
+
+	 if(aac_config.EncHandle)
+    {  
+        faacEncClose(aac_config.EncHandle);  
+        aac_config.EncHandle = NULL;  
+    }
+	else
+	{
+		ERROR_LOG("AAC_encode_exit failed !\n");
+		return -1;
+	}
+
 
 	#if switch_record_AAC
 		close(AAC_file.AAC_file_fd);
@@ -1888,6 +1863,7 @@ int  AAC_encode_exit(void)
 	DEBUG_LOG("AAC_encode_exit success !\n");
 	 return 0;
 }
+
 
 
 
