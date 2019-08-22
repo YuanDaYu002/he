@@ -27,6 +27,7 @@ extern "C" {
 #include "hi_isp_param.h"
 #include "osal_mmz.h"
 
+#include "hle_watchdog.h"
 
 
 //#define ENABLE_HIFB
@@ -774,8 +775,9 @@ static HI_S32 LCD_init(void)
 #endif
 
 extern void osal_proc_init(void);
-extern int wtdg_mod_init(void *pArgs);
 extern int rtc_mod_init(void);
+extern int hle_watchdog_init(void);
+extern int hle_watchdog_exit(void);
 
 HI_VOID SDK_init(void)
 {
@@ -1002,15 +1004,16 @@ HI_VOID SDK_init(void)
         goto Failed;
     }
 
-	
-	ret = wtdg_mod_init(NULL);
+#if !(DEBUG_WATCHDOG)
+	ret = hle_watchdog_init();
 	if(ret !=0 )
 	{
 		printf("watchdog init error.\n");
 		goto Failed;
 
 	}
-	
+#endif
+		
 	ret = rtc_mod_init();
 	if(ret !=0 )
 	{

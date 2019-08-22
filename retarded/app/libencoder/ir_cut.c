@@ -14,6 +14,9 @@
 #include "mpi_ae.h"
 #include "mpi_awb.h"
 #include "mpi_sys.h"
+#include "gpio_reg.h"
+#include "typeport.h"
+#include "comm_sys.h"
 
 
 
@@ -27,161 +30,93 @@ static HI_IR_AUTO_THREAD_S g_astIrThread[ISP_MAX_DEV_NUM] = {{0}};
 static ISP_IR_AUTO_ATTR_S g_astIrAttr[ISP_MAX_DEV_NUM] = {{0}};
 static ISP_DEV IspDev = 0;
 
-#define SAMPLE_IR_CALIBRATION_MODE  (0)
-#define SAMPLE_IR_AUTO_MODE         (1)
 #define HI_3516CV300_CHIP           (0)
 #define HI_3516EV100_CHIP           (1)
 #define GAIN_MAX_COEF               (280)
 #define GAIN_MIN_COEF               (190)
 
-static HI_U32 gu32Chip;
-
-static HI_S32 SAMPLE_IR_Set_Reg(HI_U32 u32Addr,HI_U32 u32Value)
-{    
-    HI_U32 *pu32Addr = NULL;    
-    HI_U32 u32MapLen = sizeof(u32Value);    
-    pu32Addr = (HI_U32 *)HI_MPI_SYS_Mmap(u32Addr, u32MapLen);    
-    if(NULL == pu32Addr)    
-    {        
-        return HI_FAILURE;    
-    }    
-    *pu32Addr = u32Value;    
-    return HI_MPI_SYS_Munmap(pu32Addr, u32MapLen);
-}
-//{
-//    __iomem *reg_vir_addr;
-//    reg_vir_addr = ioremap_nocache(reg_phy_addr, sizeof(unsigned int));
-//    if(reg_vir_addr == NULL)
-//    {
-//        printk("ioremap_nocache error\n");
-//        return -1;
-//    }
-//
-//	*((volatile int *)(reg_vir_addr)) = value;
-//
-//	iounmap(reg_vir_addr);
-//
-//    return 0;
-//}
 
 
-//Normal Mode
-void SAMPLE_IR_CUT_ENBLE(void)
+
+/*******************************************************************************
+*@ Description    :IR-CUT 切换到 正常模式
+*@ Input          :
+*@ Output         :
+*@ Return         :
+*@ attention      :
+*******************************************************************************/
+int  IR_CUT_ENBLE(void)
 {
-    if(gu32Chip == HI_3516CV300_CHIP)
-    {
-        //pin_mux
-        SAMPLE_IR_Set_Reg(0x12040004,0x0);//GPIO6_5
-        SAMPLE_IR_Set_Reg(0x12040008,0x0);//GPIO6_6
+	int ret; 
 
-        //dir
-        SAMPLE_IR_Set_Reg(0x12146400,0x60);//GPIO6_6 GPIO6_5
-        //data
-        SAMPLE_IR_Set_Reg(0x12146180,0x40);
-        usleep(1000000);
-        //back to original
-        SAMPLE_IR_Set_Reg(0x12146180,0x0);
+	//设置复用
+	HI_MPI_SYS_SetReg(MUXCTRL_REG62,0x0);//GPIO0_1
 
-	}
-	else if(gu32Chip == HI_3516EV100_CHIP)
-	{
-	    //pin_mux
-	    SAMPLE_IR_Set_Reg(0x12040004,0x0);//GPIO6_5
-        SAMPLE_IR_Set_Reg(0x12040094,0x0);///GPIO3_0
-        //dir
-        SAMPLE_IR_Set_Reg(0x12146400,0x20);//GPIO6_5 
-        SAMPLE_IR_Set_Reg(0x12143400,0x1);//GPIO3_0
-        //data
-        SAMPLE_IR_Set_Reg(0x12146080,0x00);//GPIO6_5 0
-        SAMPLE_IR_Set_Reg(0x12143004,0x1);//GPIO3_0 1
-        
-        usleep(1000000);
-        //reset
-        SAMPLE_IR_Set_Reg(0x12146080,0x0);
-        SAMPLE_IR_Set_Reg(0x12143004,0x0);
+	
+	//设置方向,GPIO0_1 	/GPIO0_2 配置为输出
+	HLE_U32 val;
+	HI_MPI_SYS_GetReg(GPIO_DIR(0), &val);
+	val = val|0x2;
+	val = val|0x4;
+	HI_MPI_SYS_SetReg(GPIO_DIR(0),val);
 
-	}
-	else
-	{
-	    printf("Chip undefine\n");
-	}
+	//设置值
+	HI_MPI_SYS_SetReg(GPIO_PIN_DATA(0,1),0x00);//GPIO0_1 设置为 0（低电平）	
+	HI_MPI_SYS_SetReg(GPIO_PIN_DATA(0,2),0x04);//GPIO0_2 设置为 1（高电平）
+	
+	usleep(100*1000);
+	//reset
+	HI_MPI_SYS_SetReg(GPIO_PIN_DATA(0,1),0);		
+	HI_MPI_SYS_SetReg(GPIO_PIN_DATA(0,2),0);
+
+	return 0;
+
 
 }
+
 //IR MODE
-void SAMPLE_IR_CUT_DISABLE(void)
+/*******************************************************************************
+*@ Description    :IR-CUT 切换到 夜视模式
+*@ Input          :
+*@ Output         :
+*@ Return         :
+*@ attention      :
+*******************************************************************************/
+int  IR_CUT_DISABLE(void)
 {
-    
-    if(gu32Chip == HI_3516CV300_CHIP)
-    {
-        SAMPLE_IR_Set_Reg(0x12040004,0x0);
-        SAMPLE_IR_Set_Reg(0x12040008,0x0);
-        
-        SAMPLE_IR_Set_Reg(0x12146400,0x60);
-        
-        SAMPLE_IR_Set_Reg(0x12146180,0x20);
-        usleep(1000000);
-        SAMPLE_IR_Set_Reg(0x12146180,0x0);
+    	int ret;
 
-    }
-    else if(gu32Chip == HI_3516EV100_CHIP)
-	{
-	    //pin_mux
-	    SAMPLE_IR_Set_Reg(0x12040004,0x0);
-        SAMPLE_IR_Set_Reg(0x12040008,0x0);
-        
-        SAMPLE_IR_Set_Reg(0x12146400,0x20);//GPIO6_5 
-        SAMPLE_IR_Set_Reg(0x12143400,0x1);//GPIO3_0
-        
-        SAMPLE_IR_Set_Reg(0x12146080,0x20);//GPIO6_5 1
-        SAMPLE_IR_Set_Reg(0x12143004,0x0);//GPIO3_0 0
-        
-        usleep(1000000);
-        SAMPLE_IR_Set_Reg(0x12146080,0x0);
-        SAMPLE_IR_Set_Reg(0x12143004,0x0);
+		//设置复用
+		HI_MPI_SYS_SetReg(MUXCTRL_REG62,0x0);//GPIO0_1
+		
+		//设置方向,GPIO0_1	/GPIO0_2 配置为输出
+		HLE_U32 val;
+		HI_MPI_SYS_GetReg(GPIO_DIR(0), &val);
+		val = val|0x2;
+		val = val|0x4;
+		HI_MPI_SYS_SetReg(GPIO_DIR(0),val);
+		
+		//设置值
+		HI_MPI_SYS_SetReg(GPIO_PIN_DATA(0,1),0x02);//GPIO0_1 设置为 1（高电平）
+		HI_MPI_SYS_SetReg(GPIO_PIN_DATA(0,2),0x00);//GPIO0_2 设置为 0（低电平）
+		
+		usleep(100*1000);
+		//reset
+		HI_MPI_SYS_SetReg(GPIO_PIN_DATA(0,1),0);		
+		HI_MPI_SYS_SetReg(GPIO_PIN_DATA(0,2),0);
 
-	}
-	else
-	{
-	    printf("Chip undefine\n");
-	}
+		return 0;
 }
 
 
 
-
-
-
-void SAMPLE_IR_AUTO_Usage(char* sPrgNm)
-{
-    printf("Usage : %s <chip> <mode> <Normal2IrExpThr> <Ir2NormalExpThr> <RGMax> <RGMin> <BGMax> <BGMin> <IrStatus>\n", sPrgNm);
-
-    printf("chip:\n");
-    printf("\t 0) HI3516CV300.\n");
-    printf("\t 1) HI3516EV100.\n");
-
-    printf("mode:\n");
-    printf("\t 0) SAMPLE_IR_CALIBRATION_MODE.\n");
-    printf("\t 1) SAMPLE_IR_AUTO_MODE.\n");
-
-    printf("Normal2IrExpThr:\n");
-    printf("\t ISO threshold of switching from normal to IR mode.\n");
-
-    printf("Ir2NormalExpThr:\n");
-    printf("\t ISO threshold of switching from IR to normal mode.\n");
-
-    printf("RGMax/RGMin/BGMax/BGMin:\n");
-    printf("\t Maximum(Minimum) value of R/G(B/G) in IR scene.\n");
-
-    printf("IrStatus:\n");
-    printf("\t Current IR status. 0: Normal mode; 1: IR mode.\n");
-
-    printf("e.g : %s 0 0 (SAMPLE_IR_CALIBRATION_MODE)\n", sPrgNm);
-    printf("e.g : %s 0 1 (SAMPLE_IR_AUTO_MODE, default parameters)\n", sPrgNm);
-    printf("e.g : %s 0 1 16000 400 280 190 280 190 0 (SAMPLE_IR_AUTO_MODE, user_define parameters)\n", sPrgNm);
-
-    return;
-}
-
+/*******************************************************************************
+*@ Description    :切换到正常模式（图像 + IR-CUT）
+*@ Input          :
+*@ Output         :
+*@ Return         :
+*@ attention      :
+*******************************************************************************/
 HI_S32 ISP_IrSwitchToNormal(ISP_DEV IspDev)
 {
     HI_S32 s32Ret;
@@ -190,7 +125,7 @@ HI_S32 ISP_IrSwitchToNormal(ISP_DEV IspDev)
     ISP_COLORMATRIX_ATTR_S stIspCCMAttr;
 
     /* switch ir-cut to normal */
-    SAMPLE_IR_CUT_ENBLE();
+    IR_CUT_ENBLE();
 
 
     /* switch isp config to normal */
@@ -239,6 +174,13 @@ HI_S32 ISP_IrSwitchToNormal(ISP_DEV IspDev)
     return HI_SUCCESS;
 }
 
+/*******************************************************************************
+*@ Description    :切换到夜视模式（图像 + IR-CUT）
+*@ Input          :
+*@ Output         :
+*@ Return         :
+*@ attention      :
+*******************************************************************************/
 HI_S32 ISP_IrSwitchToIr(ISP_DEV IspDev)
 {
     HI_S32 s32Ret;
@@ -247,14 +189,16 @@ HI_S32 ISP_IrSwitchToIr(ISP_DEV IspDev)
     ISP_COLORMATRIX_ATTR_S stIspCCMAttr;
 
     /* switch isp config to ir */
+	/*---#修改ISP 饱和度属性 ------------------------------------------------------------*/
     s32Ret = HI_MPI_ISP_GetSaturationAttr(IspDev, &stIspSaturationAttr);
     if (HI_SUCCESS != s32Ret)
     {
         printf("HI_MPI_ISP_GetSaturationAttr failed\n");
         return s32Ret;
     }
-    stIspSaturationAttr.enOpType = OP_TYPE_MANUAL;
-    stIspSaturationAttr.stManual.u8Saturation = 0;
+	
+    stIspSaturationAttr.enOpType = OP_TYPE_MANUAL; //设置饱和度类型(手动)。
+    stIspSaturationAttr.stManual.u8Saturation = 0; //手动饱和度值。取值范围：[0x0, 0xFF]
     s32Ret = HI_MPI_ISP_SetSaturationAttr(IspDev, &stIspSaturationAttr);
     if (HI_SUCCESS != s32Ret)
     {
@@ -262,32 +206,39 @@ HI_S32 ISP_IrSwitchToIr(ISP_DEV IspDev)
         return s32Ret;
     }
 
+	/*---#修改ISP 白平衡属性。------------------------------------------------------------*/
     s32Ret = HI_MPI_ISP_GetWBAttr(IspDev, &stIspWbAttr);
     if (HI_SUCCESS != s32Ret)
     {
         printf("HI_MPI_ISP_GetWBAttr failed\n");
         return s32Ret;
     }
-    stIspWbAttr.enOpType = OP_TYPE_MANUAL;
-    stIspWbAttr.stManual.u16Bgain  = 0x100;
-    stIspWbAttr.stManual.u16Gbgain = 0x100;
-    stIspWbAttr.stManual.u16Grgain = 0x100;
-    stIspWbAttr.stManual.u16Rgain  = 0x100;
+	
+	stIspWbAttr.enOpType = OP_TYPE_MANUAL; //切换为手动白平衡
+	stIspWbAttr.stManual.u16Rgain  = 0x100;//手动白平衡(红色)通道增益，8bit 小数精度。取值范围：[0x0,0xFFF]。
+	stIspWbAttr.stManual.u16Grgain = 0x100;//手动白平衡(绿色)通道增益，8bit 小数精度。取值范围：[0x0,0xFFF]。
+	stIspWbAttr.stManual.u16Gbgain = 0x100;//手动白平衡(绿色)通道增益，8bit 小数精度。取值范围：[0x0,0xFFF]
+	stIspWbAttr.stManual.u16Bgain  = 0x100;//手动白平衡(蓝色)通道增益，8bit 小数精度。取值范围：[0x0,0xFFF]。
+       
     s32Ret = HI_MPI_ISP_SetWBAttr(IspDev, &stIspWbAttr);
     if (HI_SUCCESS != s32Ret)
     {
         printf("HI_MPI_ISP_SetWBAttr failed\n");
         return s32Ret;
     }
-
+	
+	/*---#修改颜色矩阵属性------------------------------------------------------------*/
     s32Ret = HI_MPI_ISP_GetCCMAttr(IspDev, &stIspCCMAttr);
     if (HI_SUCCESS != s32Ret)
     {
         printf("HI_MPI_ISP_GetCCMAttr failed\n");
         return s32Ret;
     }
-    stIspCCMAttr.enOpType = OP_TYPE_MANUAL;
-    stIspCCMAttr.stManual.au16CCM[0] = 0x100;
+    stIspCCMAttr.enOpType = OP_TYPE_MANUAL;//颜色校正矩阵类型(手动模式)。
+	/*手动颜色校正矩阵，8bit 小数精度。bit 15 是符号位，0 表示正数，1
+	表示负数，例如 0x8010 表示-16。取值范围：[0x0,0xFFFF]。
+	*/
+	stIspCCMAttr.stManual.au16CCM[0] = 0x100;
     stIspCCMAttr.stManual.au16CCM[1] = 0x0;
     stIspCCMAttr.stManual.au16CCM[2] = 0x0;
     stIspCCMAttr.stManual.au16CCM[3] = 0x0;
@@ -302,16 +253,24 @@ HI_S32 ISP_IrSwitchToIr(ISP_DEV IspDev)
         printf("HI_MPI_ISP_SetCCMAttr failed\n");
         return s32Ret;
     }
-    usleep(1000000);
+	
+    usleep(1000000);//1s睡眠
 
     /* switch ir-cut to ir */
-    SAMPLE_IR_CUT_DISABLE();
+    IR_CUT_DISABLE();
 
 
     return HI_SUCCESS;
 }
 
-HI_S32 SAMPLE_ISP_IrAutoRun(ISP_DEV IspDev)
+/*******************************************************************************
+*@ Description    :(正常/夜视) 模式自动切换线程函数
+*@ Input          :
+*@ Output         :
+*@ Return         :
+*@ attention      :
+*******************************************************************************/
+HI_S32 ISP_IrAutoRun(ISP_DEV IspDev)
 {
     HI_S32 s32Ret = HI_SUCCESS;
     ISP_IR_AUTO_ATTR_S stIrAttr;
@@ -330,6 +289,7 @@ HI_S32 SAMPLE_ISP_IrAutoRun(ISP_DEV IspDev)
         /* run_interval: 40 ms */
         usleep(40000);
 
+		//运行红外自动切换功能
         s32Ret = HI_MPI_ISP_IrAutoRunOnce(IspDev, &stIrAttr);
         if (HI_SUCCESS != s32Ret)
         {
@@ -370,171 +330,93 @@ HI_S32 SAMPLE_ISP_IrAutoRun(ISP_DEV IspDev)
     return HI_SUCCESS;
 }
 
-static void* SAMPLE_ISP_IrAutoThread(void* param)
+
+/*******************************************************************************
+*@ Description    :自动模式 线程入口函数
+*@ Input          :
+*@ Output         :
+*@ Return         :
+*@ attention      :
+*******************************************************************************/
+static void* ISP_IrAutoThread(void* param)
 {
+	DEBUG_LOG("ISP_IrAutoThread start!\n");
+    pthread_detach(pthread_self());
     ISP_DEV IspDev;
 
     IspDev = (ISP_DEV)param;
 
-    prctl(PR_SET_NAME, (unsigned long)"isp_IrAuto", 0, 0, 0);
+    prctl(PR_SET_NAME, (unsigned long)"isp_IrAuto", 0, 0, 0);//修改线程名字
+    ISP_IrAutoRun(IspDev); //循环，直到退出
 
-    SAMPLE_ISP_IrAutoRun(IspDev);
+	DEBUG_LOG("ISP_IrAutoThread exit!\n");
 
+	pthread_exit(NULL);
 	return NULL;
 }
 
-HI_S32 SAMPLE_ISP_IrAutoExit(ISP_DEV IspDev)
+/*******************************************************************************
+*@ Description    :退出ir-cut切换线程
+*@ Input          :
+*@ Output         :
+*@ Return         :
+*@ attention      :
+*******************************************************************************/
+HI_S32 ISP_IrAutoExit(ISP_DEV IspDev)
 {
     if (g_astIrThread[IspDev].pThread)
     {
         g_astIrThread[IspDev].bThreadFlag = HI_FALSE;
-        pthread_join(g_astIrThread[IspDev].pThread, NULL);
+        //pthread_join(g_astIrThread[IspDev].pThread, NULL);
         g_astIrThread[IspDev].pThread = 0;
     }
-
-    //SAMPLE_IR_CUT_RELEASE();
-
 
     return HI_SUCCESS;
 }
 
-void SAMPLE_IR_AUTO_HandleSig(HI_S32 signo)
+
+
+/*******************************************************************************
+*@ Description    :IR-CUT主业务入口函数
+*@ Input          :
+*@ Output         :
+*@ Return         :
+*@ attention      :
+*******************************************************************************/
+int ir_cut_main(void)
 {
-    int ret;
-
-    if (SIGINT == signo || SIGTERM == signo)
-    {
-        ret = SAMPLE_ISP_IrAutoExit(IspDev);
-        if (ret != 0)
-        {
-            printf("SAMPLE_ISP_IrAutoExit failed\n");
-            //exit(-1);
-            return;
-        }
-    }
-    //exit(-1);
-    return;
-}
-
-
-//int app_main(int argc, char *argv[])
-int ir_cut_test_main(int argc, char *argv[])
-{
+	printf("-------------into ir_cut_main--------------------\n");
     HI_S32 s32Ret = HI_SUCCESS;
-    HI_U32 u32Mode = SAMPLE_IR_AUTO_MODE;
     
     IspDev = 0;
     
     /* need to modified when sensor/lens/IR-cut/Infrared light changed */
     g_astIrAttr[IspDev].bEnable = HI_TRUE;
-    g_astIrAttr[IspDev].u32Normal2IrIsoThr = 16000;
-    g_astIrAttr[IspDev].u32Ir2NormalIsoThr = 400;
-    g_astIrAttr[IspDev].u32RGMax = 280;
-    g_astIrAttr[IspDev].u32RGMin = 190;
-    g_astIrAttr[IspDev].u32BGMax = 280;
-    g_astIrAttr[IspDev].u32BGMin = 190;
-    g_astIrAttr[IspDev].enIrStatus = ISP_IR_STATUS_NORMAL;
+    g_astIrAttr[IspDev].u32Normal2IrIsoThr = 16000; //从普通状态切换到红外状态的 ISO 阈值(大于该值就会切换)
+    g_astIrAttr[IspDev].u32Ir2NormalIsoThr = 400;//从红外状态切换到普通状态的 ISO 阈值(小于该值就需要切换)
+    g_astIrAttr[IspDev].u32RGMax = 280;//红外状态下的 R/G 最大值(实际图像的 R/G 大于此参数时,切回普通状态)
+    g_astIrAttr[IspDev].u32RGMin = 190;//红外状态下的 R/G 最小值(实际图像的 R/G 小于此参数时,切回普通状态)
+    g_astIrAttr[IspDev].u32BGMax = 280;//红外状态下的 B/G 最大值(实际图像的 B/G 大于此参数时,切回普通状态)
+    g_astIrAttr[IspDev].u32BGMin = 190;//红外状态下的 B/G 最小值(实际图像的 B/G 小于此参数时,切回普通状态)
+    g_astIrAttr[IspDev].enIrStatus = ISP_IR_STATUS_NORMAL;//设备当前的红外状态
 
-
-
-    gu32Chip = HI_3516EV100_CHIP;
-    u32Mode = SAMPLE_IR_AUTO_MODE;
-    
-    
-    if ((u32Mode != SAMPLE_IR_AUTO_MODE) && (u32Mode != SAMPLE_IR_CALIBRATION_MODE))
-    {
-        printf("the mode is invaild!\n");
-        SAMPLE_IR_AUTO_Usage(argv[0]);
-        return HI_SUCCESS;
-    }
-    if((gu32Chip != HI_3516CV300_CHIP) && (gu32Chip != HI_3516EV100_CHIP))
-    {
-        printf("the gu32Chip is invaild!\n");
-        SAMPLE_IR_AUTO_Usage(argv[0]);
-        return HI_SUCCESS;
-    }
-
-    //init 
-    //SAMPLE_IR_CUT_INIT();
-
-    /* SAMPLE_IR_CALIBRATION_MODE */
-    if (SAMPLE_IR_CALIBRATION_MODE == u32Mode)
-    {
-        ISP_STATISTICS_S stStat;
-        HI_U32 u32RG, u32BG;
-
-        /* 1. Infrared scene without visible light */
-
-        /* 2. Switch to IR */
-        s32Ret = ISP_IrSwitchToIr(IspDev);
-        if (HI_SUCCESS != s32Ret)
-        {
-            printf("ISP_IrSwitchToIr failed\n");
-            //SAMPLE_IR_CUT_RELEASE();
-            return s32Ret;
-        }
-
-        /* 3. waiting for AE to stabilize */
-        usleep(1000000);
-
-        /* 4. calculate RGMax/RGMin/BGMax/BGMin */
-        s32Ret = HI_MPI_ISP_GetStatistics(IspDev, &stStat);
-        if (HI_SUCCESS != s32Ret)
-        {
-            printf("HI_MPI_ISP_GetStatistics failed\n");
-            //SAMPLE_IR_CUT_RELEASE();
-            return s32Ret;
-        }
-
-        u32RG = ((HI_U32)stStat.stWBStat.stBayerStatistics.u16GlobalR << 8) / DIV_0_TO_1(stStat.stWBStat.stBayerStatistics.u16GlobalG);
-        u32BG = ((HI_U32)stStat.stWBStat.stBayerStatistics.u16GlobalB << 8) / DIV_0_TO_1(stStat.stWBStat.stBayerStatistics.u16GlobalG);
-        printf("RGMax:%d, RGMin:%d, BGMax:%d, BGMin:%d\n",
-            u32RG * GAIN_MAX_COEF >> 8, u32RG * GAIN_MIN_COEF >> 8,
-            u32BG * GAIN_MAX_COEF >> 8, u32BG * GAIN_MIN_COEF >> 8);
-        //SAMPLE_IR_CUT_RELEASE();
-        return HI_SUCCESS;
-    }
-
-    /* SAMPLE_IR_AUTO_MODE */
-    if (argc > 8)
-    {
-        g_astIrAttr[IspDev].u32Normal2IrIsoThr = atoi(argv[3]);
-        g_astIrAttr[IspDev].u32Ir2NormalIsoThr = atoi(argv[4]);
-        g_astIrAttr[IspDev].u32RGMax = atoi(argv[5]);
-        g_astIrAttr[IspDev].u32RGMin = atoi(argv[6]);
-        g_astIrAttr[IspDev].u32BGMax = atoi(argv[7]);
-        g_astIrAttr[IspDev].u32BGMin = atoi(argv[8]);
-        g_astIrAttr[IspDev].enIrStatus = atoi(argv[9]);
-        if ((g_astIrAttr[IspDev].enIrStatus != ISP_IR_STATUS_NORMAL) && (g_astIrAttr[IspDev].enIrStatus != ISP_IR_STATUS_IR))
-        {
-            printf("the mode is invaild!\n");
-            SAMPLE_IR_AUTO_Usage(argv[0]);
-            return HI_SUCCESS;
-        }
-
-        printf("[UserConfig] Normal2IrIsoThr:%u, Ir2NormalIsoThr:%u, RG:[%u,%u], BG:[%u,%u], IrStatus:%d\n",
-            g_astIrAttr[IspDev].u32Normal2IrIsoThr, g_astIrAttr[IspDev].u32Ir2NormalIsoThr,
-            g_astIrAttr[IspDev].u32RGMin, g_astIrAttr[IspDev].u32RGMax,
-            g_astIrAttr[IspDev].u32BGMin, g_astIrAttr[IspDev].u32BGMax,
-            g_astIrAttr[IspDev].enIrStatus);
-    }
-
+    /* SAMPLE_IR_AUTO_MODE 启动自动模式线程*/
     g_astIrThread[IspDev].bThreadFlag = HI_TRUE;
-
-    s32Ret = pthread_create(&g_astIrThread[IspDev].pThread, HI_NULL, SAMPLE_ISP_IrAutoThread, (HI_VOID *)IspDev);
+    s32Ret = pthread_create(&g_astIrThread[IspDev].pThread, HI_NULL, ISP_IrAutoThread, (HI_VOID *)IspDev);
     if (0 != s32Ret)
     {
         printf("%s: create isp ir_auto thread failed!, error: %d, %s\r\n", __FUNCTION__, s32Ret, strerror(s32Ret));
         return HI_FAILURE;
     }
+	
 
-    printf("---------------press any key to exit!---------------\n");
-    getchar();
-
-    SAMPLE_ISP_IrAutoExit(IspDev);
+    //ISP_IrAutoExit(IspDev);
 
     return HI_SUCCESS;
+
 }
+
+
 
 
 

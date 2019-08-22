@@ -20,7 +20,7 @@
  nor flash：共16M
 	 |------1M-----|--------7M---------|----------7M-------|----64K---|-----960K-----------|
 	 |-----uboot---|---[0]Liteos+app---|---[1]Liteos+app---|--config--|------jffs0---------|
-	 0x0	0x100000			 0x800000		0xF00000	0xF10000	 0x1000000
+	 0x0	0x100000			 0x800000				0xF00000	0xF10000	 0x1000000
  
  */
 	 // 0: kernel + app 分区
@@ -210,13 +210,13 @@ upgrade_status_e upgrade_write_norflash(void *buf,unsigned int buf_len)
 		hispinor_write(&config_info,CONFIG_REGION_START,sizeof(config_info)-sizeof(hle_image_info_t));
 		//空出后部分 IMAGE1 的部分
 	}
-	
+
 	//3.擦除 IMAGE 分区（升级文件）
-	DEBUG_LOG("hispinor_erase IMAGE ... \n");
+	DEBUG_LOG("hispinor_erase IMAGE ... erase size(%#x)\n",region_size);
 	hispinor_erase(upgrade_addr,region_size);
 	
 	//4.写 IMAGE 分区 （升级文件）
-	DEBUG_LOG("hispinor_write IMAGE ... \n");
+	DEBUG_LOG("hispinor_write IMAGE ... write size(%d)\n",buf_len);
 	hispinor_write(buf,upgrade_addr, buf_len);
 
 	//5.写 CONFIG 分区（升级分区的参数）

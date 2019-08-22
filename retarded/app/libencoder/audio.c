@@ -37,7 +37,7 @@
 #include "shine/layer3.h"
 #include "comm_sys.h"
 #include "EasyAACEncoderAPI.h"
-
+#include "gpio_reg.h"
  
 
 
@@ -1182,22 +1182,12 @@ int Ai2AoHandler(int Aidev, int Aichn, int Aodev, int Aochn)
 
 
 
-
-//aio init
-#define GPIO_BASE(group)                (0x12140000 + (group) * 0x1000)
-#define GPIO_PIN_DATA(group, pin)       (GPIO_BASE(group) + (1 << (2 + pin)))
-#define GPIO_DIR(group)                 (GPIO_BASE(group) + 0x400)
-
-#define STATUS_AUDIO_MUTE   GPIO_PIN_DATA(3, 2)
-#define DATA_GPIO3_2 	0x1204008C
-
-
 int hal_audio_init(void)
 {
 	
 	//------拉低GPIO3_2（否则为静音）-------------------------------------------------
-	int ret = HI_MPI_SYS_SetReg(DATA_GPIO3_2, 0);//复用端口选择为 GPIO3_2
-	//int ret = SYS_SetReg(DATA_GPIO3_2, 0);
+	int ret = HI_MPI_SYS_SetReg(MUXCTRL_REG35, 0);//复用端口选择为 GPIO3_2
+	//int ret = SYS_SetReg(MUXCTRL_REG35, 0);
 	if (HI_SUCCESS != ret)
 	{
 		ERROR_LOG("HI_MPI_SYS_SetReg fail: %#x.\n", ret);

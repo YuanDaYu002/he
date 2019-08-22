@@ -195,7 +195,7 @@ void my_GetCurrentTime(st_Time_Info *Time)
 
 }
 
-/*
+
 unsigned long getTickCount(void)
 {
 
@@ -204,7 +204,7 @@ unsigned long getTickCount(void)
 	return current.tv_sec*1000 + current.tv_usec/1000;
 
 }
-*/
+
 
 void mSleep(UINT32 ms)
 {
@@ -377,7 +377,7 @@ void *Thread_LoginStatus_Check(void *arg)
 	DEBUG_LOG("Thread_LoginStatus_Check start...\n");
 	HLE_S32 i = 0;
 	HLE_S8 LoginStatus = 0;
-	HLE_S8 StatusFlags = -99;
+	//HLE_S8 StatusFlags = -99;
 	while (0 == gThread_Exit)
 	{
 		mSleep(1000);
@@ -387,26 +387,26 @@ void *Thread_LoginStatus_Check(void *arg)
 			
 			continue;
 		}	
-		DEBUG_LOG("PPCS_LoginStatus_Check!\n");
-		if (0 == gThread_Exit)
+		DEBUG_LOG("PPCS_LoginStatus_Check....\n");
+		
+		if (ERROR_PPCS_SUCCESSFUL == PPCS_LoginStatus_Check(&LoginStatus))
 		{
-			if (ERROR_PPCS_SUCCESSFUL == PPCS_LoginStatus_Check(&LoginStatus))
+			if (1 == LoginStatus) 
 			{
-				if (StatusFlags != LoginStatus)
-				{
-					StatusFlags = LoginStatus;
-					if (1 == LoginStatus) 
-					{
-						st_info("Got Server Response!!\n");
-					}						
-					else 
-					{
-						P2P_status = offline;
-						st_info("No Server Response!!!\n");
-					}						
-				}
-			}
-		}			
+				st_info("Got Server Response!!\n");
+			}						
+			else 
+			{
+				P2P_status = offline;
+				st_info("No Server Response!!!\n");
+			}						
+			
+		}
+		else
+		{
+			ERROR_LOG("calling PPCS_LoginStatus_Check failed!\n");
+		}
+				
 	}
 	gThread_bRunning = 0;
 	DEBUG_LOG("Thread_LoginStatus_Check exit!\n");
@@ -802,13 +802,14 @@ HLE_S32 Call_P2P_Listen(const HLE_S8 *Did, const HLE_S8 *APILicense)
 
 	DEBUG_LOG("PPCS_Listen('%s', 600, 0, 1, '%s')...\n", _DID_, APILicense);
 	my_GetCurrentTime(&TimeBegin);	
-	gSessionID = PPCS_Listen(Did, 600, 0, 1, APILicense);
+	gSessionID = PPCS_Listen(Did, 600, 0, 1, APILicense);//10分钟超时
 	my_GetCurrentTime(&TimeEnd);
 	
 	if (gSessionID < 0)
 	{
 		ERROR_LOG("Listen failed (%d): ", gSessionID);
 		showErrorInfo(gSessionID);
+		gThread_Exit = 1; //退出登录状态检测线程 
 		return gSessionID;
 	}
 	// Success!! gSessionID>=0
@@ -1407,7 +1408,7 @@ void * P2P_client_task_func(void*P2P_handle)
 		{
 			if (ERROR_PPCS_TIME_OUT == ret) 
 			{
-				DEBUG_LOG("Read CMD Header timeout !!\n");
+				//DEBUG_LOG("Read CMD Header timeout !!\n");
 				usleep(50*1000);
 				continue;
 			}	
@@ -1418,21 +1419,26 @@ void * P2P_client_task_func(void*P2P_handle)
 				break;
 				
 			}
-			else 
+			else //都默认为客户端已经退出
 			{
 				ERROR_LOG("PPCS_Read: Channel=%d, ret=%d\n", CH_CMD, ret);
-				
+				//usleep(1000*500);
 				break;
 			}
-			
-	
+				
 
+		}
+		else if(ReadSize != sizeof(cmd_header_t))
+		{
+			ERROR_LOG("PPCS_Read CMD header error!\n");
+			continue;
 		}
 
 		DEBUG_LOG("PPCS_Read CMD Header success! SessionID(%d) read(%d)bytes!\n",SessionID,ReadSize);
+		DEBUG_LOG("cmd_header.command = %#x\n",cmd_header.command);
 		
 		//信令头读取成功！对信令进行解析
-		med_ser_signal_parse(SessionID,&cmd_header,ReadSize);
+		med_ser_cmd_parse(SessionID,&cmd_header,ReadSize);
 		usleep(100*1000);
 	
 
@@ -1476,6 +1482,7 @@ HLE_S32 p2p_close(void *handle)
 {
 	return 0;
 }
+
 
 
 

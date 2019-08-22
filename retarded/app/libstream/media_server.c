@@ -52,27 +52,6 @@ HLE_S32 media_server_init(med_ser_init_info_t* info, HLE_U32 info_len)
 
 	  memcpy(&g_med_ser_envir, info, info_len);
 	
-	/*g_med_ser_envir 对象中有一部分成员因为不方便提前限定长度，所以类型定为char*，
-	采取如下方式拷贝字符串，进行灵活赋值*/
-#define COPY_ENVIR_STRING(EVIR_NAME)\
-    do{\
-        if(info->EVIR_NAME) g_med_ser_envir.EVIR_NAME = strdup(info->EVIR_NAME);\
-        else g_med_ser_envir.EVIR_NAME = strdup("");\
-    }while(0)
-
-	COPY_ENVIR_STRING(device_id);
-	COPY_ENVIR_STRING(device_name);
-	COPY_ENVIR_STRING(config_dir);
-	COPY_ENVIR_STRING(uboot_version);
-	COPY_ENVIR_STRING(kernel_version);
-	COPY_ENVIR_STRING(rootfs_version);
-	COPY_ENVIR_STRING(app_version);
-	COPY_ENVIR_STRING(network_interface);
-	COPY_ENVIR_STRING(high_resolution);
-	COPY_ENVIR_STRING(secondary_resolution);
-	COPY_ENVIR_STRING(low_resolution);
-
-#undef COPY_ENVIR_STRING
 	
 	g_is_inited = 1;
 	return HLE_RET_OK;
@@ -81,21 +60,7 @@ HLE_S32 media_server_init(med_ser_init_info_t* info, HLE_U32 info_len)
 static HLE_S32 media_server_exit(void)
 {
 	/*结束p2p medai server其他线程*/
-
-	//释放申请的内存
-#if 0
-	free(g_med_ser_envir.device_id);
-	free(g_med_ser_envir.device_name);
-	free(g_med_ser_envir.config_dir);
-	free(g_med_ser_envir.uboot_version);
-	free(g_med_ser_envir.kernel_version);
-	free(g_med_ser_envir.rootfs_version);
-	free(g_med_ser_envir.app_version);
-	free(g_med_ser_envir.network_interface);
-	free(g_med_ser_envir.high_resolution);
-	free(g_med_ser_envir.secondary_resolution);
-	free(g_med_ser_envir.low_resolution);
-#endif	
+	
 	PPCS_DeInitialize();
 	return HLE_RET_OK ;
 }
@@ -108,7 +73,7 @@ static HLE_S32 media_server_exit(void)
 *****************************************************************/
 static void* media_server_Idle(void*arg)
 {
-
+	pthread_detach(pthread_self());
 	int ret;
 
 	/*函数 lwIP_sntp_start 在 liteos 中默认有ntp服务器域名，这里就不手动再输入*/
@@ -196,7 +161,7 @@ static HLE_S32 Idle_thread_create(void)
 HLE_S8 is_first_run = 0;
 static void* media_server_start(void*arg)
 {
-	
+	pthread_detach(pthread_self());
 	is_first_run = 1; 
 	HLE_S32 ret;
 	
@@ -246,9 +211,12 @@ P2P_restart:
 		do
 		{
 			printf("into p2p_listen!\n");
-			ret = p2p_listen(&P2P_handle);
-			//if()什么条件下需要重新进入到睡眠状态，或者3min没有客户端连接成功，自动break再进入睡眠
-			
+			ret = p2p_listen(&P2P_handle);//内部超时 10 min
+			if(ret < 0)
+			{
+				DEBUG_LOG("p2p_listen failed! continue sleeping.....\n");
+				break;
+			}
 			
 		}while(ret < 0);
 		
@@ -258,7 +226,6 @@ P2P_restart:
 			DEBUG_LOG("one client connect,SessionID:%d\n",ret);
 			P2P_handle.SessionID = ret;
 			P2P_client_task_create(&P2P_handle);//创建与客户端交互的业务线程。
-			
 			
 		}
 
@@ -270,6 +237,7 @@ P2P_restart:
 		
     return NULL;
 }
+
 
 
 

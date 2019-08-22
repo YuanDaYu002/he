@@ -3,6 +3,7 @@
 #define HAL_ENCODER_H
 
 #include "typeport.h"
+#include "media_server_signal_def.h"
 
 #ifdef __cplusplus
 extern "C"
@@ -101,6 +102,7 @@ typedef struct
 } ENC_STREAM_ATTR;
 
 
+#if 0 //放在 media_server_signal_def.h 里边定义了
 /*
 码流帧格式:
     视频关键帧: FRAME_HDR + IFRAME_INFO + DATA
@@ -153,6 +155,8 @@ typedef struct
     HLE_U32 length;
     HLE_U64 pts_msec;
 } AFRAME_INFO;
+
+#endif 
 
 //码流包描述结构体，包内有且只有一帧数据
 

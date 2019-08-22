@@ -90,7 +90,7 @@ typedef struct _p2p_handle_t
 	HLE_S32 SessionID;							//与客户端的会话ID
 }p2p_handle_t;
 
-extern  unsigned long getTickCount(void);
+//extern  unsigned long getTickCount(void);
 
 /*以下函数为基于善云SDK ListenTester.cpp文件进行修改后封装的函数*/
 

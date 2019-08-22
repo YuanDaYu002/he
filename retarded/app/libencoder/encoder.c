@@ -35,7 +35,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
-
+#include "hle_watchdog.h"
 
 
 #define H264_PF_BL          0
@@ -567,7 +567,8 @@ ENC_STREAM_PACK *pack = spm_alloc(head_len + frame_data_len);
                stream->pstPack[i].u32Len);
         pack->length += stream->pstPack[i].u32Len;
     }
-
+	
+	//DEBUG_LOG("pack->length(%d) frame_data_len(%d)\n",pack->length,frame_data_len);
     return pack;
 }
 
@@ -636,12 +637,15 @@ void * venc_get_stream_proc(void *arg)
             max_fd = venc_fd[i];
         }
     }
+	
 
     while (enc_ctx.running) 
     {
         usleep(1000);
-       
-        watchdog_feed();
+
+		#if !(DEBUG_WATCHDOG)
+        hle_watchdog_feed();
+		#endif
 
         /*****获取 Video 编码流 , 放入相应缓冲队列 *******************/
     #if 1 

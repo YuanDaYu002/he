@@ -87,17 +87,18 @@ typedef struct _med_ser_init_info_t
 	HLE_U32 	device_capacity;			//设备能力位，设备支持的功能属性；
 	HLE_U32		device_video_channel_num;	//设备的视频通道数；
 	HLE_U32 	use_wireless_network;		//设备是无线的还是有线，1：无线，0：有线
-	const HLE_S8 		*device_id;					//设备id；
-	const HLE_S8 		*device_name;				//设备名；
-	const HLE_S8 		*config_dir;				//配置文件路径；
-	const HLE_S8 		*uboot_version;
-	const HLE_S8 		*kernel_version;
-	const HLE_S8 		*rootfs_version;
-	const HLE_S8 		*app_version;
-	const HLE_S8 		*network_interface;			//网卡名称 wlan0, ra0, eth0 ...；
-	const HLE_S8 		*high_resolution;			//主码流(高清)的分辨率,格式:1920*1080;
-	const HLE_S8 		*secondary_resolution;		//次码流(普清)的分辨率,格式:960*544;
-	const HLE_S8 		*low_resolution;			//低码流(低清)的分辨率,格式:480*272;
+	const HLE_S8 		device_id[32];					//设备id；
+	const HLE_S8 		device_name[32];				//设备名；
+	const HLE_S8 		config_dir[32];					//配置文件路径；
+	const HLE_S8 		uboot_version[32];
+	const HLE_S8 		kernel_version[32];
+	const HLE_S8 		rootfs_version[32];
+	const HLE_S8 		app_version[32];
+	const HLE_S8 		network_interface[16];			//网卡名称 wlan0, ra0, eth0 ...；
+	const HLE_S8 		high_resolution[16];			//主码流(高清)的分辨率,格式:1920*1080;
+	const HLE_S8 		secondary_resolution[16];		//次码流(普清)的分辨率,格式:960*544;
+	const HLE_S8 		low_resolution[16];				//低码流(低清)的分辨率,格式:480*272;无则置空
+
 
 	key_t msg_queue_key;				//消息队列键值（设备端app和media server 之间进行通信,
 										//media_server_init会初始化）。需不需要这个东西呢？？？
@@ -133,7 +134,7 @@ typedef struct _med_ser_init_info_t
 
 	/*
 	 一系列获取帧返回的接口
-	 @channel: 通道, 0:1920*1080P , 1:1280*720P
+	 @channel: 通道, 0:1920*1080P ,  1:960*544/640*360 P
 	 @frame_addr:帧地址
 	 @length: 帧长度 
 	*/
@@ -148,13 +149,13 @@ typedef struct _med_ser_init_info_t
 	/*
 	 请求编码流 
 	 @channel ： VI通道号（0）
-	 @stream_index ：码流编码
+	 @stream_id ：码流编号
 	 @auto_rc ： 是否影响自动码率控制，1---影响，0---不影响
 	 返回： 
 	 	成功：>0 的stream_id
 	 	失败： < 0 的错误码
 	*/
-	HLE_S32 (*encoder_request_stream)(int channel, int stream_index, int auto_rc);
+	HLE_S32 (*encoder_request_stream)(int channel, int stream_id, int auto_rc);
 
 	/*
 	 释放一个包数据（编码帧）
@@ -171,7 +172,7 @@ typedef struct _med_ser_init_info_t
 	 获取一个编码帧返回（实时流传输）。
 	 	考虑编码后的缓存buffer，如果视频帧和audio帧是在一个大buffer中均匀混合的，
 	 	media server就不区分是音频帧还是视频帧,在传输实时流也不需要去区分。
-	 @stream_id（传入）: 编码流编号, 0:1920*1080P , 1:960*544P, 2:480*272
+	 @stream_id（传入）: 编码流编号, 0:1920*1080P , 1:960*544/640*360P, 2:480*272
 	 @have_audio（传入）：是否需要audio帧
 	 @pack_addr（返回）：编码帧所在的包的首地址，用于发送完成后释放数据包
 	 @frame_addr（返回）:编码帧地址
@@ -183,7 +184,7 @@ typedef struct _med_ser_init_info_t
 	HLE_S32 (*set_device_id)(device_id_t*data,HLE_S32 length);
 	
 	//强制I帧回调函数
-	HLE_S32 (*encoder_force_iframe)(HLE_S32 channel, HLE_S32 stream_index);
+	HLE_S32 (*encoder_force_iframe)(HLE_S32 channel, HLE_S32 stream_id);
 
 }med_ser_init_info_t;
 

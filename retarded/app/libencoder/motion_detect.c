@@ -667,7 +667,7 @@ int motion_detect_arg_init(void)
 	if (access(MOTION_TETECT_CONFIG, F_OK))//文件不存在,配置默认参数并创建该文件 
 	{
 		g_motion_detect_artr.enable = 1;
-		g_motion_detect_artr.level = 0;
+		g_motion_detect_artr.level = 2;
 		//memset(&g_motion_detect_artr.rect[0],0,(MAX_MD_AREA_NUM)*sizeof(HLE_RECT));
 		//g_motion_detect_artr.rect[0].left = 0;//?
 		//g_motion_detect_artr.rect[0].right = 480;

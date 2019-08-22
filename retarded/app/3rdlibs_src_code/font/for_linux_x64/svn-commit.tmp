@@ -1,0 +1,13 @@
+
+--This line, and those below, will be ignored--
+
+M    vector_font_generate_demo/Makefile
+M    vector_font_generate_demo/README.txt
+M    vector_font_generate_demo/SDL2-2.0.8_out/bin/sdl2-config
+M    vector_font_generate_demo/SDL2-2.0.8_out/lib/cmake/SDL2/sdl2-config.cmake
+M    vector_font_generate_demo/SDL2-2.0.8_out/lib/pkgconfig/sdl2.pc
+M    vector_font_generate_demo/SDL2_ttf-2.0.15_out/lib/pkgconfig/SDL2_ttf.pc
+M    vector_font_generate_demo/creat_bmp_demo.c
+M    vector_font_generate_demo/libs/cmake/SDL2/sdl2-config.cmake
+M    vector_font_generate_demo/libs/pkgconfig/SDL2_ttf.pc
+M    vector_font_generate_demo/libs/pkgconfig/sdl2.pc

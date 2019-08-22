@@ -1028,6 +1028,8 @@ int app_main(int argc, char *argv[])
 	unsigned char* MAC = hisi_wlan_get_macaddr();
 	printf("**********MAC = %s ************\n",MAC);
 */
+	extern int ir_cut_main(void);
+	ir_cut_main();
 	
     for (;;) 
     {
@@ -1252,6 +1254,7 @@ int app_main(int argc, char *argv[])
 }
 
 #endif
+
 
 
 
