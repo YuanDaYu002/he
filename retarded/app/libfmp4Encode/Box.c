@@ -1616,9 +1616,19 @@ avcc_box_info_t *	avcc_box_init(void *IDR_frame,unsigned int IDR_len)
 		unsigned char profile_compatibility = 0x00;	//naluData[offset+2];  // profile_compatibility
 		unsigned char AVCLevelIndication  =   0x2A;	//naluData[offset+3];  // AVCLevelIndication
 	#endif
-		
+
+	/*
+		关于 NALULengthSizeMinusOne（对应如下reserved_6_lengthSizeMinusOne_2）：
+		用于存储每个NALU长度的字节数，即 mdat box 下每个帧数据的长度信息描述，一般放在每帧数据最前边，常使用4字节。
+		主要对应参数：Mp4 Reader解析器参数：NAL Unit length size ：用于描述“存储每个NALU长度” 的字节数 
+		只有最后两个bit位有效，前6个bit位固定为 1111 1100 ，
+		最后2个bit位赋值：（对应如下的参数：_naluLengthSize ）
+						  1---表NALU长度的字节数为2字节
+						  2---表NALU长度的字节数为3字节
+						  3---表NALU长度的字节数为4字节，4比较常用
+	*/
 	unsigned char reserved6 = 0xfc; //二进制：1111 1100
-	unsigned char _naluLengthSize = (my_SPS[4] & 3) + 1;  // lengthSizeMinusOne   上一个avc 长度
+	unsigned char _naluLengthSize = 3;//(my_SPS[4] & 3) + 1;   //NALU长度的字节数为4字节
 	unsigned char reserved_6_lengthSizeMinusOne_2 = reserved6|_naluLengthSize;//reserved_6_lengthSizeMinusOne_2
 
 	unsigned char reserved3 = 0xe0;//二进制：1110 0000
@@ -1963,6 +1973,7 @@ void Box_global_variable_reset(void)
 /***一般mp4文件部分********************************************************************************
 专门针对普通mp4文件部分
 *********************************************************************************************************/
+
 
 
 

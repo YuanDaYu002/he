@@ -318,8 +318,8 @@ int TS_Video_Encode(void*frame,int frame_len,char**out_buf,int* out_buf_len,int*
 		
 		#else //需要去掉SEI的数据
 		/*---# 裁减掉 前边带同步码的 SPS + PPS + SEI 数据，重新构造帧头数据---*/
-		frame = (char*)frame + TS_get_I_start_offset();
-		frame_len -= TS_get_I_start_offset();
+		frame = (char*)frame + TS_get_I_start_offset() + 4;//4代表起始码
+		frame_len = frame_len - TS_get_I_start_offset() - 4;
 		TS_DEBUG_LOG("TS_get_I_start_offset = %d\n",TS_get_I_start_offset());
 		
 		/*---放 AUD 头（分割器,6字节，兼容 IOS）---*/
@@ -390,5 +390,6 @@ void TS_video_global_variable_reset(void)
 	memset(&ts_video_init_info,0,sizeof(ts_video_init_info));
 	first_Vframe_is_IDR = 0;
 }
+
 
 

@@ -1455,7 +1455,7 @@ offset :在 dst 目标缓存往后偏移的字节数。
 buf_size:是整个dst buffer的总大小。
 
 */
-unsigned int buf_cpy(void *dst,void *src ,unsigned int cpy_len, unsigned int offset,unsigned int buf_size)
+int buf_cpy(void *dst,void *src ,unsigned int cpy_len, unsigned int offset,unsigned int buf_size)
 {
 	if(NULL == dst || NULL == src || cpy_len <= 0 || cpy_len <= 0)
 	{

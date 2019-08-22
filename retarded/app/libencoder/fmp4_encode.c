@@ -113,15 +113,9 @@ void print_array(unsigned char* box_name,unsigned char*start,unsigned int length
 #define AUDIO_SAMPLING_RATE (16000) //音频的原始采样率（PCM）
 #define V_FRAME_RATE  (15)  //视频帧帧率
 /*-----------------------------------------------------------------
-1.使用 EasyAACEncoder库: 
-    44.1KHZ:A_FRAME_RATE = 15 帧/秒
-    8KHZ ： A_FRAME_RATE  = 8  帧/秒 
-2.使用 faac库：
-    44.1KHZ A_FRAME_RATE = 27 帧/秒 (数据帧较EasyAACEncoder的小很多)
-    16KHZ   A_FRAME_RATE = 14 帧/秒 (数据帧较EasyAACEncoder的小很多)
-注意:
-    实测，在16KHZ、44.1KHZ下使用EasyAACEncoder库编码出来的音频有
-    倍速效果（不推荐），但8KHZ下比较正常。
+1.使用 faac库：
+    44.1KHZ A_FRAME_RATE = 27 帧/秒
+    16KHZ   A_FRAME_RATE = 14 帧/秒
 ----------------------------------------------------------------*/
 #define A_FRAME_RATE  (14)  //aac音频数据帧率
 
@@ -129,7 +123,6 @@ void print_array(unsigned char* box_name,unsigned char*start,unsigned int length
 fmp4_out_info_t* fmp4_record(fmp4_out_info_t* info)
 {
     printf("\n\n******start fmp4_record************************************************************************\n");
-    pthread_detach(pthread_self()); 
     DEBUG_LOG("start fmp4_record..... \n");  
 
     //sleep(5); //如若刚开机，不要太快开始录像
